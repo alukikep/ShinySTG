@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    private PlayerConfig playerConfig;
+    [SerializeField] private PlayerConfig playerConfig;
     private PlayerInput playerInput;
     private PlayerMover playerMover;
     private PlayerShooter playerShooter;
@@ -15,12 +15,17 @@ public class PlayerController : MonoBehaviour
         playerInput = this.GetComponent<PlayerInput>();
         playerMover = this.GetComponent<PlayerMover>();
         playerShooter = this.GetComponent<PlayerShooter>();
-        playerConfig = this.GetComponent<PlayerConfig>();
     }
     void Update()
     {
+
         float speed = playerInput.isSlowMode ? playerConfig.focusSpeed : playerConfig.normalSpeed;
         playerInput.SlowMode();
         playerMover.Move(speed, playerInput.MoveDir());
+
+        if (playerInput.isShooting())
+        {
+            playerShooter.Shoot(playerConfig);
+        }
     }
 }

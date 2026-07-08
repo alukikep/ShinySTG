@@ -16,13 +16,25 @@ public class PlayerInput : MonoBehaviour
 
     public void SlowMode()
     {
-        if (Input.GetKey(KeyCode.LeftShift))
+        if (Input.GetKey(KeyCode.K))
         {
             isSlowMode = true;
         }
         else
         {
             isSlowMode = false;
+        }
+    }
+
+    public bool isShooting()
+    {
+        if (Input.GetKey(KeyCode.J))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
