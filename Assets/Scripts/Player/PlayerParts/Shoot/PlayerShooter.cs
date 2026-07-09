@@ -22,7 +22,10 @@ public class PlayerShooter : MonoBehaviour
    {
       if (playerShootingTimer < 0)
       {
-         firePoint.Fire(playerConfig.firePointPosition, playerConfig.playerBullet, playerConfig.playerBulletSpeed);
+         foreach (var point in playerConfig.firePointPosition)
+         {
+            firePoint.Fire(point, playerConfig.playerBullet, playerConfig.playerBulletSpeed, playerConfig.playerDamage);
+         }
          playerShootingTimer = playerConfig.playerShootingTime;
       }
       if (optionShootingTimer < 0)

@@ -8,6 +8,9 @@ public class PlayerConfig : ScriptableObject
     [Header("子弹预制体")]
     public GameObject playerBullet;
     public GameObject optionBullet;
+    [Header("子弹伤害")]
+    public float playerDamage;
+    public float optionDamage;
     [Header("机体速度")]
     public float normalSpeed;
     public float focusSpeed;
@@ -18,7 +21,7 @@ public class PlayerConfig : ScriptableObject
     public float playerBulletSpeed;
     public float optionBulletSpeed;
     [Header("发射点坐标")]
-    public Vector3 firePointPosition;
+    public Vector3[] firePointPosition;
     //子机的坐标怎么配置？
     //之后应该还有图片等配置
 
