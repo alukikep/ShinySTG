@@ -276,6 +276,10 @@ public static class Pool
         {
             obj = Object.Instantiate(prefab, PoolParent);
             obj.SetActive(false);
+            
+            // 添加PoolObject组件来存储prefab的instanceID
+            PoolObject poolObj = obj.AddComponent<PoolObject>();
+            poolObj.PrefabInstanceID = instanceID;
         }
 
         obj.transform.position = position;

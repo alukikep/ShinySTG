@@ -5,9 +5,11 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "PlayerConfig")]
 public class PlayerConfig : ScriptableObject
 {
+    [Header("子机预制体")]
+    public GameObject option;
     [Header("子弹预制体")]
-    public GameObject playerBullet;
-    public GameObject optionBullet;
+    public PlayerBullet playerBullet;
+    public PlayerBullet optionBullet;
     [Header("子弹伤害")]
     public float playerDamage;
     public float optionDamage;
@@ -22,7 +24,18 @@ public class PlayerConfig : ScriptableObject
     public float optionBulletSpeed;
     [Header("发射点坐标")]
     public Vector3[] firePointPosition;
-    //子机的坐标怎么配置？
+    [Header("子机坐标")]
+    public Vector3 optionPositionP1;
+    public Vector3 optionPositionP1Focus;
+    public Vector3[] optionPositionP2;
+    public Vector3[] optionPositionP2Focus;
+    public Vector3[] optionPositionP3;
+    public Vector3[] optionPositionP3Focus;
+    public Vector3[] optionPositionP4;
+    public Vector3[] optionPositionP4Focus;
+
+
+
     //之后应该还有图片等配置
 
 }

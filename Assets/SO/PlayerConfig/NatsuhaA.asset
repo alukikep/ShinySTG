@@ -12,16 +12,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7eb066f2f2219b043a97b12a678afa3f, type: 3}
   m_Name: NatsuhaA
   m_EditorClassIdentifier: 
-  playerBullet: {fileID: 4288273717789115445, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
-  optionBullet: {fileID: 4288273717789115445, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
+  option: {fileID: 8445010616754556486, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
+  playerBullet: {fileID: 1943410531563429198, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
+  optionBullet: {fileID: 1943410531563429198, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
   playerDamage: 0
   optionDamage: 0
   normalSpeed: 10
   focusSpeed: 5
-  playerShootingTime: 0.1
-  optionShootingTime: 1
+  playerShootingTime: 0.05
+  optionShootingTime: 0.1
   playerBulletSpeed: 30
   optionBulletSpeed: 20
   firePointPosition:
   - {x: 0.2, y: 0, z: 0}
   - {x: -0.2, y: 0, z: 0}
+  optionPositionP1: {x: 0, y: 1, z: 0}
+  optionPositionP1Focus: {x: 0, y: 0.5, z: 0}
+  optionPositionP2:
+  - {x: 1, y: 0, z: 0}
+  - {x: -1, y: 0, z: 0}
+  optionPositionP2Focus:
+  - {x: 0.5, y: 0, z: 0}
+  - {x: -0.5, y: 0, z: 0}
+  optionPositionP3:
+  - {x: 1, y: 0, z: 0}
+  - {x: -1, y: 0, z: 0}
+  - {x: 0, y: 1, z: 0}
+  optionPositionP3Focus:
+  - {x: 0.5, y: 0, z: 0}
+  - {x: -0.5, y: 0, z: 0}
+  - {x: 0, y: 0.5, z: 0}
+  optionPositionP4:
+  - {x: 1, y: 0, z: 0}
+  - {x: -1, y: 0, z: 0}
+  - {x: 0, y: 1, z: 0}
+  - {x: 0, y: -1, z: 0}
+  optionPositionP4Focus:
+  - {x: 0.5, y: 0, z: 0}
+  - {x: -0.5, y: 0, z: 0}
+  - {x: 0, y: 0.5, z: 0}
+  - {x: 0, y: -0.5, z: 0}

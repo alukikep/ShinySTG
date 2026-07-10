@@ -5,7 +5,7 @@ using UnityEngine;
 public class FirePoint : MonoBehaviour
 {
 
-    public void Fire(Vector3 pointPosition, GameObject bullet, float speed, float damage)
+    public void Fire(Vector3 pointPosition, PlayerBullet bullet, float speed, float damage)
     {
         Vector3 firePosition = transform.TransformPoint(pointPosition);
         BulletFactory.Instance.SpawnPlayerBullet(firePosition, bullet, speed, damage);

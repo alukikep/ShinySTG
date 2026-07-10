@@ -5,6 +5,7 @@ using UnityEngine;
 public class PlayerShooter : MonoBehaviour
 {
    private FirePoint firePoint;
+   private OptionManager optionManager;
    private float playerShootingTimer;
    private float optionShootingTimer;
 
@@ -17,6 +18,7 @@ public class PlayerShooter : MonoBehaviour
    void Start()
    {
       firePoint = this.GetComponent<FirePoint>();
+      optionManager = this.GetComponent<OptionManager>();
    }
    public void Shoot(PlayerConfig playerConfig)
    {
@@ -31,7 +33,9 @@ public class PlayerShooter : MonoBehaviour
       if (optionShootingTimer < 0)
       {
          //子机射击逻辑
+         optionManager.OptionFire();
          optionShootingTimer = playerConfig.optionShootingTime;
+
       }
    }
 }

@@ -5,9 +5,9 @@ using UnityEngine;
 public class BulletFactory : Singleton<BulletFactory>
 {
 
-    public void SpawnPlayerBullet(Vector3 pointPosition, GameObject bullet, float speed, float damage)
+    public void SpawnPlayerBullet(Vector3 pointPosition, PlayerBullet bullet, float speed, float damage)
     {
-        var PlayerBullet = Pool.Spawn(bullet, pointPosition, Quaternion.identity, 50);
+        var PlayerBullet = Pool.Spawn(bullet.gameObject, pointPosition, Quaternion.identity, 50);
         PlayerBullet.GetComponent<PlayerBullet>().speed = speed;
         PlayerBullet.GetComponent<PlayerBullet>().damage = damage;
 

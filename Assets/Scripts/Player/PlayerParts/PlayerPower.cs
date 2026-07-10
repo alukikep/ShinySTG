@@ -49,10 +49,8 @@ public class PlayerPower : MonoBehaviour
         set
         {
             if (_currentPowerLevel == value) return;
-            else
-            {
-                OnPowerLevelChanged?.Invoke(_currentPowerLevel);
-            }
+            _currentPowerLevel = value;
+            OnPowerLevelChanged?.Invoke(_currentPowerLevel);
         }
     }
 }

@@ -32,7 +32,7 @@ public class PlayerRuntimeData : Singleton<PlayerRuntimeData>
         }
     }
 
-    public void AddPower(int amount)
+    public void AddPower(float amount)
     {
         CurrentPower += amount; // 这里会自动触发 set 访问器
     }
