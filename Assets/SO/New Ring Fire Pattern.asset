@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea1136b335f1e429973dab1d865f75, type: 3}
+  m_Name: New Ring Fire Pattern
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 6517814375182258853, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
+  Speed: 5
+  AngularSpeed: 0
+  Count: 10
+  Radius: 0
+  BaseAngle: 270

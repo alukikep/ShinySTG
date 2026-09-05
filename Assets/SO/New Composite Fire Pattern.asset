@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ee2bfe5a0449b340a4e98065116f93b, type: 3}
+  m_Name: New Composite Fire Pattern
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 6517814375182258853, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
+  Speed: 10
+  AngularSpeed: 0
+  Children:
+  - {fileID: 11400000, guid: e877089c07f368142a586984ff222bfa, type: 2}
+  - {fileID: 11400000, guid: f104667e96524694b9b48596c0d42249, type: 2}
