@@ -1,4 +1,5 @@
 using UnityEngine;
+using SerializeReferenceEditor;
 
 namespace ShinySTG.EnemyAI
 {
@@ -16,7 +17,9 @@ namespace ShinySTG.EnemyAI
     public class BehaviorFlow : ScriptableObject
     {
         [Header("Timeline")]
-        [Tooltip("行为序列。每条持续 Duration 秒后自动切换。")]
+        [Tooltip("行为序列。每条持续 Duration 秒后自动切换。\n" +
+                 "点击 + 号新增条目,通过类型下拉选具体 Action(Fire / Move / Wait / Parallel / Sequence / ...)。")]
+        [SerializeReference, SR]
         public EnemyAction[] Actions;
 
         [Header("Loop & Delay")]

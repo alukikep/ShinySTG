@@ -12,16 +12,17 @@ public class RingFirePattern : FirePattern
     [Tooltip("该 pattern 的整体基准朝向（度）。0=右，90=上，180=左，270=下。")]
     public float BaseAngle = 270f;
 
-    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, Bullet owner = null)
+    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null)
     {
         // 中线 = BaseAngle（度） + rotationRad（弧度增量）
         float centerRad = BaseAngle * Mathf.Deg2Rad + rotationRad;
         float step = 360f / Count;
+        var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)
         {
             float rad = centerRad + step * i * Mathf.Deg2Rad;
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
-            pool.Get(BulletPrefab, position + offset, rad, Speed, AngularSpeed);
+            pool.Get(BulletPrefab, position + offset, rad, Speed, AngularSpeed, Damage, team);
         }
     }
 

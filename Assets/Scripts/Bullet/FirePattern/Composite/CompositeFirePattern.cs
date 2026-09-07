@@ -11,11 +11,11 @@ public class CompositeFirePattern : FirePattern
 {
     public FirePattern[] Children;
 
-    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, Bullet owner = null)
+    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null)
     {
         foreach (var c in Children)
         {
-            if (c != null) c.Fire(position, rotationRad, pool, owner);
+            if (c != null) c.Fire(position, rotationRad, pool, ownerHitbox);
         }
     }
 

@@ -1,606 +1,205 @@
 # ShinySTG 架构说明
 
-> 本文档面向项目维护者(以及未来的你自己),目的是**理解现有架构的工作原理**,便于安全地扩展功能。
-> 阅读顺序建议:第 1 章 → 第 2 章 → 第 3 章,然后按需翻后面的章节。
+> 本文档面向项目维护者,目的是**理解架构的工作原理与扩展套路**,便于安全地加新功能。
+> 具体字段、参数、伪代码请直接看对应的源文件;本文档不复制实现细节。
 
 ---
 
 ## 目录
 
 1. [整体架构一览](#1-整体架构一览)
-2. [子弹系统(Bullet / BulletPool / BulletModifier)](#2-子弹系统bullet--bulletpool--bulletmodifier)
-3. [射击模式系统(FirePattern SO 体系)](#3-射击模式系统firepattern-so-体系)
-4. [敌人 AI 时间轴(BehaviorFlow + EnemyAction)](#4-敌人-ai-时间轴behaviorflow--enemyaction)
+2. [子弹系统](#2-子弹系统)
+3. [射击模式系统(FirePattern)](#3-射击模式系统firepattern)
+4. [敌人 AI(BehaviorFlow + EnemyAction)](#4-敌人-aibehaviorflow--enemyaction)
 5. [Boss 系统(BossController + 多阶段 + 多管血)](#5-boss-系统bosscontroller--多阶段--多管血)
-6. [扩展指南](#6-扩展指南)
-7. [常见问题 / 设计决策记录](#7-常见问题--设计决策记录)
+6. [玩家系统(Player + 子机 + 多态位置)](#6-玩家系统player--子机--多态位置)
+7. [扩展指南](#7-扩展指南)
+8. [Hitbox 系统(统一 AABB)](#8-hitbox-系统统一-aabb)
+9. [目录速查(一级)](#9-目录速查一级)
 
 ---
 
 ## 1. 整体架构一览
 
-整个项目遵循"**职责分离 + 数据驱动 + 组合优于继承**"的原则,可分为三层:
+整个项目遵循"**职责分离 + 数据驱动 + 组合优于继承**"的原则。游戏运行时由五类对象组成:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  游戏场景 (Scene)                                                  │
-│   ├─ 玩家 (Player)                                                │
-│   ├─ 普通敌人:挂 ShooterEnemy(持 BehaviorFlow 资产)              │
-│   ├─ Boss:挂 BossController + BossHealth + BossShotCounter       │
-│   └─ BulletPool (场景单例,负责子弹的复用)                            │
+│ 游戏场景 (Scene)                                                  │
+│  ├─ 玩家:挂 Player + PlayerMovement + PlayerShooting + Options │
+│  │          + PlayerHitbox                                          │
+│  ├─ 普通敌人:挂 Enemy 总控 + EnemyHealth + ShooterEnemy +       │
+│  │            EnemyHitbox(引用一个 BehaviorFlow 资产)             │
+│  ├─ Boss:挂 BossController + BossHealth + BossShotCounter       │
+│  ├─ 子弹:挂 Bullet(RequireComponent 自动挂 HitboxComponent)         │
+│  └─ BulletPool (场景单例,负责子弹的复用)                          │
 └──────────────────────────────────────────────────────────────────┘
             │                    │                    │
             ▼                    ▼                    ▼
 ┌──────────────────────┐ ┌──────────────────────┐ ┌────────────────┐
 │ 敌人 AI 层           │ │ Boss 系统层         │ │ 子弹层          │
-│ ShooterEnemy         │ │ BossController       │ │ Bullet         │
-│  └─ BehaviorFlow SO  │ │  ├─ BossPhase[]      │ │ BulletPool     │
-│       └─ EnemyAction[]│ │  ├─ BossSignal[]     │ │ BulletModifier │
-│            ├─ Fire... │ │  ├─ PhaseTrigger[]  │ │ FirePattern SO │
-│            ├─ Move... │ │  └─ BossHealth      │ │   ├─ Ring      │
-│            ├─ Wait... │ │       (多管血)      │ │   ├─ Line      │
-│            ├─ Parallel│ │ ShooterPhase        │ │   ├─ Arc       │
-│            └─ Sequence│ │  └─ BehaviorFlow SO │ │   └─ Composite │
-└──────────────────────┘ └──────────────────────┘ └────────────────┘
-            │
-            ▼
+│ Enemy (总控)         │ │ BossController       │ │ Bullet + Damage │
+│  ├─ EnemyHealth      │ │  ├─ BossPhase[]      │ │ BulletPool     │
+│  └─ ShooterEnemy     │ │  ├─ BossSignal[]     │ │ BulletModifier │
+│      └─ BehaviorFlow  │ │  └─ BossHealth      │ │ FirePattern SO │
+│          └─ EnemyAction[] │                 │ └────────────────┘
+└──────────────────────┘ └──────────────────────┘
+            │                    │
+            └────────┬───────────┘
+                     ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │ 通用层                                                            │
 │  Singleton<T> / PersistentSingleton<T>  (单例基类)                 │
+│  HitboxComponent / HitboxMath (数学碰撞 + 编辑器可视化,正交层)     │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**核心设计原则:**
+**核心设计原则(以及它们被选中的理由):**
 
-| 原则 | 体现 |
-|---|---|
-| **数据驱动** | FirePattern 用 ScriptableObject 定义"怎么射",Inspector 直接拖资产即可 |
-| **组合优于继承** | 敌人行为是 `EnemyAction[]` 数组而不是一大坨 `class BossEnemy : Enemy`,完全靠 Inspector 拼装 |
-| **多态通过 SerializeReference** | 用项目自带的 SREditor 插件,行为/移动在 Inspector 里通过下拉菜单选择具体类型,无需改代码 |
-| **对象池** | 子弹频繁创建/销毁,用 `BulletPool` 复用,避免 GC 抖动 |
-| **行为流资产化** | `BehaviorFlow` SO 把"一段完整的敌人行为"封装成可复用资产,多个敌人/boss 共享同一份逻辑 |
-
----
-
-## 2. 子弹系统(Bullet / BulletPool / BulletModifier)
-
-文件位置:
-- `Assets/Scripts/Bullet/Bullet.cs`
-- `Assets/Scripts/Bullet/BulletPool.cs`
-- `Assets/Scripts/Bullet/BulletModifier.cs`
-
-### 2.1 `BulletPool`(对象池,场景单例)
-
-**角色:** 整个游戏的子弹池,所有子弹的"出生与回收"都走它。
-
-**原理:**
-```
-_Fire() → Get(prefab, pos, angle, speed, angular) → 弹出一颗空闲 Bullet
-                                                   ↓
-                                              Update() 飞行
-                                                   ↓
-                                              出界/命中 → Return(this) 回收
-```
-
-**关键字段:**
-- `Stack<Bullet> _available` —— 空闲子弹栈
-- `HashSet<Bullet> _active` —— 当前活跃子弹集合
-- `Bullet DefaultPrefab` —— 兜底 prefab(当 Pattern 没指定时使用)
-- `InitialSize` —— 启动时预创建的子弹数量
-
-**对外 API:**
-```csharp
-Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed);
-void  Return(Bullet bullet);
-void  FireGroup(FirePattern pattern, Vector2 pos, float rotationRad); // 便捷:触发一个 pattern
-```
-
-**注意事项:**
-- `BulletPool` 继承 `MonoBehaviour`,但它**没有**继承项目里的 `Singleton<T>`(是个手写单例,直接用 `Instance`)。
-- 池容量不足时会 `Instantiate` 新子弹,但**会走 `_active.Add`**,所以回收时一定要 `Return` 才能再被复用。
-- 场景里必须有且仅有一个挂着 `BulletPool` 的 GameObject(通常放在 `_Bootstrap` 之类的常驻对象上)。
-
-### 2.2 `Bullet`(子弹本体)
-
-**每一帧 `Update` 流程:**
-
-```
-1. Lifetime += dt                                      累计存活时间
-2. foreach (modifier in _modifiers) modifier.Modify() 子弹效果(加速/转向/...)
-3. SteerAngle += AngularSpeed * dt                    当前飞行方向按角速度更新
-4. transform.position += dir(SteerAngle) * Speed * dt 按当前方向前进
----
-
-## 3. 射击模式系统(FirePattern SO 体系)
-
-文件位置:
-- `Assets/Scripts/Bullet/FirePattern.cs`(基类)
-- `Assets/Scripts/Bullet/FirePattern/Ring/RingFirePattern.cs`
-- `Assets/Scripts/Bullet/FirePattern/Line/LineFirePattern.cs`
-- `Assets/Scripts/Bullet/FirePattern/Arc/ArcFirePattern.cs`
-- `Assets/Scripts/Bullet/FirePattern/Composite/CompositeFirePattern.cs`
-
-### 3.1 核心思想
-
-把"**射什么子弹 + 怎么射**"完全封装进一个 ScriptableObject 资产。**改一个 SO 资产 = 改变全场景所有引用它的敌人开火方式**,完全无需改代码或重新编译。
-
-### 3.2 基类 `FirePattern`
-
-```csharp
-public abstract class FirePattern : ScriptableObject
-{
-    public Bullet BulletPrefab;       // 该 pattern 用什么子弹
-    public float Speed = 5f;          // 子弹速度(可被子类覆盖)
-    public float AngularSpeed = 0f;    // 子弹角速度(可被子类覆盖)
-    public float BaseAngle = 270f;     // 基准朝向(度,通常 270=下)
-
-    public abstract void Fire(Vector2 position, float rotationRad,
-                              BulletPool pool, Bullet owner = null);
-}
-```
-
-**重要语义:**
-- `BaseAngle` 是**度**,每个具体 pattern 可以再定义自己的 `BaseAngle`(因为子类可能需要不同基准)。
-- `Fire` 的 `rotationRad` 是**相对** BaseAngle 的**弧度**增量,方便运行时做"边射边转向"。
-- `Bullet owner` —— 可选,标识"谁射的"。目前没怎么用,但留口子给以后做"自家子弹不伤自"。
-
-### 3.3 子类一览
-
-| Pattern | 文件 | 行为 | 关键参数 |
----
-
-## 4. 敌人 AI 时间轴(BehaviorFlow + EnemyAction)
-
-文件位置:
-- `Assets/Scripts/Enemy/AI/BehaviorFlow.cs`(行为流 SO 资产)
-- `Assets/Scripts/Enemy/AI/BehaviorFlowRuntime.cs`(运行时驱动器)
-- `Assets/Scripts/Enemy/ShooterEnemy.cs`(行为流播放机组件)
-- `Assets/Scripts/Enemy/AI/EnemyAction.cs`(行为基类)
-- `Assets/Scripts/Enemy/AI/MoveBehaviour.cs`(移动模块基类)
-- `Assets/Scripts/Enemy/AI/MoveBehaviours/LinearMove.cs`
-- `Assets/Scripts/Enemy/AI/Actions/FireAction.cs`
-- `Assets/Scripts/Enemy/AI/Actions/MoveAction.cs`
-- `Assets/Scripts/Enemy/AI/Actions/WaitAction.cs`
-- `Assets/Scripts/Enemy/AI/Actions/SelfDestructAction.cs`
-- `Assets/Scripts/Enemy/AI/Actions/ParallelAction.cs`
-- `Assets/Scripts/Enemy/AI/Actions/SequenceAction.cs`
-
-### 4.1 设计动机
-
-传统做法:`class BossEnemy : Enemy` 里写一大坨 `if (state == X) { ... } else if (state == Y) { ... }`。  
-问题:每加一种行为/每个新 Boss 都要改代码/加类,Inspector 改不了。
-
-**本项目做法:** 把敌人行为做成"**时间序列 + 多态 + 数据驱动**"。**所有行为在 Inspector 里用下拉菜单自由组合**,无需改代码。
-
-### 4.2 核心抽象:`EnemyAction`
-
-```csharp
-public abstract class EnemyAction
-{
-    public float Duration = 1f;          // 持续秒数,到了自动切换到下一条
-
-    public virtual void OnEnter(Transform enemy) { }   // 进入时(初始化)
-    public virtual void OnTick (Transform enemy, float dt) { }  // 每帧
-    public virtual void OnExit (Transform enemy) { }   // 退出时(清理)
-}
-```
-
-**三段式生命周期:**
-- `OnEnter`:进入该行为,可重置状态、读初始位置等。
-- `OnTick`:每帧执行。
-- `OnExit`:行为时间到,被切走之前调用一次,**用于清理**(停止射击 timer、重置 angular speed 等)。
-
-**Duration 语义:**<= 0 表示只执行一帧(下一帧立即切下一条)。
-
-### 4.3 三层组件:`BehaviorFlow` / `BehaviorFlowRuntime` / `ShooterEnemy`
-
-**设计动机:** 旧版 ShooterEnemy 内部自己持有 Actions 数组,导致:
-- boss prefab 上要挂多个 ShooterEnemy 组件来切换不同行为流
-- 行为流无法在多个敌人/boss 间复用
-- Inspector 维护痛苦
-
-**新版架构:三层职责分离**
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ BehaviorFlow (SO 资产)                                    │
-│   - Actions: EnemyAction[]   ← 时间序列配置               │
-│   - Loop, StartDelay          ← 行为流元数据              │
-│   - Instantiate(): 克隆成 BehaviorFlowRuntime            │
-├──────────────────────────────────────────────────────────┤
-│ BehaviorFlowRuntime (普通 C# 类)                          │
-│   - _index, _elapsedInCurrent, _delayLeft, _started     │
-│   - Tick(owner, dt): 驱动时间轴                            │
-│   - ForceExit(owner): ShooterPhase 切阶段时调用           │
-├──────────────────────────────────────────────────────────┤
-│ ShooterEnemy (MonoBehaviour 组件)                         │
-│   - 字段: Flow: BehaviorFlow                              │
-│   - OnEnable: _runtime = Flow.Instantiate()              │
-│   - Update: _runtime.Tick(transform, dt)                  │
-└──────────────────────────────────────────────────────────┘
-```
-
-**核心循环(在 `BehaviorFlowRuntime.Tick` 里):**
-
-```csharp
-public void Tick(Transform owner, float dt)
-{
-    var actions = _flow.Actions;
-    if (actions == null || actions.Length == 0) return;
-
-    // 1. 启动延迟
-    if (!_started)
-    {
-        _delayLeft -= dt;
-        if (_delayLeft > 0f) return;
-        _started = true;
-        AdvanceTo(0, owner);
-    }
-
-    // 2. tick 当前 action
-    var current = actions[_index];
-    current.OnTick(owner, dt);
-    _elapsedInCurrent += dt;
-
-    // 3. 到时间,OnExit 并切下一条
-    if (_elapsedInCurrent >= current.Duration)
-    {
-        current.OnExit(owner);
-        AdvanceTo(_index + 1, owner);
-    }
-}
-
-void AdvanceTo(int next, Transform owner)
-{
-    if (next >= actions.Length)
-    {
-        if (_flow.Loop && actions.Length > 0) next = 0;
-        else { _index = -1; return; }
-    }
-    _index = next;
-    _elapsedInCurrent = 0f;
-    actions[_index]?.OnEnter(owner);
-}
-```
-
-**关键设计:`Instantiate(SO)` 深拷贝**
-
-`BehaviorFlow.Instantiate()` 用 `UnityEngine.Object.Instantiate(this)` 复制 SO。Unity 会自动深拷贝 `[SerializeReference]` 字段,所以**多个 ShooterEnemy 引用同一 .flow 资产时,运行时互不干扰**(每个敌人有独立的 `_index / _elapsed` 状态)。
-
-**ShooterEnemy 完整源码(28 行):**
-
-```csharp
-public class ShooterEnemy : MonoBehaviour
-{
-    [Tooltip("拖入一个 BehaviorFlow 资产。")]
-    public BehaviorFlow Flow;
-
-    BehaviorFlowRuntime _runtime;
-
-    void OnEnable() { _runtime = Flow != null ? Flow.Instantiate() : null; }
-    void Update() { _runtime?.Tick(transform, Time.deltaTime); }
-}
-```
-
-### 4.4 内置 Action 一览
-
-| Action | 作用 | 关键参数 |
+| 原则 | 体现 | 为什么这样做 |
 |---|---|---|
-| **FireAction** | 按 FireRate 持续发射一个 FirePattern | `Pattern`、`FireRate`、`AimOffsetDeg` |
-| **MoveAction** | 持续移动(委托给 MoveBehaviour) | `Move`(可切换实现) |
-| **WaitAction** | 什么都不做,只占 Duration | (无) |
-| **SelfDestructAction** | Duration 到时销毁敌人 | (无) |
-| **ParallelAction** | **并行**容器,内含多个子 Action | `Children[]`、`Duration`(封顶) |
-| **SequenceAction** | **顺序**容器,纯 Inspector 折叠分组用 | `Children[]`(Duration 字段被忽略) |
+| **数据驱动** | FirePattern / BehaviorFlow 都是 ScriptableObject 资产,Inspector 直接拖 | 改一个 .asset 即可改变全场景所有引用它的对象行为,无需重编 |
+| **组合优于继承** | 敌人行为 = `EnemyAction[]` 数组;Boss 行为 = `BossPhase[]` 数组 | 加新行为 = 加新数组元素,不引入新类层级 |
+| **多态通过 SerializeReference** | Action / MoveBehaviour / BossPhase / BossSignal / OptionPositionForm 全用项目自带的 SREditor 插件,Inspector 下拉选类型 | Inspector 里就能扩展,无需改宿主组件的代码 |
+| **对象池** | 子弹频繁创建/销毁,走 `BulletPool` 复用 | 避免 GC 抖动,STG 高弹量场景必备 |
+| **行为流资产化** | `BehaviorFlow` SO 把"一段完整敌人行为"封装成可复用资产 | 多个敌人/Boss 共享同一份逻辑,资产级 Git diff 友好 |
+| **Action 用 `[Serializable] class` 而非 SO** | `EnemyAction` / `MoveBehaviour` 是普通类 + `[SerializeReference]` | 行为要持有运行时状态(如 `_timer`),SO 是跨实例共享会出问题 |
+| **Move 包成 MoveAction 而不是直接挂外层** | `MoveAction` 持有 `MoveBehaviour` | 统一 Action 的"时间轴 + Duration"语义,让 Move 也能被 Parallel 编排 |
+| **行为编排自造而非 StateMachineBehaviour** | Action 三段式 OnEnter/Tick/Exit + 容器组合 | Animator 偏动画,语义不够通用;自造更贴合"行为编排"直觉 |
+| **Boss 与普通敌人正交** | BossController 独立于 ShooterEnemy | Boss 有"阶段 / 多管血 / 阶段切换条件",与单段行为流的普通敌人语义不同 |
+| **Boss 阶段切换用"信号池"而非 phase 内嵌 transition** | `BossSignal` + `PhaseTrigger` 全局共享 | 同一信号可被多 phase 监听;phase 之间解耦;新增切换条件 = 新建 Signal 子类 |
+| **BulletPool 按 prefab 分桶** | `Dictionary<Bullet, Stack<Bullet>>` | 不同 prefab 互不污染;同 prefab 跨敌人/Pattern 共用桶,复用率最大化 |
+| **玩家子机位置形态走 SerializeReference** | `OptionPositionForm` 多态子类 | 与项目里 Action / MoveBehaviour 完全对齐的扩展套路 |
+| **碰撞走数学而非物理引擎** | HitboxMath + HitboxComponent(AABB),不走 Physics2D / Collider | STG 高弹量场景下纯数学 O(1) 比物理引擎快,且代码可控、可视化(见 §8) |
 
-**Inspector 下拉菜单分组(由 `[SRName("路径")]` 控制):**
-```
-Action/Fire
-Action/Move
-Action/Wait
-Action/Self Destruct
-Action/Parallel
-Action/Sequence
-Move/Linear
-```
+---
 
-### 4.5 MoveBehaviour 子系统
+## 2. 子弹系统
 
-`MoveAction` 不直接管移动,而是委托给一个 `MoveBehaviour`(又是 `[SerializeReference]`)。
+涉及三个协作组件:`BulletPool`(场景单例,出生与回收)、`Bullet`(飞行体 + 总控)、`BulletModifier`(效果修饰器)。
 
-```csharp
-public abstract class MoveBehaviour
-{
-    public virtual void OnEnter(Transform enemy) { }
-    public abstract void OnTick(Transform enemy, float dt);
-    public virtual void OnExit(Transform enemy) { }
-}
-```
+**职责:**
+- **BulletPool** —— 所有子弹的"工厂 + 回收站",按 `BulletPrefab` 分桶,复用同款子弹,避免 GC。
+- **Bullet** —— 每帧按当前方向飞行,叠加效果 modifier,出界/命中后归还到池。
+  - **总控模式(对齐 Player / Enemy)**:`[RequireComponent(typeof(HitboxComponent))]` 强制每颗子弹自动挂 HitboxComponent,`Awake` 自动 GetComponent 注入。
+  - **阵营透传**:子弹 `Hitbox.Team` 由发射者 (owner) 的 `Hitbox.Team` 在 `Bullet.Init` 时设置 —— 玩家发射 → Team=Player,敌人发射 → Team=Enemy。
+  - **伤害字段**:`public float Damage` 由 `FirePattern.Damage` 在 `BulletPool.Get` 时写入,`CollisionService` 玩家弹 vs 敌人时按 `b.Damage` 扣血。**敌人弹不读此字段** —— 敌人弹命中玩家直接走 `player.OnHit(1f)`,无视 Damage。
+- **BulletModifier** —— 子弹行为的可插拔修饰(加速、转向等),由外部代码手动 `AddModifier` 挂载。
 
-**当前实现:**
+**协作边界:**
+- 调用方通过 `BulletPool.Instance.Get(prefab, pos, angle, speed, angular, damage, ownerTeam)` 拿弹,或 `FireGroup(pattern, pos, rotation, ownerHitbox)` 一步触发一个 FirePattern。
+- `FireGroup` 的 `ownerHitbox` 是发射者(玩家 Hitbox / 敌人 Hitbox / 子机共用玩家 Hitbox),`null` 表示中性阵营(不参与碰撞)。
+- 调用方负责在合适时机调 `Return(bullet)`,Bullet 不会自动回收(出界检测由调用方或 modifier 决定)。
 
-| 类 | 行为 | 关键参数 |
-|---|---|---|
-| `LinearMove` | 匀速直线 | `Direction`(Down/Up/Left/Right/ToPlayer/Custom)、`Speed`、`CustomAngleDeg` |
-
-`ToPlayer` 模式会在 `OnEnter` 时**锁定一次**朝向玩家的方向(之后不再追踪);以后若需要"持续追踪"则新增一个 `HomingMove` 子类即可。
-
-### 4.6 容器类详解(关键)
-
-#### `ParallelAction` —— 同时跑多个
+**阵营透传数据流:**
 
 ```
-Parallel.Duration = 3.0
-  ├─ Fire   (Duration = 3.0)   ← 整个 3 秒都在射
-  └─ Move   (Duration = 3.0)   ← 整个 3 秒都在走
+玩家开火:   PlayerShooting → FireGroup(playerHitbox) → pattern.Fire(...)
+         → pool.Get(..., Team=Player) → bullet.Init(..., damage=1, team=Player)
+         → bullet.Hitbox.Team = Player
+         → CollisionService: enemy.TakeDamage(b.Damage)
+
+敌人开火:   FireAction → FireGroup(enemyHitbox) → pattern.Fire(...)
+         → pool.Get(..., Team=Enemy)  → bullet.Init(..., damage=1, team=Enemy)
+         → bullet.Hitbox.Team = Enemy
+         → CollisionService: player.OnHit(1f)  ← 无视 b.Damage
 ```
 
-**实现:** 每个 child 有独立的 `_childElapsed` 计时器;`OnTick` 一次性调用所有未结束的 child 的 `OnTick`;`OnExit` 只对"还活着"的 child 调一次 `OnExit`(防止重复清理)。
+**扩展点:**
+- 新增子弹效果(减速 / 爆炸 / 分裂):新建 `BulletModifier` 子类,手动挂到 `bullet._modifiers`。
+- 调整某玩家弹的伤害:改 `FirePattern.asset` 的 `Damage` 字段(无需碰代码或 prefab)。
+- 装饰/道具弹不参与战斗:用 `Hitbox.Team = Neutral` 的 prefab(或从 `null` owner 发射)。
 
-**Duration 字段是"封顶时间":** 即使某个 child 配置成 Duration=999,Parallel.Duration=5,也会在第 5 秒被强制清理。
+详见 `Assets/Scripts/Bullet/`。
+---
 
-#### `SequenceAction` —— 纯折叠分组
+## 3. 射击模式系统(FirePattern)
 
-语义**完全等价于**把 `Children` 平铺到外层 `Actions` 数组。  
-存在的唯一理由:让 Inspector 里几十条 Action 的列表能折叠成几个组,**便于阅读**。
+**职责:** 把"**射什么子弹 + 怎么射**"封装进 ScriptableObject 资产。一个 .asset = 一种弹幕形态,改资产即改变所有引用它的对象。
 
-**自身 Duration 字段不生效**——时间由外层时间轴驱动。
+**关键类型:**
+- `FirePattern`(SO 基类)—— 持有 `BulletPrefab` / `Speed` / `AngularSpeed` / `BaseAngle` / `Damage`,定义 `Fire(position, rotationRad, pool, ownerHitbox)` 抽象方法。
+  - `Damage`:玩家弹命中敌人时的伤害值(由 `CollisionService` 按 `b.Damage` 扣血)。**敌人弹不读此字段** —— 敌人弹命中玩家直接 `player.OnHit(1f)`,固定扣 1 命。
+- 子类:`RingFirePattern` / `LineFirePattern` / `ArcFirePattern` / `CompositeFirePattern`(可嵌套其他 FirePattern)。
 
-#### 无限嵌套
+**协作边界:**
+- 被 `FireAction`(敌人行为)、`PlayerShooting`(玩家主炮)、`PlayerOptions`(子机开火)、`BossController`(Boss 开火)调用。
+- 实际开火委托给 `BulletPool.FireGroup` 或 `BulletPool.Get`。
+- `Fire(...)` 收到 `ownerHitbox` 后,子类在内部 `pool.Get(...)` 时把 `Damage` + `ownerHitbox.Team` 透传给每颗新生成的子弹 —— **子弹阵营由发射者阵营决定,无需 prefab 静态配置**。
 
-`Parallel.Children` 和 `Sequence.Children` 的元素类型都是 `EnemyAction`,所以可以:
+**扩展点:**
+- 新增弹幕形态(螺旋 / 樱花 / ...):新建 `FirePattern` 子类 + 创建对应 .asset,Inspector 里直接拖。
+- 调整某玩家弹的伤害:改 `FirePattern.asset` 的 `Damage` 字段(默认 1;做"高火力一击多血"改 2+)。
+- 想给"同一发弹不同次发射不同伤害"(如蓄力弹):在调用方 `pool.Get` 前改 `pattern.Damage`,然后再调 `Fire(...)`。
+
+详见 `Assets/Scripts/Bullet/FirePattern*`。
+---
+
+## 4. 敌人 AI(BehaviorFlow + EnemyAction)
+
+**职责:** 用"**时间序列 + 多态 Action + 数据驱动**"描述敌人行为。**所有行为在 Inspector 里用下拉菜单自由组合**,无需改代码。
+
+**关键类型(三层职责):**
+
 ```
-Sequence
- ├─ Parallel
- │   ├─ Fire
- │   └─ Move
- ├─ Wait
- └─ SelfDestruct
-```
-深度不限。
-
-### 4.7 如何新增一种 Action
-
-**3 步,完全无需改 ShooterEnemy:**
-
-1. 在 `Assets/Scripts/Enemy/AI/Actions/` 下新建 `<你的>Action.cs`
-2. 继承 `EnemyAction`,加 `[Serializable, SRName("Action/<你的名字>")]`
-3. override `OnEnter / OnTick / OnExit`(按需)
-
-```csharp
-[Serializable, SRName("Action/Animate Scale")]
-public class AnimateScaleAction : EnemyAction
-{
-    public Vector3 FromScale = Vector3.one;
-    public Vector3 ToScale = new Vector3(1.5f, 1.5f, 1.5f);
-
-    public override void OnEnter(Transform enemy) { enemy.localScale = FromScale; }
-    public override void OnTick(Transform enemy, float dt)
-    {
-        float t = Mathf.Clamp01(_elapsed / Mathf.Max(0.0001f, Duration));  // 你需要自己加 elapsed 字段
-        enemy.localScale = Vector3.Lerp(FromScale, ToScale, t);
-    }
-}
+BehaviorFlow (SO 资产)
+  └─ Actions: EnemyAction[]   ← 时间序列配置
+        ├─ 原子 Action:Fire / Move / Wait / SelfDestruct
+        ├─ 容器 Action:Parallel(同时跑多个) / Sequence(纯折叠分组)
+        └─ Move 内部再委托给 MoveBehaviour(匀速 / 线性等)
+BehaviorFlowRuntime (普通 C# 类)
+  └─ 驱动器,持有 _index / _elapsedInCurrent / _started 等运行时状态
+ShooterEnemy (MonoBehaviour 组件,极薄)
+  └─ OnEnable 时 Flow.Instantiate() 出 Runtime,Update 时 Tick 驱动
 ```
 
-下次在 Inspector 里就能选到 `Action/Animate Scale`。
+**Action 三段式生命周期:** `OnEnter`(进入初始化) → `OnTick`(每帧执行) → `OnExit`(退出清理,用于重置状态)。`Duration <= 0` 表示只跑一帧。
 
-### 4.8 如何新增一种移动方式
+**协作边界:**
+- `ShooterEnemy.Flow` 拖一个 `.flow` 资产即可,无需挂其他组件。
+- Boss 走自己的 `BossController + ShooterPhase`,**不挂 ShooterEnemy**(避免组件污染,详见 §5)。
+- `BehaviorFlow.Instantiate()` 用 `Object.Instantiate(SO)` 深拷贝 Actions 数组,所以**多个敌人引用同一资产互不干扰**(Unity 会自动深拷贝 `[SerializeReference]` 字段)。
 
-同上,在 `Assets/Scripts/Enemy/AI/MoveBehaviours/` 下新建 `MoveBehaviour` 子类即可。
+**扩展点:**
+- 新增敌人行为(动画 / 隐身 / 加血):新建 `EnemyAction` 子类,加 `[Serializable, SRName("Action/<名字>")]`,Inspector 下拉即可用。
+- 新增移动方式(贝塞尔 / 圆形 / 追踪):新建 `MoveBehaviour` 子类,同套路。
+- 新增"行为流"(符卡 / 小怪模式):右键 → Create → STG → Behavior Flow,创建 SO 资产并配置 Actions。
+
+详见 `Assets/Scripts/Enemy/`。
 
 ---
 
 ## 5. Boss 系统(BossController + 多阶段 + 多管血)
 
-文件位置:
-- `Assets/Scripts/Enemy/Boss/BossController.cs`(主驱动引擎)
-- `Assets/Scripts/Enemy/Boss/BossHealth.cs`(多管血组件)
-- `Assets/Scripts/Enemy/Boss/BossShotCounter.cs`(全局开火计数)
-- `Assets/Scripts/Enemy/Boss/BossPhase.cs`(阶段抽象)
-- `Assets/Scripts/Enemy/Boss/Phases/ShooterPhase.cs`(行为流阶段)
-- `Assets/Scripts/Enemy/Boss/PhaseTrigger.cs`(退出条件)
-- `Assets/Scripts/Enemy/Boss/Signals/BossSignal.cs`(信号抽象)
-- `Assets/Scripts/Enemy/Boss/Signals/HpSignal.cs`(单管 HP%——兼容别名)
-- `Assets/Scripts/Enemy/Boss/Signals/CurrentBarPercentSignal.cs`(当前管剩余 %)
-- `Assets/Scripts/Enemy/Boss/Signals/CurrentBarIndexSignal.cs`(当前管编号)
-- `Assets/Scripts/Enemy/Boss/Signals/TotalHpPercentSignal.cs`(所有管累计 %)
-- `Assets/Scripts/Enemy/Boss/Signals/PhaseTimeSignal.cs`(阶段内时间)
-- `Assets/Scripts/Enemy/Boss/Signals/ShotsFiredSignal.cs`(累计开火数)
+**职责:** 与普通敌人**正交**的 Boss 编排层,提供多阶段 / 阶段触发条件 / 多管血。普通敌人就一段行为流,Boss 需要这些"上层编排"概念,所以单独建一层。
 
-### 5.1 设计动机
-
-普通敌人一段行为流就够了,boss 需要:
-- **多阶段**(符卡 / 非符,东方式)
-- **阶段切换条件**(HP 阈值 / 时间 / 开火数 / ...)
-- **每阶段独立行为流**(不同弹幕、不同节奏)
-- **多管血**(一管血打空切下一管,残血暴走等)
-
-如果硬塞进 ShooterEnemy + Actions 体系会污染架构。所以单独建一层 `BossController` + `BossPhase` + `BossSignal` + `PhaseTrigger`,与普通敌人**正交**。
-
-### 5.2 整体数据流
+**关键类型:**
 
 ```
-Boss GameObject
-  ├─ BossHealth       (HealthBar[] 多管血,TakeDamage 自动切管)
-  ├─ BossShotCounter  (场景单例,每发一弹计数)
-  └─ BossController
-      ├─ Signals: BossSignal[]
-      │     ├─ HpSignal / CurrentBarPercentSignal
-      │     ├─ CurrentBarIndexSignal
-      │     ├─ TotalHpPercentSignal
-      │     ├─ PhaseTimeSignal
-      │     └─ ShotsFiredSignal
-      └─ Phases: BossPhase[]
-            ├─ ShooterPhase → 持 BehaviorFlow SO 资产
-            └─ (其他 phase 子类可扩展)
-
-BossController.Update:
-  1. signals.Tick(this, dt)        ← 累加内部状态
-  2. currentPhase.OnTick(boss, dt) ← 调用 BehaviorFlowRuntime.Tick
-  3. currentPhase.ShouldExit()     ← 任意 trigger 满足就 NextPhase()
+BossController (主驱动)
+  ├─ BossHealth      ← 多管血组件(HealthBar[]),TakeDamage 自动切管
+  ├─ BossShotCounter ← 场景单例,每发一弹计数(可被 phase 用作切换条件)
+  ├─ BossSignal[]    ← 全局信号池(CurrentBarIndex / TotalHp% / PhaseTime / ShotsFired ...)
+  └─ BossPhase[]     ← 阶段列表(目前用 ShooterPhase 直接持 BehaviorFlow)
+        └─ PhaseTrigger[] ← 每阶段独立配"满足哪个 Signal + Op + Threshold 就退出"
 ```
 
-### 5.3 `BossHealth` 多管血
+**每帧驱动流程:**
+1. `signals.Tick(boss, dt)` —— 累加信号内部状态。
+2. `currentPhase.OnTick(boss, dt)` —— 调用内部 BehaviorFlowRuntime。
+3. 检查 `PhaseTrigger.IsSatisfied()` —— 任一触发就 `NextPhase()`。
 
-```csharp
-public class BossHealth : MonoBehaviour
-{
-    public HealthBar[] Bars;   // 多管血,每管打空自动切下一管
-    public int CurrentBarIndex;
+**协作边界:**
+- Boss GameObject 上挂 `BossController + BossHealth + BossShotCounter`,**不挂 ShooterEnemy**。
+- `ShooterPhase` 直接持 BehaviorFlow 资产,boss 行为复用普通敌人那套行为流。
+- `BossHealth.Bars` 为空时退化为单管血模式,兼容旧 prefab。
 
-    public float CurrentBarPercent;  // 当前管剩余 %
-    public float TotalHpPercent;     // 所有管累计剩余 %
-    public bool   IsDead;            // 全部打空
+**扩展点:**
+- 新增 Boss 阶段:新建 `BossPhase` 子类,加到 `BossController.Phases`。
+- 新增阶段切换条件(开场过场 / 玩家撞 N 次 / ...):新建 `BossSignal` 子类,在 `PhaseTrigger` 里引用。
+- 多管血配置:直接配 `BossHealth.Bars` 数组,无需代码。
 
-    public void TakeDamage(float dmg);  // 自动扣穿、触发 OnBarDepleted
-    public event Action<int> OnBarDepleted; // 打空时触发(int = BarIndex)
-}
-```
-
-**兼容老配置:** 如果 `Bars` 为空,`HpPercent` 退化为单管模式,旧 prefab 不破坏。
-
-**属性语义:**
-
-| 属性 | 用途 |
-|---|---|
-| `HpPercent` | 单管剩余 % —— 兼容老 HpSignal |
-| `CurrentBarPercent` | 当前管剩余 % —— 管内阶段切换 |
-| `CurrentBarIndex` | 当前管编号 —— 打完第 N 管切阶段(单调递增,不会一帧穿多阶段) |
-| `TotalHpPercent` | 所有管累计 % —— 残血触发 |
-
-### 5.4 `BossSignal` + `PhaseTrigger`(退出条件机制)
-
-**为什么用"信号"而不是"transition 内嵌在 phase 里"?**
-
-把 trigger 抽成全局信号池好处:
-- 同一个 signal 可被多个 phase 监听(共享)
-- 新增 transition = 新建一个 signal 类(开扩展,跟 Action/MoveBehaviour 一个套路)
-- phase 之间解耦,phase A 不知道 phase B 是什么
-
-```csharp
-public abstract class BossSignal
-{
-    public virtual void OnAttach(BossController boss) { }
-    public virtual void Tick(BossController boss, float dt) { }
-    public abstract float CurrentValue { get; }
-}
-
-public class PhaseTrigger
-{
-    [SerializeReference, SR] public BossSignal Signal;
-    public ComparisonOp Op = ComparisonOp.LessOrEqual;
-    public float Threshold = 50f;
-    public bool IsSatisfied();
-}
-
-public enum ComparisonOp { LessThan, LessOrEqual, Equal, GreaterOrEqual, GreaterThan }
-```
-
-**内置 Signal:**
-
-| Signal | CurrentValue | 用途 |
-|---|---|---|
-| `CurrentBarPercentSignal` | 当前管剩余 % | 管内切阶段 |
-| `CurrentBarIndexSignal` | 当前管编号(0/1/2/...) | 打完第 N 管切阶段 |
-| `TotalHpPercentSignal` | 所有管累计 % | 残血触发 |
-| `PhaseTimeSignal` | 阶段内已用秒数 | "过 N 秒切下一阶段" |
-| `ShotsFiredSignal` | boss 累计开火数 | "射 N 发切下一阶段" |
-| `HpSignal` | = CurrentBarPercent(兼容别名) | 老配置不破坏 |
-
-**扩展:** 新建 `BossSignal` 子类,加 `[Serializable, SRName("Signal/<你的>")]`,Inspector 立刻能选。
-
-### 5.5 `BossPhase` + `ShooterPhase`
-
-```csharp
-public abstract class BossPhase
-{
-    [SerializeReference, SR] public PhaseTrigger[] ExitTriggers;
-    public bool ShouldExit();  // 任意 trigger 满足即 true
-    public abstract void OnEnter(Transform boss);
-    public abstract void OnTick (Transform boss, float dt);
-    public abstract void OnExit (Transform boss);
-}
-
-[Serializable, SRName("Phase/Shooter")]
-public class ShooterPhase : BossPhase
-{
-    public BehaviorFlow Flow;       // ← 持 SO 资产,不再需要 ShooterEnemy 组件
-    public bool ResetOnEnter = true;
-
-    // OnEnter: _runtime = Flow.Instantiate();
-    // OnTick:  _runtime.Tick(boss, dt);
-    // OnExit:  _runtime.ForceExit(boss);
-}
-```
-
-**关键设计:** BossPhase **不持有 ShooterEnemy 组件引用**,直接持有 `BehaviorFlow` SO 资产。运行时内部 instantiate 一个 `BehaviorFlowRuntime` 自己驱动。**Boss prefab 上不再需要挂任何 ShooterEnemy 组件。**
-
-### 5.6 BulletPool 钩子:开火计数
-
-为了 `ShotsFiredSignal` 能统计 boss 累计开火数,BulletPool.FireGroup 末尾加了 1 行:
-
-```csharp
-public void FireGroup(FirePattern pattern, Vector2 pos, float rotationRad)
-{
-    pattern.Fire(pos, rotationRad, this);
-    ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(pattern);
-}
-```
-
-`?.` 保证 BossShotCounter 不存在时直接跳过,**完全不影响普通敌人**。
-
-`FirePattern` 多了个虚方法 `GetFireCount()`,各 pattern override 返回本帧发射数,Composite 递归求和 —— 这样不同形态的弹幕都能正确计数。
-
-### 5.7 Inspector 实际配置
-
-```
-▼ Boss GameObject
- ├─ BossHealth 
- │ ▼ Bars
- │   [0] Name: "Bar 1 (符卡 A)" MaxHp: 1000
- │   [1] Name: "Bar 2 (符卡 B)" MaxHp: 800
- │   [2] Name: "Bar 3 (非符)"    MaxHp: 500
- │   [3] Name: "Bar 4 (残血暴走)" MaxHp: 300
- ├─ BossShotCounter
- └─ BossController
-     Health: ◀ BossHealth ▶
-     ▼ Signals
-         [0] Signal/Current Bar Index
-         [1] Signal/Current Bar %
-         [2] Signal/Total HP %
-         [3] Signal/Phase Time
-         [4] Signal/Shots Fired
-     ▼ Phases
-         [0] Phase/Shooter
-             Flow: ◀ 符卡A_攻击.flow ▶
-             ▼ ExitTriggers
-                 [0] Signal: Current Bar Index
-                     Op: ≥, Threshold: 1
-         [1] Phase/Shooter
-             Flow: ◀ 符卡B_弹幕.flow ▶
-             ExitTriggers:
-                 [0] Signal: Phase Time
-                     Op: ≥, Threshold: 30
-         [2] Phase/Shooter
-             Flow: ◀ 非符_平静.flow ▶
-             ExitTriggers:
-                 [0] Signal: Total HP %
-                     Op: ≤, Threshold: 30
-         [3] Phase/Shooter
-             Flow: ◀ 残血_暴走.flow ▶
-             (无 ExitTriggers → boss 待毙)
-```
-
-### 5.8 为什么 BossPhase 不持有 ShooterEnemy 组件?
-
-旧设计:boss 上挂 N 个 ShooterEnemy,ShooterPhase.Shooter 字段拖引用。
-问题:
-- boss prefab 组件列表很长
-- 行为流无法跨敌人复用
-- Inspector 维护痛苦
-
-**新设计:** ShooterPhase 直接持 `BehaviorFlow` SO 资产,内部 instantiate BehaviorFlowRuntime 驱动。**完全不需要 ShooterEnemy 组件**。
+详见 `Assets/Scripts/Enemy/Boss/`。
 
 ---
 
@@ -620,6 +219,9 @@ public void FireGroup(FirePattern pattern, Vector2 pos, float rotationRad)
 | 加 boss 阶段切换条件 | 新建 `BossSignal` 子类 + 在 `PhaseTrigger` 里引用 |
 | 整个 boss prefab 行为完全重排 | 改每个 Phase 引用的 .flow 资产 |
 | 加 boss 多管血 | 配 `BossHealth.Bars` 数组 |
+| 加新碰撞形状(圆 / 胶囊 / 多边形) | 抽 `HitboxShape` 抽象基类 + 子类,扩 `HitboxMath`(详见 §8) |
+| 接入子弹碰撞服务(每帧遍历) | **已就位**:挂 `CollisionService` 组件到场景 GameObject 上,阵营透传 + 伤害应用都已自动(详见 §8)。子弹 prefab 不需要手动配 `Hitbox.Team` —— 由发射者透传 |
+| 玩家 / 敌人装配 Hitbox | 不需要手动:`Player.cs` / `Enemy.cs` 已 `[RequireComponent(typeof(...Hitbox))]` 自动挂,Awake 自动注入 `Health.Hitbox`(详见 §8) |
 
 ### 6.2 调试小贴士
 
@@ -640,103 +242,94 @@ public void FireGroup(FirePattern pattern, Vector2 pos, float rotationRad)
 
 ---
 
-## 7. 常见问题 / 设计决策记录
+## 7. 玩家系统(Player + 子机 + 多态位置)
 
-### Q1:为什么 EnemyAction 是类而不是 ScriptableObject?
-**答:** 行为要"持有运行时状态"(比如 FireAction 的 `_timer`),SO 是资产,跨实例共享会出问题。用 `[Serializable] class + [SerializeReference]` 可以让 Inspector 多态下拉选,同时支持每实例独立字段。
+**职责:** 玩家主控(单例 + 输入分发) + 八方向移动 + 按住攻击 + 残机/火力级/无敌 + 子机系统。整体走"**数据驱动 + 多态位置**"的套路,与项目既有扩展机制一致。
 
-### Q2:为什么 MoveAction 不直接是 MoveBehaviour?
-**答:** 保持 Action 的"时间轴语义"统一。Move 一定要有 Duration,把它包成 MoveAction 可以挂在 Parallel/外层时间轴上参与编排;如果 MoveBehaviour 直接挂外层,就没有 Duration 概念了。
+**关键类型:**
 
-### Q3:为什么不直接用 Unity 的 StateMachineBehaviour?
-**答:** Animator StateMachine 偏动画,语义不够通用。Action 三段式(OnEnter/Tick/Exit)+ 容器组合 + SREditor 下拉,**更符合"行为编排"直觉**,且不依赖 Animator 资源。
+```
+Player (主控单例 + 输入分发)
+PlayerMovement (八方向 + Focus 低速)
+PlayerShooting (主炮:按住即喷,复用 FirePattern)
+PlayerHealth   (残机 + 火力级 + 复活无敌,暴露 PowerUp/AddLife 等事件)
+PlayerHitbox   (子物体判定点)
+PlayerOptions  (子机系统:活力阈值解锁 + 跟随 + 开火 + 多态位置形态)
+  └─ OptionPositionForm (多态抽象,通过 [SerializeReference] 子类切换形态)
+       ├─ TouhouSymmetricForm (东方对称)
+       ├─ LinearRowForm (线性横排)
+       └─ RearLineForm (后排直线)
+```
 
-### Q4:为什么 BulletModifier 是 MonoBehaviour 而不是普通类?
-**答:** 历史原因(方便挂到 GameObject 上查看参数)。**但目前 Bullet 没有自动从 GameObject 收集 modifier 的逻辑**,所以本质等价于"普通类"。如果以后清理代码,可以把它改成普通类,反而更简单(还能省一个 `gameObject` 开销)。
+**协作边界:**
+- 主炮与子机开火**共用同一触发源**:`PlayerShooting.FireHeld`,松开攻击键时主炮和子机**同步停**(不会"主炮停 / 子机还在喷")。
+- 子机数量由 `PlayerHealth.PowerLevel` 单向驱动;子机不会反向改 PowerLevel,避免循环依赖。
+- 子机开火形态也是 FirePattern 资产(`OptionFirePatterns[]`),直接复用敌人那套弹幕体系。
+- 玩家事件(`OnLifeLost` / `OnRevive` / `OnAllLivesLost`)只发通知,不硬编码死亡动画 / 特效,保持"事件层与表现层分离"。
 
-### Q5:为什么 ParallelAction 自己持有 Duration?
-**答:** 防止某个子项配错 Duration(比如 9999)导致敌人卡住。Parallel.Duration 是"硬封顶"——到了强行清理所有仍存活的子项。如果觉得不需要,可以改实现,但目前这层保护值得保留。
+**输入方案(双重兼容):**
+- 装了 `com.unity.inputsystem` → 用 `PlayerInput` 组件(Behavior=Invoke C# Events)调 `Player.OnPlayer / OnAttack / OnFocus`。
+- 没装 → 直接挂 `LegacyInputDriver`,每帧 `Input.GetKey` 灌给 Movement / Shooting。
+- **二选一,不要两个都挂,会双重输入。**
 
-### Q6:SequenceAction 的 Duration 字段为啥不生效?
-**答:** 故意忽略。Sequence 的语义就是"平铺到外层",它本身不消耗时间轴上的"独立槽位"。如果需要"先 Wait 0.5s 再做 Sequence",应该在外层放两个兄弟条目:`[0] Wait 0.5` `[1] Sequence(...)`。
+**扩展点:**
+- 新增子机位置形态:新建 `OptionPositionForm` 子类 + `[Serializable, SRName("Form/<名字>")]`,Inspector 下拉即可用。
+- 新增子机开火模式:直接配 `OptionFirePatterns[i]` 拖不同形态的 FirePattern 资产,无需新代码。
+- 死亡动画 / 重生特效:订阅 `PlayerHealth.OnLifeLost / OnRevive / OnAllLivesLost`。
+- 火力 / 续命道具:外部脚本调 `Player.Instance.Health.PowerUp(1)` / `AddLife(1)`。
 
-### Q7:FirePattern 的 BulletPrefab 和 BulletPool.DefaultPrefab 优先级?
-**答:** `BulletPool.Get(prefab, ...)` 里:`prefab != null ? prefab : DefaultPrefab`。所以**优先用 Pattern 自带的 prefab**,Pattern 没填时兜底用 Pool 的默认 prefab。建议**所有 Pattern 都显式填自己的 BulletPrefab**,避免共享导致修改时牵连。
-
-### Q8:为什么把"行为流"独立成 BehaviorFlow SO?直接放 ShooterEnemy 里不行吗?
-**答:** 不行。三大原因:
-1. **复用**:多个敌人 / boss 想用同一段行为流 → 共享一个 .flow 资产即可,不需要复制 Actions 数组。
-2. **boss prefab 整洁**:boss 旧设计要挂 N 个 ShooterEnemy 组件;现在每个 ShooterPhase 直接持 BehaviorFlow,**完全不挂 ShooterEnemy**。
-3. **资产级版本管理**:.flow 是独立 .asset 文件,可在 Git 里单独 diff,Prefab 不会因为行为调整就变动。
-
-### Q9:为什么 Boss 不继承 ShooterEnemy?
-**答:** boss 跟普通敌人语义正交:
-- boss 有阶段(多段行为流)、多管血、阶段切换条件
-- 普通敌人就一段行为流
-
-如果 Boss:ShooterEnemy,要么把 ShooterEnemy 拖到 boss 上(组件污染),要么抽出一堆抽象。**单独建 BossController + BossPhase + BossSignal 体系更干净**。
-
-### Q10:为什么 BossSignal / PhaseTrigger 抽成"全局信号池"而不是"phase 内嵌 transition"?
-**答:** 解耦 + 复用:
-- 同一信号可被多 phase 监听(共享 `CurrentBarIndexSignal` 给所有 phase 用)
-- phase 之间互不依赖
-- 新增 transition = 新建 BossSignal 子类(同 Action / MoveBehaviour 的开放扩展套路)
-
-### Q11:BehaviorFlow.Instantiate 用 Object.Instantiate(SO) 安全吗?
-**答:** 安全。Unity 的 `Object.Instantiate(SO)` 会自动深拷贝 `[SerializeReference]` 字段,包括 `EnemyAction[]` 数组里的每个对象。只要所有 Action 字段都用 `[SerializeField]` 或 `[SerializeReference]` 标注,就能完整复制。**唯一边界**:未被序列化的字段(私有字段、属性)不会被复制。我们的所有 Action 字段都是 public + 标注过,**安全**。
+详见 `Assets/Scripts/Player/`。
 
 ---
 
-## 附录:目录速查
+## 8. Hitbox 系统(统一 AABB)
+
+碰撞检测**走数学计算、不依赖 Unity Physics2D / Collider**。理由:STG 弹量大,纯几何 O(1) 比物理引擎快;且代码可控、可在 Scene 视图直接可视化。
+
+**职责分工:**
+
+```
+HitboxComponent  # 通用 MonoBehaviour:Inspector 配 Size / Gizmos 颜色 / 暴露 Overlaps / OverlapsPoint
+HitboxMath      # 静态数学库:仅 AABB×AABB 一个函数,Rect 相交判定,O(1) 零分配
+```
+
+**关键设计:**
+
+- **统一 AABB** —— 全项目只用轴对齐矩形碰撞盒(Size.x = 宽,Size.y = 高)。`transform.rotation` 不影响形状,`transform.lossyScale` 实时反映。绝大多数 STG 判定点都是小方块,这样省去圆 / 旋转矩形的分支代码。
+- **正交层** —— Hitbox 与 Player / Enemy / Bullet 完全解耦。玩家 / 敌人 / 子弹各自持一个 HitboxComponent 引用,谁的 size 谁决定;玩家死亡时不被碰撞逻辑拖着走。
+- **数学入口单一** —— 所有"是否相交"都走 `HitboxMath.AABBOverlap(Rect, Rect)`,内部用 4 次比较;后续要扩圆 / 胶囊 / 多边形,只需在 HitboxMath 里加分支,HitboxComponent 接口不动。
+- **编辑器可视化** —— `OnDrawGizmos` / `OnDrawGizmosSelected` 用 `Gizmos.DrawWireCube` 画 AABB 轮廓,选中变橙色,`AlwaysDraw = false` 时只选中才画,大场景保持 Scene 视图干净。
+- **碰撞服务已就位** —— `CollisionService`(`ShinySTG.Hitbox` 命名空间,场景单例,`LateUpdate` 调度)按阵营配对跑完所有"子弹 vs 实体"判定。
+  - 阵营字段 `HitboxComponent.Team`(`Neutral / Player / Enemy`):
+    - **玩家 / 敌人**:由 `PlayerHitbox.Reset()` / `EnemyHitbox.Reset()` 静态配置(玩家 = Player,敌人 = Enemy)。
+    - **子弹**:由发射者透传设置 —— `BulletPool.FireGroup(pattern, pos, rot, ownerHitbox)` 时取 `ownerHitbox.Team` 写入 `bullet.Hitbox.Team`。**子弹 prefab 不需要手动配 Team**。
+  - 性能两层可选:阵营分桶 + 缓存(默认)/ 空间哈希(Inspector 勾 `UseSpatialHash`,弹量 > 500 时开启)。详见 §8.1。
+- **未来扩展形状的留口子** —— 若要加圆 / 胶囊 / 多边形:抽 `HitboxShape` 抽象基类,把 `Size` / `Overlaps` / `DrawGizmos` 挪到子类,HitboxComponent 接口 (`Overlaps` / `OverlapsPoint` / `WorldBounds`) 不变。
+
+**协作边界:**
+
+- **总控统一挂载,不暴露 Inspector 拖拽** —— `Player.cs` / `Enemy.cs` / `Bullet.cs` 都用 `[RequireComponent(typeof(HitboxComponent))]` + Awake 里 `GetComponent` 自动注入:
+  - `Player` 总控:`Hitbox` 是只读公开属性 (`Player.Instance.Hitbox`),外部 CollisionService 直接拿。
+  - `Enemy` 总控:`Hitbox` 同款只读属性 (`enemy.Hitbox`);Awake 时把 `EnemyHitbox` 灌给 `EnemyHealth.Hitbox`,这样 `EnemyHealth.Position` 自动跟随 Hitbox 走,**EnemyHealth.Hitbox 字段不需要 Inspector 手填**(Tooltip 已说明)。
+  - 这一选择避免了在多个组件上重复拖同一引用,也保证总控"管住"自己装配的 Hitbox 不会被外部误改。
+- `PlayerHitbox` / `EnemyHitbox` 都是 `HitboxComponent` 的薄子类,`Reset()` 给推荐默认值(玩家 0.1 + Team=Player / 敌人 0.5 + Team=Enemy),子类本身**不持有逻辑**。
+- Boss 暂时不挂 HitboxComponent(走 `BossHealth` 自己的逻辑,正交)。若未来 Boss 也想用同一套 AABB,可直接挂 HitboxComponent 子类,无需扩 HitboxMath。
+- `CollisionService` 是唯一一处真正遍历"子弹 vs 实体"的地方:读 `BulletPool.ActiveBullets` + `EnemyHealth.Alive`,调 `enemy.TakeDamage(b.Damage)` / `player.OnHit(1f)`,不直接读写 HP 字段。玩家弹伤害来自 `b.Damage`(由 `FirePattern.Damage` 在 `pool.Get` 时写入);敌人弹命中无视 Damage,固定扣玩家 1 命。命中事件 `OnPlayerBulletHitEnemy` / `OnEnemyBulletHitPlayer` 留给外部特效/音效/计分订阅。
+- `Bullet.Reset()` 给推荐默认值(0.08×0.08 + Team=Neutral);Neutral 表示"等待发射者透传"的初始态,真正发射时由 `Bullet.Init` 用 owner 的阵营覆盖。
+
+详见 `Assets/Scripts/Hitbox/`。
+
+---
+
+## 9. 目录速查(一级)
 
 ```
 Assets/Scripts/
-├── Singleton.cs                              # MonoBehaviour 单例基类
-├── Bullet/
-│   ├── Bullet.cs                             # 子弹本体
-│   ├── BulletPool.cs                         # 子弹对象池(+ BossShotCounter 钩子)
-│   ├── BulletModifier.cs                     # 子弹行为修饰器(基类 + 2 示例)
-│   ├── FirePattern.cs                        # 射击模式 SO 基类(+ GetFireCount)
-│   └── FirePattern/
-│       ├── Ring/RingFirePattern.cs
-│       ├── Line/LineFirePattern.cs
-│       ├── Arc/ArcFirePattern.cs
-│       └── Composite/CompositeFirePattern.cs
-└── Enemy/
-    ├── ShooterEnemy.cs                       # 行为流播放机(28 行)
-    ├── AI/
-    │   ├── BehaviorFlow.cs                   # 行为流 SO 资产
-    │   ├── BehaviorFlowRuntime.cs            # 行为流运行时驱动器
-    │   ├── EnemyAction.cs                    # 行为基类
-    │   ├── MoveBehaviour.cs                  # 移动模块基类
-    │   ├── MoveBehaviours/
-    │   │   └── LinearMove.cs
-    │   └── Actions/
-    │       ├── FireAction.cs
-    │       ├── MoveAction.cs
-    │       ├── WaitAction.cs
-    │       ├── SelfDestructAction.cs
-    │       ├── ParallelAction.cs
-    │       └── SequenceAction.cs
-    └── Boss/
-        ├── BossController.cs                 # Boss 主驱动
-        ├── BossHealth.cs                     # 多管血组件
-        ├── BossShotCounter.cs                # 全局开火计数(场景单例)
-        ├── BossPhase.cs                      # 阶段抽象
-        ├── PhaseTrigger.cs                   # 退出条件
-        ├── Phases/
-        │   └── ShooterPhase.cs               # 行为流阶段(持 BehaviorFlow)
-        └── Signals/
-            ├── BossSignal.cs                 # 信号抽象
-            ├── HpSignal.cs                   # 兼容别名
-            ├── CurrentBarPercentSignal.cs
-            ├── CurrentBarIndexSignal.cs
-            ├── TotalHpPercentSignal.cs
-            ├── PhaseTimeSignal.cs
-            └── ShotsFiredSignal.cs
+├── Bullet/    # 子弹系统 + FirePattern
+├── Enemy/     # 普通敌人 + Boss(都挂这里)
+├── Hitbox/    # 通用碰撞盒(数学 + 编辑器可视化,正交层)
+└── Player/    # 玩家系统
 ```
 
----
+具体文件清单请看 IDE 的项目浏览器或对应子目录的 README(如未来新增)。
 
-**最后更新:** 引入 BehaviorFlow SO 资产化 + Boss 系统(多阶段 + 多管血)。
-**作者注:** 这套架构的核心目的是"**让数据(行为)在 Inspector 里流动起来,而不是塞进代码里**"。扩展前先想清楚"这是数据还是逻辑":数据 → Inspector 字段 / SO 资产;逻辑 → 多态子类。

@@ -39,7 +39,12 @@ namespace ShinySTG.EnemyAI
             _timer = 1f / Mathf.Max(0.0001f, FireRate);
 
             float rotationRad = AimOffsetDeg * Mathf.Deg2Rad;
-            BulletPool.Instance.FireGroup(Pattern, enemy.position, rotationRad);
+            // 读 enemy 上的 EnemyHitbox 作为 ownerHitbox(透传给子弹阵营)
+            // 没挂时传 null → 子弹阵营 = Neutral(不参与碰撞,安全兜底)
+            var ownerHitbox = enemy != null
+                ? enemy.GetComponent<ShinySTG.Hitbox.HitboxComponent>()
+                : null;
+            BulletPool.Instance.FireGroup(Pattern, enemy.position, rotationRad, ownerHitbox);
         }
 
         public override void OnExit(Transform enemy)

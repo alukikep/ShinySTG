@@ -1,4 +1,14 @@
 {
+    "terminal.integrated.defaultProfile.windows": "PowerShell 7 (pwsh)",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell 7 (pwsh)": {
+            "source": "PowerShell",
+            "args": ["-NoLogo", "-NoProfile"]
+        }
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONIOENCODING": "utf-8"
+    },
     "files.exclude": {
         "**/.DS_Store": true,
         "**/.git": true,
@@ -49,7 +59,10 @@
         "Obj/": true,
         "ProjectSettings/": true,
         "temp/": true,
-        "Temp/": true
+        "Temp/": true,
+        
     },
     "dotnet.defaultSolution": "ShinySTG.sln"
+
+    
 }

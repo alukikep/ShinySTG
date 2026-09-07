@@ -10,7 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 7837122303634799991}
   - component: {fileID: 1349844295469308536}
-  - component: {fileID: 5861163621318352090}
+  - component: {fileID: 4600069463098476186}
+  - component: {fileID: -2975666842598118849}
   m_Layer: 0
   m_Name: NatsuhaAOptionBullet
   m_TagString: Untagged
@@ -85,7 +86,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &5861163621318352090
+--- !u!114 &4600069463098476186
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -94,12 +95,36 @@ MonoBehaviour:
   m_GameObject: {fileID: 241253804124213650}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a3b578234da585647bc89a3321b9a6d0, type: 3}
+  m_Script: {fileID: 11500000, guid: 7c71bd53462af9a4d86669dd4ac810a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 0
-  damage: 0
-  hitRadius: 0.2
-  trackRange: 6
-  trackPerformance: 0.6
-  turnRate: 8
+  Size: {x: 0.08, y: 0.08}
+  Color: {r: 0, g: 1, b: 0.3, a: 0.9}
+  SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
+  AlwaysDraw: 1
+  Team: 0
+  _cachedBounds:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+--- !u!114 &-2975666842598118849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 241253804124213650}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66c6fbbc1fef7a242a6dac1b70cab251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Speed: 0
+  AngularSpeed: 0
+  SteerAngle: 0
+  Lifetime: 0
+  SourcePrefab: {fileID: 0}
+  Damage: 1
+  Hitbox: {fileID: 4600069463098476186}

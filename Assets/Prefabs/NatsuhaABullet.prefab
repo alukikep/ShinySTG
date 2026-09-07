@@ -10,7 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 6644702986280249329}
   - component: {fileID: 866796576621088829}
-  - component: {fileID: 1943410531563429198}
+  - component: {fileID: -6979183110424681869}
+  - component: {fileID: 2577476433622056203}
   m_Layer: 0
   m_Name: NatsuhaABullet
   m_TagString: Untagged
@@ -85,7 +86,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &1943410531563429198
+--- !u!114 &-6979183110424681869
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -94,8 +95,36 @@ MonoBehaviour:
   m_GameObject: {fileID: 4288273717789115445}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: df93d6ae05d55a64889b1ee60324d245, type: 3}
+  m_Script: {fileID: 11500000, guid: 7c71bd53462af9a4d86669dd4ac810a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 0
-  damage: 0
+  Size: {x: 0.08, y: 0.08}
+  Color: {r: 0, g: 1, b: 0.3, a: 0.9}
+  SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
+  AlwaysDraw: 1
+  Team: 0
+  _cachedBounds:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+--- !u!114 &2577476433622056203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4288273717789115445}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66c6fbbc1fef7a242a6dac1b70cab251, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Speed: 0
+  AngularSpeed: 0
+  SteerAngle: 0
+  Lifetime: 0
+  SourcePrefab: {fileID: 0}
+  Damage: 1
+  Hitbox: {fileID: -6979183110424681869}

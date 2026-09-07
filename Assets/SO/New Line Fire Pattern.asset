@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 195aad2d24357ad4eae3908cbbc82049, type: 3}
   m_Name: New Line Fire Pattern
   m_EditorClassIdentifier: 
-  BulletPrefab: {fileID: 6517814375182258853, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
+  BulletPrefab: {fileID: 2577476433622056203, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
   Speed: 5
   AngularSpeed: 0
-  Count: 5
+  Damage: 1
+  Count: 1
   DeltaSpeed: 2
-  BaseAngle: 270
+  BaseAngle: 90

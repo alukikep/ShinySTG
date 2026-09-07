@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ee2bfe5a0449b340a4e98065116f93b, type: 3}
   m_Name: New Composite Fire Pattern
   m_EditorClassIdentifier: 
-  BulletPrefab: {fileID: 6517814375182258853, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
+  BulletPrefab: {fileID: 2577476433622056203, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
   Speed: 10
   AngularSpeed: 0
+  Damage: 1
   Children:
   - {fileID: 11400000, guid: e877089c07f368142a586984ff222bfa, type: 2}
   - {fileID: 11400000, guid: f104667e96524694b9b48596c0d42249, type: 2}
