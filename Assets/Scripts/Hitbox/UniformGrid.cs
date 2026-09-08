@@ -4,16 +4,23 @@ using UnityEngine;
 namespace ShinySTG.Hitbox
 {
     /// <summary>
-    /// 2D 均匀网格空间哈希。用于把"碰撞检测"从 O(N×M) 降到 O(N + k),k 是同 cell 数。
+    /// 2D 均匀网格空间索引。直接存 HitboxComponent 引用,无反查。
     ///
-    /// 用法(CollisionService 内部使用,外部一般不直接调):
-    ///   var grid = new UniformGrid(cellSize: 4f, worldMin: (-10,-20), worldMax: (10,20));
+    /// 用法(CollisionService 内部使用,追踪 modifier 也可读):
+    ///   var grid = new UniformGrid(cellSize: 4f, worldMin: (-12,-22), worldMax: (12,22));
     ///   grid.Clear();
-    ///   foreach (var hb in hitboxes) grid.Insert(hb._cachedBounds, hb.GetInstanceID());
-    ///   grid.Query(bulletBounds, ids);
+    ///   foreach (var hb in hitboxes) grid.Insert(hb);  // 用 hb._cachedBounds.center 算 cell
+    ///   var hits = grid.Query3x3(point);               // 中心点 3×3 范围内的 hitbox(去重)
     ///
-    /// 适用场景:活跃子弹 > ~500 颗,或敌人 > ~50 只时开启。
-    /// 弹量小时朴素遍历更便宜(网格本身有常数开销)。
+    /// 重要约定(单 cell 插入):
+    ///   - STG 所有 hitbox 尺寸(玩家 0.1 / 敌人 0.5 / 子弹 0.08)都远小于 CellSize(默认 4),
+    ///     单 cell 插入不会跨 cell 漏查。
+    ///   - Insert 用 hitbox 中心点定位一个 cell;Query3x3 覆盖 9 个 cell,3×3 范围内必然包含中心点所在 cell
+    ///     及 8 邻 cell,跨 cell 边界物体也能查到。
+    ///   - 本类存 HitboxComponent 引用(不是 InstanceID),直接读 .Team / ._cachedBounds,零反查。
+    ///
+    /// 适用场景:活跃子弹 > ~500 颗,或敌人 > ~50 只。
+    /// 弹量小时也建议走网格(实现简单,常数开销可忽略)。
     ///
     /// 注意:本类非线程安全;只用于 LateUpdate 单线程。
     /// </summary>
@@ -24,11 +31,10 @@ namespace ShinySTG.Hitbox
         readonly int _rows;
         readonly float _originX;
         readonly float _originY;
-        readonly Dictionary<int, List<int>> _cells = new();
+        readonly Dictionary<int, List<HitboxComponent>> _cells = new();
 
         // 复用缓冲,避免每次 Query 时 new List
-        readonly HashSet<int> _querySet = new();
-        readonly List<int> _queryResult = new();
+        readonly List<HitboxComponent> _queryResult = new();
 
         public UniformGrid(float cellSize, Vector2 worldMin, Vector2 worldMax)
         {
@@ -46,38 +52,53 @@ namespace ShinySTG.Hitbox
                 kv.Value.Clear();
         }
 
-        public void Insert(Rect bounds, int id)
+        /// <summary>
+        /// 把 hitbox 插入其中心点所在 cell。
+        /// 调用前应已 RefreshCachedBounds()(由 CollisionService.LateUpdate 统一负责)。
+        /// hitbox 为 null 时直接跳过(Unity 伪 null 也算 null)。
+        /// </summary>
+        public void Insert(HitboxComponent hb)
         {
-            int xMin = WorldToCellX(bounds.xMin);
-            int xMax = WorldToCellX(bounds.xMax);
-            int yMin = WorldToCellY(bounds.yMin);
-            int yMax = WorldToCellY(bounds.yMax);
-
-            for (int y = yMin; y <= yMax; y++)
+            if (hb == null) return;
+            Vector2 center = hb._cachedBounds.center;
+            int x = WorldToCellX(center.x);
+            int y = WorldToCellY(center.y);
+            int key = CellKey(x, y);
+            if (!_cells.TryGetValue(key, out var list))
             {
-                for (int x = xMin; x <= xMax; x++)
-                {
-                    int key = CellKey(x, y);
-                    if (!_cells.TryGetValue(key, out var list))
-                    {
-                        list = new List<int>(8);
-                        _cells[key] = list;
-                    }
-                    list.Add(id);
-                }
+                list = new List<HitboxComponent>(8);
+                _cells[key] = list;
             }
+            list.Add(hb);
         }
 
-        /// <summary>把 bounds 覆盖的所有 cell 里的 id 去重写入 _queryResult(复用缓冲)。</summary>
-        public List<int> Query(Rect bounds)
+        /// <summary>
+        /// 把中心点所在 cell + 8 邻 cell 内的所有 hitbox 写入 _queryResult(复用缓冲)。
+        /// 返回的 List 不可长期持有 —— 下次 Query 会清空。
+        /// </summary>
+        public List<HitboxComponent> Query3x3(Vector2 center)
+            => QueryRadius(center, _cellSize);
+
+        /// <summary>
+        /// 把中心点所在 cell + 外扩 r 圈覆盖的所有 cell 内的 hitbox 写入 _queryResult(复用缓冲)。
+        /// 用途:追踪 modifier 一次性拿到半径 r 内的所有候选,再按距离过滤选最近。
+        /// 单 cell 插入保证同一 hitbox 只出现一次,无需 HashSet 去重。
+        /// 返回的 List 不可长期持有 —— 下次 Query 会清空。
+        /// </summary>
+        public List<HitboxComponent> QueryRadius(Vector2 center, float radius)
         {
-            _querySet.Clear();
             _queryResult.Clear();
 
-            int xMin = WorldToCellX(bounds.xMin);
-            int xMax = WorldToCellX(bounds.xMax);
-            int yMin = WorldToCellY(bounds.yMin);
-            int yMax = WorldToCellY(bounds.yMax);
+            // 圈数 = ceil(radius / cellSize);extent = 圈数(0=仅中心 cell,1=3×3,2=5×5,...)
+            int rings = Mathf.CeilToInt(radius / _cellSize);
+            int extent = rings;
+            int cx = WorldToCellX(center.x);
+            int cy = WorldToCellY(center.y);
+
+            int xMin = Mathf.Max(0, cx - extent);
+            int xMax = Mathf.Min(_cols - 1, cx + extent);
+            int yMin = Mathf.Max(0, cy - extent);
+            int yMax = Mathf.Min(_rows - 1, cy + extent);
 
             for (int y = yMin; y <= yMax; y++)
             {
@@ -87,9 +108,9 @@ namespace ShinySTG.Hitbox
                     {
                         for (int i = 0; i < list.Count; i++)
                         {
-                            int id = list[i];
-                            if (_querySet.Add(id))
-                                _queryResult.Add(id);
+                            // 同一 hitbox 只可能出现一次(单 cell 插入),
+                            // 这里不再用 HashSet 去重(简化逻辑)。
+                            _queryResult.Add(list[i]);
                         }
                     }
                 }

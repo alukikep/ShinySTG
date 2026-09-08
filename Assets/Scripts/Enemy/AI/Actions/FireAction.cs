@@ -20,6 +20,14 @@ namespace ShinySTG.EnemyAI
         [Tooltip("相对 Pattern.BaseAngle 的额外偏移(度)。0 = 完全交给 Pattern 的 BaseAngle。")]
         public float AimOffsetDeg = 0f;
 
+        [Header("Extra Modifiers (在 Pattern 默认 modifier 之上额外追加)")]
+        [Tooltip("这个 Action 触发时,会在 Pattern.ModifierPrefabs 之外再附加这些 modifier。\n" +
+                 "适用场景:同一 Pattern 在不同 Action/阶段切换成追踪弹/加速弹(不改 SO 资产)。\n" +
+                 "留空 = 只用 Pattern 自带的 modifier。\n" +
+                 "下拉选 modifier 类型(走 SerializeReference + SRName),直接编辑字段。")]
+        [SerializeReference, SR]
+        public BulletModifier[] ExtraModifierPrefabs;
+
         float _timer;
         bool _running;
 
@@ -44,7 +52,7 @@ namespace ShinySTG.EnemyAI
             var ownerHitbox = enemy != null
                 ? enemy.GetComponent<ShinySTG.Hitbox.HitboxComponent>()
                 : null;
-            BulletPool.Instance.FireGroup(Pattern, enemy.position, rotationRad, ownerHitbox);
+            BulletPool.Instance.FireGroup(Pattern, enemy.position, rotationRad, ownerHitbox, ExtraModifierPrefabs);
         }
 
         public override void OnExit(Transform enemy)

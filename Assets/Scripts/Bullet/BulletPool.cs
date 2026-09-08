@@ -64,6 +64,15 @@ public class BulletPool : MonoBehaviour
     /// <param name="ownerTeam">发射者阵营(透传给子弹 Hitbox.Team)。null = Neutral(不参与碰撞)。</param>
     public Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed,
                       float damage, ShinySTG.Hitbox.CollisionTeam ownerTeam)
+        => Get(prefab, pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, null);
+
+    /// <summary>
+    /// 取一颗子弹,并按指定 prefab 数组挂载 BulletModifier。
+    /// Modifier 实例会被 Instantiate 到子弹的子层级,随子弹回池自动清理。
+    /// </summary>
+    public Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed,
+                      float damage, ShinySTG.Hitbox.CollisionTeam ownerTeam,
+                      BulletModifier[] modifiersToAttach)
     {
         // prefab 为空时兜底使用 DefaultPrefab(避免某些 Pattern 未配置时崩溃)
         var usePrefab = prefab != null ? prefab : DefaultPrefab;
@@ -78,8 +87,30 @@ public class BulletPool : MonoBehaviour
         b.SourcePrefab = usePrefab;
         b.gameObject.SetActive(true);
         b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam);
+        AttachModifiers(b, modifiersToAttach);
         _active.Add(b);
         return b;
+    }
+
+    /// <summary>
+    /// 把 modifier 模板 Clone 一份独立实例,并 AddModifier 到子弹。
+    /// 由 FirePattern.SpawnBullet 统一调用(也可被外部直接调用)。
+    ///
+    /// 注意:Modifier 是纯 C# 对象(SerializeReference 路线),
+    /// 不是 GameObject 子对象 —— bullet.transform 下不再产生 modifier 子层级,
+    /// modifier 不继承 bullet 的 transform 缩放。
+    /// </summary>
+    static void AttachModifiers(Bullet bullet, BulletModifier[] mods)
+    {
+        if (bullet == null || mods == null) return;
+        for (int i = 0; i < mods.Length; i++)
+        {
+            var mod = mods[i];
+            if (mod == null) continue;
+            // Clone 出独立实例(默认 MemberwiseClone,纯值类型字段无开销),
+            // 避免多颗子弹共享同一 modifier 模板导致状态污染。
+            bullet.AddModifier(mod.Clone());
+        }
     }
 
     /// 回收一颗。
@@ -111,10 +142,15 @@ public class BulletPool : MonoBehaviour
     /// 玩家发射传 PlayerHitbox;敌人发射传 EnemyHitbox。
     /// 子弹阵营 = ownerHitbox.Team,经 bullet.Init() 透传到 HitboxComponent.Team。
     /// </param>
+    /// <param name="extraModifiers">
+    /// 调用方(通常是 FireAction)在本轮发射时想额外追加的 modifier,
+    /// 会在 pattern.ModifierPrefabs 之后追加。null = 不追加。
+    /// </param>
     public void FireGroup(FirePattern pattern, Vector2 pos, float rotationRad,
-                          ShinySTG.Hitbox.HitboxComponent ownerHitbox = null)
+                          ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
+                          BulletModifier[] extraModifiers = null)
     {
-        pattern.Fire(pos, rotationRad, this, ownerHitbox);
+        pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers);
         // Boss 系统钩子:每发一弹自动累计,供 ShotsFiredSignal 读取。
         // 没有挂 BossShotCounter 时(BossShotCounter.Instance == null)直接跳过,不影响普通敌人。
         ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(pattern);

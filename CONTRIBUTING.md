@@ -51,14 +51,17 @@
 
 | 想加什么 | 在哪个文件夹新建 | 备注 |
 |---|---|---|
-| 新弹幕形态(螺旋 / 樱花 / ...) | `Assets/Scripts/Bullet/FirePattern/` | 子类继承 `FirePattern` |
+| 新弹幕形态(螺旋 / 樱花 / ...) | `Assets/Scripts/Bullet/FirePattern/` | 子类继承 `FirePattern`,生成子弹必须走基类 `SpawnBullet` helper(否则 modifier 不挂) |
 | 新敌人行为(动画 / 隐身 / 加血) | `Assets/Scripts/Enemy/AI/Actions/` | 子类继承 `EnemyAction`,加 `[SRName("Action/<名字>")]` |
 | 新移动方式(贝塞尔 / 圆形 / 追踪) | `Assets/Scripts/Enemy/AI/MoveBehaviours/` | 子类继承 `MoveBehaviour`,加 `[SRName("Move/<名字>")]` |
-| 新子弹效果(减速 / 爆炸 / 分裂) | `Assets/Scripts/Bullet/` | 子类继承 `BulletModifier` |
+| 新子弹效果(加速 / 转向 / 减速 / 分裂 / 追踪) | `Assets/Scripts/Bullet/` | 子类继承 `BulletModifier`,加 `[SRName("Modifier/<名字>")] + [Serializable]`,在 `Modify(Bullet, dt)` 里改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed`。引用类型字段要 override `Clone()` 深拷 |
 | 新"行为流"资产(符卡 / 小怪模式) | Project 视图右键 → Create → STG → Behavior Flow | SO 资产,无需写代码 |
 | 新 Boss 阶段 | `Assets/Scripts/Enemy/Boss/Phases/` | 子类继承 `BossPhase` |
 | 新 Boss 阶段切换条件 | `Assets/Scripts/Enemy/Boss/Signals/` | 子类继承 `BossSignal` |
 | 新玩家子机位置形态 | `Assets/Scripts/Player/Options/Forms/` | 子类继承 `OptionPositionForm` |
+| 新 SpawnEntry 编辑器画法 | `Assets/Scripts/Level/Editor/Drawers/` | 子类继承 `ISpawnEntryDrawer`(**abstract class**,必须 `override Handles` 声明接管类型) |
+| 新关卡编辑器 Preview 实现 | `Assets/Scripts/Level/Editor/Views/Preview/` | 实现 `ILevelEditorPreview` 6 个方法 |
+
 
 **"用 SerializeReference 下拉"的多态扩展点**,三步套路是固定的:
 

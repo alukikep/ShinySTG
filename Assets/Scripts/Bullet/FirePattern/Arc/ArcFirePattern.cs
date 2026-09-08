@@ -11,7 +11,9 @@ public class ArcFirePattern : FirePattern
     [Tooltip("该 pattern 的整体基准朝向（度）。0=右，90=上，180=左，270=下。")]
     public float BaseAngle = 270f;
 
-    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null)
+    public override void Fire(Vector2 position, float rotationRad, BulletPool pool,
+                              ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
+                              BulletModifier[] extraModifiers = null)
     {
         // 中线 = BaseAngle（度） + rotationRad（弧度增量）
         float centerRad = BaseAngle * Mathf.Deg2Rad + rotationRad;
@@ -19,7 +21,7 @@ public class ArcFirePattern : FirePattern
 
         if (Count <= 1)
         {
-            FireOne(position, centerRad, pool, team);
+            FireOne(position, centerRad, pool, team, extraModifiers);
             return;
         }
         float start = centerRad - (ArcLength * Mathf.Deg2Rad) / 2f;
@@ -28,12 +30,14 @@ public class ArcFirePattern : FirePattern
         {
             float rad = start + step * i;
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
-            FireOne(position + offset, rad, pool, team);
+            FireOne(position + offset, rad, pool, team, extraModifiers);
         }
     }
-    void FireOne(Vector2 pos, float rad, BulletPool pool, ShinySTG.Hitbox.CollisionTeam team)
+    void FireOne(Vector2 pos, float rad, BulletPool pool, ShinySTG.Hitbox.CollisionTeam team,
+                 BulletModifier[] extraModifiers)
     {
-        pool.Get(BulletPrefab, pos, rad, Speed, AngularSpeed, Damage, team);
+        // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
+        SpawnBullet(pool, pos, rad, Speed, AngularSpeed, Damage, team, extraModifiers);
     }
 
     public override int GetFireCount() => Count;

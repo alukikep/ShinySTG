@@ -13,9 +13,21 @@ MonoBehaviour:
   m_Name: New Line Fire Pattern
   m_EditorClassIdentifier: 
   BulletPrefab: {fileID: 2577476433622056203, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
-  Speed: 5
+  ModifierPrefabs:
+  - rid: 6177226942301601792
+  Speed: 8
   AngularSpeed: 0
   Damage: 1
   Count: 1
   DeltaSpeed: 2
   BaseAngle: 90
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177226942301601792
+      type: {class: HomingEnemyModifier, ns: , asm: Assembly-CSharp}
+      data:
+        SearchRadius: 6
+        TurnRate: 180
+        LockOnDelay: 0
+        MaxHomingTime: -1

@@ -9,19 +9,23 @@
 - 💉 **多管血**:`BossHealth` 内置多管血机制,TakeDamage 自动切管
 - 🧩 **可组合 Action**:`Parallel` / `Sequence` 容器支持无限嵌套,边移动边射击等复杂行为直接配置
 - 🎨 **数据驱动**:`FirePattern` SO 系统(Ring/Line/Arc/Composite 等),改一个资产 = 改全场景
+- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC
 - 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
 - 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
+- 📘 **关卡可视化编辑器**(菜单 `STG → Level Editor`):时间轴 + 列表 + 详情面板 + Preview + Scene Gizmo,支持增/删/复制/撤销(`Ctrl+Z`)+ 快捷键,详见 [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md);架构见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10
 
 ## 📐 架构说明
 
 **详细的架构文档请见 [`ARCHITECTURE.md`](./ARCHITECTURE.md)**,包含:
 
-- 子弹系统(BulletPool / Bullet / BulletModifier)原理
-- 射击模式 SO 体系(FirePattern)及扩展方法
+- 子弹系统(BulletPool / Bullet / BulletModifier)原理(含 modifier 多态体系、美术朝向约定、Clone 深拷约定)
+- 射击模式 SO 体系(FirePattern)及扩展方法(含 `SpawnBullet` helper 强制使用)
 - 敌人 AI 时间轴(BehaviorFlow + EnemyAction)的三层架构
 - Boss 系统(BossController + 多阶段 + 多管血)的全部细节
 - 玩家系统(Player 主控 + 八方向 + Focus + 残机/火力/无敌 + 子机)
 - 子机位置形态多态(OptionPositionForm)与扩展指南
+- 关卡系统(LevelDefinition + LevelController + SpawnEntry 多态)与扩展指南
+- 关卡可视化编辑器子系统(LevelEditorWindow + Drawer / Preview / Gizmo 扩展点)
 - 内置 Action / MoveBehaviour / BossSignal 列表
 - 如何新增 Action、MoveBehaviour、FirePattern、Modifier、BossSignal、BossPhase、子机位置形态
 - 11 个常见问题与设计决策记录
@@ -42,10 +46,18 @@
 ```
 Assets/Scripts/
 ├── Singleton.cs                              # 单例基类
-├── Bullet/                                   # 子弹 + 射击模式
+├── Bullet/                                   # 子弹 + 射击模式(详见 ARCHITECTURE.md §2)
 │   ├── BulletPool.cs (+ BossShotCounter 钩子)
+│   ├── Bullet.cs                             # 飞行体 + modifier 调度
+│   ├── BulletModifier.cs                     # 多态修饰基类 + Accelerate / Steer / Homing Enemy 内置
 │   ├── FirePattern.cs (+ GetFireCount)
 │   └── FirePattern/{Ring,Line,Arc,Composite}/...
+├── Hitbox/                                   # 统一 AABB + 网格索引(详见 ARCHITECTURE.md §8)
+│   ├── HitboxComponent.cs                    # 通用 AABB 组件
+│   ├── HitboxMath.cs                         # AABB×AABB 静态数学
+│   ├── UniformGrid.cs                        # 均匀网格空间索引(Query3x3 / QueryRadius)
+│   ├── CollisionService.cs                   # 场景单例 + 共享 Grid 维护
+│   └── CollisionTeam.cs                      # Neutral/Player/Enemy 阵营
 ├── Enemy/
 │   ├── ShooterEnemy.cs                       # 行为流播放机(28 行)
 │   ├── AI/                                   # 行为流 + 行为系统
@@ -61,7 +73,7 @@ Assets/Scripts/
 │       ├── BossPhase.cs / PhaseTrigger.cs
 │       ├── Phases/ShooterPhase.cs            # 行为流阶段(持 BehaviorFlow)
 │       └── Signals/                          # BossSignal + 6 个内置信号
-└── Player/                                   # 玩家系统(详见 ARCHITECTURE.md 第 8 章)
+└── Player/                                   # 玩家系统(详见 ARCHITECTURE.md §7)
     ├── Player.cs                             # 主控单例 + 输入分发
     ├── PlayerMovement.cs                     # 八方向 + Focus 低速
     ├── PlayerShooting.cs                     # 主炮按住即喷(复用 FirePattern)
@@ -71,6 +83,15 @@ Assets/Scripts/
     ├── OptionPositionForm.cs                 # 子机位置多态抽象
     ├── OptionForms.cs                        # 3 个内置位置形态
     └── LegacyInputDriver.cs                  # 旧 Input.GetKey 兜底(可选)
+└── Level/                                   # 关卡系统(详见 ARCHITECTURE.md §9)
+    ├── LevelDefinition.cs                    # 关卡 SO 资产(Ctrl+N:Create → STG → Level)
+    ├── LevelController.cs                    # 场景单例(继承 Singleton<T>)
+    ├── LevelRuntime.cs                       # 运行时状态(时间推进 + 活跃单位追踪)
+    ├── SpawnEntry.cs                         # 多态抽象([SerializeReference, SR])
+    └── SpawnEntries/                         # 3 个内置条目类型
+        ├── SimpleSpawnEntry.cs               # [SRName("Entry/Simple")] 时间+位置+单 prefab
+        ├── WaveSpawnEntry.cs                 # [SRName("Entry/Wave")]   时间+中心点+多 prefab 自动铺
+        └── BossSpawnEntry.cs                 # [SRName("Entry/Boss")]   时间+位置+boss prefab(留壳)
 ```
 
 ## 🚀 快速上手
@@ -110,6 +131,8 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 
 在 FireAction 里引用即可开火。
 
+**想让子弹加速 / 转向 / 追踪玩家?** 在 FirePattern 资产的 `Modifiers` 数组里点 `+`,下拉选 `Modifier/Accelerate` / `Modifier/Steer` / 自己写的 `Modifier/Homing Player` 等,直接在 Inspector 里设字段,无需新建任何 prefab。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §2.2。
+
 ### 6. 玩家
 
 - 创建一个 GameObject(命名 `Player`,自动设 tag 为 `Player`)
@@ -121,7 +144,7 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 - `PlayerOptions.OptionPrefab` 拖一个子机视觉 prefab,`OptionFirePatterns` 拖各号子机弹幕
 - 想换子机形态:`PlayerOptions.PositionForm` 下拉选 `Form/Touhou Symmetric` / `Linear Row` / `Rear Line`
 
-**详细步骤、扩展指南、设计决策见 `ARCHITECTURE.md` 第 8 章。**
+**详细步骤、扩展指南、设计决策见 `ARCHITECTURE.md` §7。**
 
 <!-- AI_SECTION_ANCHOR -->
 ## 🤖 AI 协作约定
@@ -148,11 +171,5 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 
 ### 为什么有这些约定
 
-实际踩过的坑:
-
-1. cmd 默认 GBK 代码页 + PowerShell 5.1 接收 UTF-8 字符串 → 中文路径乱码 / `找不到文件`。
-2. cmd 在转发参数前对 `$` 做变量展开 → PowerShell 脚本里的 `$i` / `$_` 被吞。
-3. 大段中文 + box-drawing 字符对齐宽度不可见 → 精确字符串匹配老失败,被迫改用 Python 正则做原子化替换。
-
-**修通这些问题的成本 >> 绕过它们的成本**(落盘一个临时脚本即可)。代理看到中文 + 多行场景应当自觉落盘,不要硬塞。
+实际踩过的坑汇总在 [`CONTRIBUTING.md`](./CONTRIBUTING.md) §4(工具链踩坑笔记)。**修通这些问题的成本 >> 绕过它们的成本**(落盘一个临时脚本即可)。代理看到中文 + 多行场景应当自觉落盘,不要硬塞。
 

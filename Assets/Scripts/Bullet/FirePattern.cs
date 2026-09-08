@@ -1,3 +1,4 @@
+using SerializeReferenceEditor;
 using UnityEngine;
 
 /// FirePattern：决定"射什么子弹 + 怎么射"的完整定义。
@@ -8,6 +9,14 @@ public abstract class FirePattern : ScriptableObject
     [Header("Bullet")]
     [Tooltip("该 pattern 发射的子弹 prefab。留空则使用 BulletPool.DefaultPrefab 兜底。")]
     public Bullet BulletPrefab;
+
+    [Header("Modifiers (子弹生成后自动挂载)")]
+    [Tooltip("下拉选 modifier 类型,直接编辑字段(走 SerializeReference + SRName)。\n" +
+             "运行时每颗子弹会 Clone 一份独立实例,modifier 状态不会跨子弹污染。\n" +
+             "Modifier 只持有逻辑,不要访问自己的 transform(它不是 GameObject)。\n" +
+             "扩展方法:新建 BulletModifier 子类 + 加 [SRName(\"Modifier/<名字>\")] —— 自动出现在下拉菜单。")]
+    [SerializeReference, SR]
+    public BulletModifier[] ModifierPrefabs;
 
     [Header("Motion (可被子类覆盖)")]
     public float Speed = 5f;
@@ -21,14 +30,16 @@ public abstract class FirePattern : ScriptableObject
     public float Damage = 1f;
 
     /// 由池/Enemy 调用：发射一组子弹。prefab 取自本对象的 BulletPrefab。
-    /// 子类负责在内部调 pool.Get(...),把 Damage + owner 的 Hitbox.Team 透传给每颗新生成的子弹。
+    /// 子类负责在内部调 SpawnBullet(...) 把 Damage + owner 的 Hitbox.Team 透传给每颗新生成的子弹。
     /// </summary>
     /// <param name="position">发射位置</param>
     /// <param name="rotationRad">整体朝向增量(弧度)</param>
     /// <param name="pool">BulletPool(子类从池里 Get 新子弹)</param>
     /// <param name="ownerHitbox">发射者 Hitbox(可为 null)。null 时子弹阵营 = Neutral。</param>
+    /// <param name="extraModifiers">调用方(FireAction)临时追加的 modifier,在 ModifierPrefabs 之后追加。null = 不追加。</param>
     public abstract void Fire(Vector2 position, float rotationRad,
-                              BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null);
+                              BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
+                              BulletModifier[] extraModifiers = null);
 
     /// <summary>
     /// 本次 Fire() 调用会发射多少颗子弹。Composite 需要递归求和。
@@ -42,6 +53,32 @@ public abstract class FirePattern : ScriptableObject
         // 旧 API 兼容:从子弹 GameObject 上读 Hitbox。
         var hb = owner != null ? owner.GetComponent<ShinySTG.Hitbox.HitboxComponent>() : null;
         Fire(owner.transform.position, rotationRad, pool, hb);
+    }
+
+    /// <summary>
+    /// 子类统一通过本方法生成子弹,而不是直接调 pool.Get。
+    /// 内部会合并 ModifierPrefabs + extras,传给 pool 的 modifier 挂载重载。
+    /// </summary>
+    protected Bullet SpawnBullet(BulletPool pool, Vector2 pos, float rad,
+                                 float speed, float angularSpeed, float damage,
+                                 ShinySTG.Hitbox.CollisionTeam team,
+                                 BulletModifier[] extraModifiers)
+    {
+        var combined = CombineArrays(ModifierPrefabs, extraModifiers);
+        return pool.Get(BulletPrefab, pos, rad, speed, angularSpeed, damage, team, combined);
+    }
+
+    /// <summary>把 pattern 的 modifier 和调用方追加的 modifier 拼成一个数组。null-safe。</summary>
+    static BulletModifier[] CombineArrays(BulletModifier[] a, BulletModifier[] b)
+    {
+        int alen = a?.Length ?? 0;
+        int blen = b?.Length ?? 0;
+        if (alen == 0) return b;
+        if (blen == 0) return a;
+        var result = new BulletModifier[alen + blen];
+        a.CopyTo(result, 0);
+        b.CopyTo(result, alen);
+        return result;
     }
 }
 

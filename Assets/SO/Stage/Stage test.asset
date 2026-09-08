@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06157d8671accc948848521680b5dff2, type: 3}
+  m_Name: Stage test
+  m_EditorClassIdentifier: 
+  Entries:
+  - rid: 6177226930933202944
+  - rid: 6177226930933202948
+  - rid: 6177226930933202949
+  Duration: 60
+  Pool: {fileID: 0}
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177226930933202944
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 0
+        OneShot: 1
+        Duration: 1
+        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
+        SpawnPosition: {x: 2, y: 2}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177226930933202948
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 1.08
+        OneShot: 1
+        Duration: 1
+        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
+        SpawnPosition: {x: -2, y: 2}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177226930933202949
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 2.146667
+        OneShot: 1
+        Duration: 10
+        SpawnInterval: 2
+        EnemyPrefab: {fileID: 7432855126850182366, guid: 5b6659ee8c5d43b45a5922c983b389d9, type: 3}
+        SpawnPosition: {x: 0, y: 10}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}

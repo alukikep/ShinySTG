@@ -19,6 +19,7 @@ public class Bullet : MonoBehaviour
     [HideInInspector] public float AngularSpeed; // 弧度/秒，0 = 不自转
     [HideInInspector] public float SteerAngle;   // 弧度，当前飞行方向
     [HideInInspector] public float Lifetime;     // 累计存活时间
+    [HideInInspector] public bool  HasGrazed;    // 本弹是否已对玩家触发过擦弹(防一颗弹多次擦;Init 时重置)
 
     [HideInInspector] public Bullet SourcePrefab; // 记录本弹属于哪个 prefab 的桶（仅用于池归还路由，不影响逻辑）
 
@@ -62,6 +63,12 @@ public class Bullet : MonoBehaviour
     readonly List<BulletModifier> _modifiers = new();
 
     public void AddModifier(BulletModifier m) => _modifiers.Add(m);
+
+    /// <summary>
+    /// 清空所有 modifier(纯 C# 列表操作,无需 Destroy)。
+    /// 在 BulletPool.Return / Init 里被调用,确保回池后列表干净。
+    /// Modifier 不是 GameObject(走 SerializeReference + Clone 路线),不需要销毁子对象。
+    /// </summary>
     public void ClearModifiers() => _modifiers.Clear();
 
     /// <summary>
@@ -77,13 +84,19 @@ public class Bullet : MonoBehaviour
                      float damage, CollisionTeam ownerTeam)
     {
         transform.position = position;
-        transform.rotation = Quaternion.Euler(0, 0, fireAngleRad * Mathf.Rad2Deg);
+        // 视觉补偿:美术贴图默认尖头朝 +Y(朝上),代码约定 SteerAngle=0 指向 +X(朝右)。
+        // 因此需要 -90° 的旋转偏移,才能让贴图尖头对齐飞行方向(否则向下发射时子弹会变横)。
+        transform.rotation = Quaternion.Euler(0, 0, fireAngleRad * Mathf.Rad2Deg - 90f);
         SteerAngle = fireAngleRad;
         Speed = speed;
         AngularSpeed = angularSpeed;
         Damage = damage;
         Lifetime = 0;
-        _modifiers.Clear();
+        // 清空 modifier 列表。Clone 出的 modifier 是纯 C# 对象,可直接 GC 回收;
+        // 没有 GameObject 子对象需要 Destroy(对比旧 MonoBehaviour 路线)。
+        ClearModifiers();
+        // 重置擦弹标记:让上一轮擦过玩家的弹,回池后再发射可以重新擦(HasGrazed 由 CollisionService 在擦弹时置 true)。
+        HasGrazed = false;
 
         // 自动透传阵营:玩家弹 → Team=Player;敌人弹 → Team=Enemy;owner 为 null 时保持默认(Neutral)
         if (Hitbox != null) Hitbox.Team = ownerTeam;
@@ -105,7 +118,8 @@ public class Bullet : MonoBehaviour
         transform.position += (Vector3)(dir * Speed * dt);
 
         // 4. 用方向同步旋转（让贴图朝向飞行方向）
-        transform.rotation = Quaternion.Euler(0, 0, SteerAngle * Mathf.Rad2Deg);
+        //    与 Init() 同源:贴图尖头朝 +Y,所以需要 -90° 的视觉补偿偏移。
+        transform.rotation = Quaternion.Euler(0, 0, SteerAngle * Mathf.Rad2Deg - 90f);
 
         // 5. 简单越界回收（先实现，后续再优化）
         if (Mathf.Abs(transform.position.x) > 10f ||

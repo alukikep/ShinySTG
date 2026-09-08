@@ -11,14 +11,17 @@ public class LineFirePattern : FirePattern
     [Tooltip("该 pattern 的整体基准朝向（度）。0=右，90=上，180=左，270=下。")]
     public float BaseAngle = 270f;
 
-    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null)
+    public override void Fire(Vector2 position, float rotationRad, BulletPool pool,
+                              ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
+                              BulletModifier[] extraModifiers = null)
     {
         float rad = BaseAngle * Mathf.Deg2Rad + rotationRad;
         float speed = Speed; // 起点使用基类 Speed
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)
         {
-            pool.Get(BulletPrefab, position, rad, speed, AngularSpeed, Damage, team);
+            // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
+            SpawnBullet(pool, position, rad, speed, AngularSpeed, Damage, team, extraModifiers);
             speed += DeltaSpeed;
         }
     }

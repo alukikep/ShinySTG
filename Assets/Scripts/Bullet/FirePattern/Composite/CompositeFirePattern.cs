@@ -11,11 +11,14 @@ public class CompositeFirePattern : FirePattern
 {
     public FirePattern[] Children;
 
-    public override void Fire(Vector2 position, float rotationRad, BulletPool pool, ShinySTG.Hitbox.HitboxComponent ownerHitbox = null)
+    public override void Fire(Vector2 position, float rotationRad, BulletPool pool,
+                              ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
+                              BulletModifier[] extraModifiers = null)
     {
+        // 透传 extras 给所有子 pattern;每个 child 自己会跟自己的 ModifierPrefabs 合并。
         foreach (var c in Children)
         {
-            if (c != null) c.Fire(position, rotationRad, pool, ownerHitbox);
+            if (c != null) c.Fire(position, rotationRad, pool, ownerHitbox, extraModifiers);
         }
     }
 

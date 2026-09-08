@@ -12,10 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6fea1136b335f1e429973dab1d865f75, type: 3}
   m_Name: New Ring Fire Pattern
   m_EditorClassIdentifier: 
-  BulletPrefab: {fileID: 2577476433622056203, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
+  BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
+  ModifierPrefabs:
+  - rid: 6177226939113930752
   Speed: 5
   AngularSpeed: 0
   Damage: 1
   Count: 10
   Radius: 0
   BaseAngle: 270
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177226939113930752
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        TurnRate: 30
