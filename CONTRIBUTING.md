@@ -52,6 +52,7 @@
 | 想加什么 | 在哪个文件夹新建 | 备注 |
 |---|---|---|
 | 新弹幕形态(螺旋 / 樱花 / ...) | `Assets/Scripts/Bullet/FirePattern/` | 子类继承 `FirePattern`,生成子弹必须走基类 `SpawnBullet` helper(否则 modifier 不挂) |
+| 新发射扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡 ...) | `Assets/Scripts/Bullet/FireExtension/` | 子类继承 `FireExtension` + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单 |
 | 新敌人行为(动画 / 隐身 / 加血) | `Assets/Scripts/Enemy/AI/Actions/` | 子类继承 `EnemyAction`,加 `[SRName("Action/<名字>")]` |
 | 新移动方式(贝塞尔 / 圆形 / 追踪) | `Assets/Scripts/Enemy/AI/MoveBehaviours/` | 子类继承 `MoveBehaviour`,加 `[SRName("Move/<名字>")]` |
 | 新子弹效果(加速 / 转向 / 减速 / 分裂 / 追踪) | `Assets/Scripts/Bullet/` | 子类继承 `BulletModifier`,加 `[SRName("Modifier/<名字>")] + [Serializable]`,在 `Modify(Bullet, dt)` 里改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed`。引用类型字段要 override `Clone()` 深拷 |

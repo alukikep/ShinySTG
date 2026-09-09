@@ -18,6 +18,15 @@ public abstract class FirePattern : ScriptableObject
     [SerializeReference, SR]
     public BulletModifier[] ModifierPrefabs;
 
+    [Header("Fire Extension (可选,下拉选基础发射逻辑的扩展)")]
+    [Tooltip("对基础发射逻辑(中线方向)的扩展。\n" +
+             "  - 留空(null) = 默认模式:中心方向 = 270°(向下)+ rotationRad(等价旧版 normal)\n" +
+             "  - FireExtension/Base:中心方向 = BaseAngle + rotationRad(自己设整体方向)\n" +
+             "  - FireExtension/Player Aim:中心方向 = 指向玩家(无玩家时退回 BaseAngle + rotationRad)\n" +
+             "扩展方法:新建 FireExtension 子类 + 加 [SRName(\"FireExtension/<名字>\")] —— 自动出现在所有 FirePattern 资产的下拉菜单。")]
+    [SerializeReference, SR]
+    public FireExtension FireExtension;
+
     [Header("Motion (可被子类覆盖)")]
     public float Speed = 5f;
     public float AngularSpeed = 0f;

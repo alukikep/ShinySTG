@@ -9,7 +9,8 @@
 - 💉 **多管血**:`BossHealth` 内置多管血机制,TakeDamage 自动切管
 - 🧩 **可组合 Action**:`Parallel` / `Sequence` 容器支持无限嵌套,边移动边射击等复杂行为直接配置
 - 🎨 **数据驱动**:`FirePattern` SO 系统(Ring/Line/Arc/Composite 等),改一个资产 = 改全场景
-- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC
+- 🧭 **FireExtension 多态扩展**:`FireExtension` 是对基础发射逻辑(中线方向)的可插拔扩展点(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...),挂在 FirePattern 上,Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
+- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂 / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC
 - 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
 - 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
 - 📘 **关卡可视化编辑器**(菜单 `STG → Level Editor`):时间轴 + 列表 + 详情面板 + Preview + Scene Gizmo,支持增/删/复制/撤销(`Ctrl+Z`)+ 快捷键,详见 [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md);架构见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10
@@ -20,6 +21,7 @@
 
 - 子弹系统(BulletPool / Bullet / BulletModifier)原理(含 modifier 多态体系、美术朝向约定、Clone 深拷约定)
 - 射击模式 SO 体系(FirePattern)及扩展方法(含 `SpawnBullet` helper 强制使用)
+- FireExtension 扩展点(对基础发射逻辑的多态扩展,BaseAngle / 瞄准玩家 / 未来瞄准 Boss / 每发旋转 / ...)
 - 敌人 AI 时间轴(BehaviorFlow + EnemyAction)的三层架构
 - Boss 系统(BossController + 多阶段 + 多管血)的全部细节
 - 玩家系统(Player 主控 + 八方向 + Focus + 残机/火力/无敌 + 子机)
@@ -50,7 +52,11 @@ Assets/Scripts/
 │   ├── BulletPool.cs (+ BossShotCounter 钩子)
 │   ├── Bullet.cs                             # 飞行体 + modifier 调度
 │   ├── BulletModifier.cs                     # 多态修饰基类 + Accelerate / Steer / Homing Enemy 内置
-│   ├── FirePattern.cs (+ GetFireCount)
+│   ├── BulletColorModifier.cs                # 视觉修饰:染色 / 渐变 / 闪烁(Modifier/Color)
+│   ├── FirePattern.cs (+ GetFireCount + FireExtension 扩展点)
+│   ├── FireExtension/                          # 基础发射逻辑的多态扩展(详见 ARCHITECTURE.md §3.1)
+│   │   ├── FireExtension.cs                    # 基类 + BaseAngleFireExtension / PlayerAimFireExtension 内置
+│   │   └── FireExtensionResolver.cs            # 静态 helper(Null-safe 解析中心方向)
 │   └── FirePattern/{Ring,Line,Arc,Composite}/...
 ├── Hitbox/                                   # 统一 AABB + 网格索引(详见 ARCHITECTURE.md §8)
 │   ├── HitboxComponent.cs                    # 通用 AABB 组件

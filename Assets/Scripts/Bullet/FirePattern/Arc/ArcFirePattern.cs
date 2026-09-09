@@ -1,22 +1,19 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "STG/FirePattern/Arc")]
 public class ArcFirePattern : FirePattern
 {
-    public int Count = 8; // 子弹数
-    public float ArcLength = 60f;    // 弧长（度）
-    public float Radius = 0f;        // 起始偏移半径
-    [Tooltip("该 pattern 的整体基准朝向（度）。0=右，90=上，180=左，270=下。")]
-    public float BaseAngle = 270f;
+    public int Count = 8;       // 子弹数
+    public float ArcLength = 60f; // 弧长(度)
+    public float Radius = 0f;     // 起始偏移半径
+    // 注:BaseAngle 字段已挪到 FireExtension 子类(FireExtension/Base / FireExtension/Player Aim)上,本类不再持有。
 
     public override void Fire(Vector2 position, float rotationRad, BulletPool pool,
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
-        // 中线 = BaseAngle（度） + rotationRad（弧度增量）
-        float centerRad = BaseAngle * Mathf.Deg2Rad + rotationRad;
+        // 中线方向由 FireExtension 解析(null 时 fallback = 270° + rotationRad,等价旧版 normal)
+        float centerRad = FireExtensionResolver.ResolveCenterAngle(FireExtension, position, rotationRad);
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
 
         if (Count <= 1)
@@ -33,6 +30,7 @@ public class ArcFirePattern : FirePattern
             FireOne(position + offset, rad, pool, team, extraModifiers);
         }
     }
+
     void FireOne(Vector2 pos, float rad, BulletPool pool, ShinySTG.Hitbox.CollisionTeam team,
                  BulletModifier[] extraModifiers)
     {

@@ -1,21 +1,19 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-// 连射（累加速度）
+// 连射(累加速度)
 [CreateAssetMenu(menuName = "STG/FirePattern/Line")]
 public class LineFirePattern : FirePattern
 {
     public int Count = 3;
     public float DeltaSpeed = 1f;
-    [Tooltip("该 pattern 的整体基准朝向（度）。0=右，90=上，180=左，270=下。")]
-    public float BaseAngle = 270f;
+    // 注:BaseAngle 字段已挪到 FireExtension 子类(FireExtension/Base / FireExtension/Player Aim)上,本类不再持有。
 
     public override void Fire(Vector2 position, float rotationRad, BulletPool pool,
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
-        float rad = BaseAngle * Mathf.Deg2Rad + rotationRad;
+        // 中线方向由 FireExtension 解析(null 时 fallback = 270° + rotationRad,等价旧版 normal)
+        float rad = FireExtensionResolver.ResolveCenterAngle(FireExtension, position, rotationRad);
         float speed = Speed; // 起点使用基类 Speed
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)

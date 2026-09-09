@@ -34,6 +34,13 @@ public class Bullet : MonoBehaviour
              "正中尖刺时通过 Hitbox.Size 调整判定大小。")]
     public HitboxComponent Hitbox;
 
+    [Header("Visual")]
+    [Tooltip("子弹的 SpriteRenderer(可选)。Awake / Reset 时自动 GetComponentInChildren 抓取(包含 inactive)。\n" +
+             "若 prefab 的 SpriteRenderer 在子物体上,自动找到。\n" +
+             "BulletColorModifier 等视觉 modifier 通过此引用改 color。\n" +
+             "允许为空(没有可见子弹 / 走 VFX-only / ParticleSystem 表现);视觉 modifier 自身会做 null 保护。")]
+    public SpriteRenderer Renderer;
+
     public Vector2 Position => transform.position;
 
     /// <summary>是否与某 hitbox 相撞(便捷入口)。Hitbox 未配置时返回 false。</summary>
@@ -46,6 +53,9 @@ public class Bullet : MonoBehaviour
         // 这里只负责把引用抓回来。Unity 在 Inspector 看不到此字段的赋值(运行时 Awake),
         // 但代码里调 Hitbox.X 时一定不为 null。
         if (Hitbox == null) Hitbox = GetComponent<HitboxComponent>();
+        // Renderer 是可选的(走 [SerializeReference] 多态视觉 modifier 的入口);
+        // 用 GetComponentInChildren(true) 兼顾 SpriteRenderer 在子物体上的 prefab 结构。
+        if (Renderer == null) Renderer = GetComponentInChildren<SpriteRenderer>(true);
     }
 
     void Reset()
@@ -58,6 +68,9 @@ public class Bullet : MonoBehaviour
             Hitbox.Size = new Vector2(0.08f, 0.08f);
             Hitbox.Team = CollisionTeam.Neutral;
         }
+        // Renderer 同样在 Reset 时尝试抓一次,方便编辑器新建 prefab 即看到 Inspector 字段已填;
+        // includeInactive=true 让 Editor 在 prefab 折叠 / inactive 状态下也能拿到引用。
+        if (Renderer == null) Renderer = GetComponentInChildren<SpriteRenderer>(true);
     }
 
     readonly List<BulletModifier> _modifiers = new();

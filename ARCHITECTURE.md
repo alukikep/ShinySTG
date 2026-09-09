@@ -10,6 +10,7 @@
 1. [整体架构一览](#1-整体架构一览)
 2. [子弹系统](#2-子弹系统)
 3. [射击模式系统(FirePattern)](#3-射击模式系统firepattern)
+   - 3.1 [FireExtension 扩展点(基础发射逻辑的多态扩展)](#31-fireextension-扩展点基础发射逻辑的多态扩展)
 4. [敌人 AI(BehaviorFlow + EnemyAction)](#4-敌人-aibehaviorflow--enemyaction)
 5. [Boss 系统(BossController + 多阶段 + 多管血)](#5-boss-系统bosscontroller--多阶段--多管血)
 6. [扩展指南](#6-扩展指南)
@@ -177,6 +178,7 @@ FireAction.OnTick
 | `AccelerateModifier` | `Modifier/Accelerate` | `b.Speed += Acceleration * dt` | `Acceleration` (float, 默认 5) |
 | `SteerTowardModifier` | `Modifier/Steer` | 每帧把 `b.AngularSpeed = TurnRate * Deg2Rad`(由 `Bullet.Update` 第 2 步自动累加到 `SteerAngle`) | `TurnRate` (度/秒, 默认 90) |
 | `HomingEnemyModifier` | `Modifier/Homing Enemy` | 通过 `CollisionService.Grid.QueryRadius(...)` 查最近敌人,按 `TurnRate` 限速转向 | `SearchRadius` / `TurnRate` / `LockOnDelay` / `MaxHomingTime` |
+| `BulletColorModifier` | `Modifier/Color` | 给 `b.Renderer.color` 染色(Solid / FadeByLifetime / Flash 三模式);黑白灰 bullet 素材一染色即变彩色,适合做"主炮红 / 子机蓝 / Boss 紫"。需 `Bullet.Renderer` 字段(Awake/Reset 自动 `GetComponentInChildren<SpriteRenderer>(true)` 抓取) | `Mode` / `Color` / `FadeOutColor` / `FadeStart` / `ReferenceLifetime` / `FlashFrequency` / `FlashMinAlpha` |
 
 **追踪玩家(敌人弹挂的 modifier)是常见扩展**,但当前项目未内置 `HomingPlayerModifier`(因玩家是单例,目标解析无需走网格);按下方"扩展点"小节的三步套路自行实现即可,大致套路是用 `ShinySTG.Player.Player.Instance?.transform` 拿到目标,其余转向逻辑与 `HomingEnemyModifier` 同源。
 
@@ -223,6 +225,23 @@ FireAction.OnTick
 - 子类在生成子弹时**必须**用基类的 `protected Bullet SpawnBullet(...)` helper,**不要直接调** `pool.Get`,否则 modifier 不会挂上。
 
 详见 `Assets/Scripts/Bullet/FirePattern*`。
+
+### 3.1 FireExtension 扩展点(基础发射逻辑的多态扩展)
+
+**职责:** 对 FirePattern 子类的"中心方向解析"做可插拔的多态扩展。任何"决定本轮发射方向"的策略(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...)都属于 FireExtension,而非 FirePattern 本身 —— FirePattern 负责"怎么射"的几何(几颗 / 扇形 / 环形 / 容器),FireExtension 负责"朝哪儿射"。
+
+**协作边界:**
+- 字段挂在 FirePattern 基类上(`[SerializeReference, SR] FireExtension FireExtension`),所有 FirePattern 子类(Arc / Line / Ring / Composite / 未来)自动支持 Inspector 下拉。
+- 子类通过静态 helper `FireExtensionResolver.ResolveCenterAngle(...)` 拿方向;helper 与基类解耦,可被其他系统复用。
+- 走 SpawnBullet 路径的"必须走基类 helper"约束不变(详见 §3)。
+- `CompositeFirePattern` 是纯容器(只有 `Children` + 透传 + 递归 GetFireCount),自己不持任何发射字段 —— 它对 FireExtension 的处理是"透传给 children,各自解析"。
+
+**类型:**
+- 基类:`FireExtension`(纯 C# `[Serializable] abstract class`)
+- 内置子类:`BaseAngleFireExtension` `[SRName("FireExtension/Base")]` / `PlayerAimFireExtension` `[SRName("FireExtension/Player Aim")]`
+- Helper:`FireExtensionResolver`(静态,Null-safe,`extension == null` 时 fallback 到默认方向,与旧版 normal 行为一致)
+
+**扩展点:** 新增"瞄准 X / 旋转 / 振荡"等策略 = 新建 `FireExtension` 子类 + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单。详见 `Assets/Scripts/Bullet/FireExtension/`。
 ---
 
 ## 4. 敌人 AI(BehaviorFlow + EnemyAction)
@@ -272,7 +291,7 @@ FireAction.OnTick
 
 ### 6.1 多态扩展点的统一套路
 
-项目里有 5 个用 `[SerializeReference]` + 子类多态的扩展点,全部走同一个三步套路:
+项目里有 9 个用 `[SerializeReference]` + 子类多态的扩展点,全部走同一个三步套路:
 
 1. 在约定文件夹新建 `<你的>类名.cs`
 2. 继承对应的抽象基类 + 加 `[Serializable, SRName("<下拉菜单路径>")]`
@@ -281,6 +300,7 @@ FireAction.OnTick
 | 扩展点 | 基类 | 用途 |
 |---|---|---|
 | 弹幕形态 | `FirePattern` | 新增螺旋 / 樱花 / 自定义轨迹 |
+| 弹幕角度 / 瞄准扩展 | `FireExtension` | 基础发射逻辑的多态扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...),挂在 FirePattern 上,详见 §3.1 |
 | 子弹行为 | `BulletModifier` | 加速 / 转向 / 追踪 / 分裂(追踪类用 `CollisionService.Grid` 查候选,见 §2.5) |
 | 敌人行为 | `EnemyAction` | 新增攻击 / 移动 / 自毁 / 容器 |
 | 移动方式 | `MoveBehaviour` | 贝塞尔 / 圆形 / 追踪 |
