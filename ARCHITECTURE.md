@@ -32,7 +32,8 @@
 │  │          + PlayerHitbox                                          │
 │  ├─ 普通敌人:挂 Enemy 总控 + EnemyHealth + ShooterEnemy +       │
 │  │            EnemyHitbox(引用一个 BehaviorFlow 资产)             │
-│  ├─ Boss:挂 BossController + BossHealth + BossShotCounter       │
+│  ├─ Boss:挂 Boss 总控 + BossHealth + BossHitbox + BossShotCounter │
+│  │       + BossController(引用一个或多个 BehaviorFlow 资产)    │
 │  ├─ 子弹:挂 Bullet(RequireComponent 自动挂 HitboxComponent)         │
 │  └─ BulletPool (场景单例,负责子弹的复用)                          │
 └──────────────────────────────────────────────────────────────────┘
@@ -40,11 +41,15 @@
             ▼                    ▼                    ▼
 ┌──────────────────────┐ ┌──────────────────────┐ ┌────────────────┐
 │ 敌人 AI 层           │ │ Boss 系统层         │ │ 子弹层          │
-│ Enemy (总控)         │ │ BossController       │ │ Bullet + Damage │
-│  ├─ EnemyHealth      │ │  ├─ BossPhase[]      │ │ BulletPool     │
-│  └─ ShooterEnemy     │ │  ├─ BossSignal[]     │ │ BulletModifier │
-│      └─ BehaviorFlow  │ │  └─ BossHealth      │ │ FirePattern SO │
-│          └─ EnemyAction[] │                 │ └────────────────┘
+│ Enemy (总控)         │ │ Boss (总控)           │ │ Bullet + Damage │
+│  ├─ EnemyHealth      │ │  ├─ BossHealth       │ │ BulletPool     │
+│  └─ ShooterEnemy     │ │  ├─ BossHitbox       │ │ BulletModifier │
+│      └─ BehaviorFlow  │ │  ├─ BossShotCounter  │ │ FirePattern SO │
+│          └─ EnemyAction[] │  └─ BossController   │ │                │
+│                 │ │      ├─ BossPhase[]    │ └────────────────┘
+│                 │ │      ├─ BossSignal[]   │
+│                 │ │      └─ BehaviorFlow  │
+│                 │ │          └─ EnemyAction[] │
 └──────────────────────┘ └──────────────────────┘
             │                    │
             └────────┬───────────┘
@@ -178,9 +183,28 @@ FireAction.OnTick
 | `AccelerateModifier` | `Modifier/Accelerate` | `b.Speed += Acceleration * dt` | `Acceleration` (float, 默认 5) |
 | `SteerTowardModifier` | `Modifier/Steer` | 每帧把 `b.AngularSpeed = TurnRate * Deg2Rad`(由 `Bullet.Update` 第 2 步自动累加到 `SteerAngle`) | `TurnRate` (度/秒, 默认 90) |
 | `HomingEnemyModifier` | `Modifier/Homing Enemy` | 通过 `CollisionService.Grid.QueryRadius(...)` 查最近敌人,按 `TurnRate` 限速转向 | `SearchRadius` / `TurnRate` / `LockOnDelay` / `MaxHomingTime` |
-| `BulletColorModifier` | `Modifier/Color` | 给 `b.Renderer.color` 染色(Solid / FadeByLifetime / Flash 三模式);黑白灰 bullet 素材一染色即变彩色,适合做"主炮红 / 子机蓝 / Boss 紫"。需 `Bullet.Renderer` 字段(Awake/Reset 自动 `GetComponentInChildren<SpriteRenderer>(true)` 抓取) | `Mode` / `Color` / `FadeOutColor` / `FadeStart` / `ReferenceLifetime` / `FlashFrequency` / `FlashMinAlpha` |
+| `BulletColorModifier` | `Modifier/Color` | 走 **MaterialPropertyBlock** 给 shader 的 `_TintColor` 染色(Solid / FadeByLifetime / Flash 三模式);**必须配套 `Assets/Shaders/BulletTint.shader`** —— 该 shader 只对暗像素染色,白色高光像素保持纯白(经典 STG 效果)。需 `Bullet.Renderer` 字段(Awake/Reset 自动 `GetComponentInChildren<SpriteRenderer>(true)` 抓取)。需把 bullet prefab 的 SpriteRenderer.Material 切到 `STG/BulletTint` | `Mode` / `Color` / `FadeOutColor` / `FadeStart` / `ReferenceLifetime` / `FlashFrequency` / `FlashMinAlpha` |
 
 **追踪玩家(敌人弹挂的 modifier)是常见扩展**,但当前项目未内置 `HomingPlayerModifier`(因玩家是单例,目标解析无需走网格);按下方"扩展点"小节的三步套路自行实现即可,大致套路是用 `ShinySTG.Player.Player.Instance?.transform` 拿到目标,其余转向逻辑与 `HomingEnemyModifier` 同源。
+
+#### 2.4.1 BulletColorModifier 首次使用步骤(★ 4 步)
+
+> BulletColorModifier 是个 **跨美术 / shader / C# 三层的视觉系统**,首次配置必须在 Unity Editor 里走一遍 4 步:
+>
+> | 步骤 | 在哪儿 | 做什么 |
+> |---|---|---|
+> | **1. 创建材质资产** | Project 窗口右键 → `Create → Material` | 命名 `BulletTint`(放在 `Assets/Shaders/` 旁边或 `Assets/Materials/`)|
+> | **2. 指 shader** | 选中新材质 → Inspector 顶部 Shader 下拉框 | 选 `STG → BulletTint`(配套 shader `Assets/Shaders/BulletTint.shader`)|
+> | **3. 挂到 bullet prefab** | 打开每个 bullet prefab(目前 `Assets/Prefabs/Bullet/` 下 + `NatsuhaAOptionBullet`)| SpriteRenderer.Material 字段 → 拖入 `BulletTint.mat` |
+> | **4. 配 FirePattern modifier** | FirePattern.ModifierPrefabs 数组点 `+` → 选 `Modifier/Color` | 设 `Mode = Solid`、`Color = 主色`(主炮红 / 子机蓝 / Boss 紫 ...) |
+>
+> **典型调试图:**
+> - 子弹全红没高光 → 美术 sprite 灰度分布不对(白色像素太少)。改 sprite 或调 shader 的 `_LuminanceMax`(0~1,默认 0.65)
+> - 子弹染色太淡 → `Color` 字段 alpha 调到 1.0
+> - 子弹不变色 → bullet prefab 的 SpriteRenderer.Material 没指向 `BulletTint.mat`,或 shader 编译失败(看 Console)
+> - 想彻底关闭染色恢复原图 → `Color.a = 0`(透传 alpha=0 到 shader,等价于不染色)
+>
+> **每个 prefab 只需挂一次 material**(prefab 引用,所有 instance 共享)。**每个 FirePattern 需挂自己的 BulletColorModifier**(主炮红 / 子机蓝各自配一份,Inspector 右键 Duplicate 即可)。
 
 ### 2.5 扩展点
 
@@ -200,6 +224,40 @@ FireAction.OnTick
 **为什么不在 BulletPool.Get 里直接传 prefab 数组?**
 - 当前架构只走 `AttachModifiers` 单条挂载路径(在 pool 8 参重载里),保证 modifier 挂载的唯一入口;
 - 如果未来需要"modifier 列表"或"modifier 池化",改 `AttachModifiers` 一处即可,FirePattern 子类不动。
+
+**新增视觉 shader / visual modifier**(参考 `BulletTint.shader` + `BulletColorModifier`):
+- 想加"染色 + 描边"、"染色 + 残影"、"染色 + 自发光"等组合效果,推荐**沿用 BulletColorModifier 的 MPB 套路**:
+  1. 新建 shader `Assets/Shaders/<你的>.shader`,属性约定:
+     - `[PerRendererData] _MainTex` —— SpriteRenderer 自动填
+     - 自定义 `_XxxColor` 字段(RGB = 颜色,A = 强度),用 `[Range]` / `Color` 类型
+     - 用 `Tags { "Queue"="Transparent" "RenderType"="Transparent" }` + `Blend One OneMinusSrcAlpha`(预乘 alpha,跟 Unity 内置 Sprites 一致)
+     - `Fallback "Sprites/Default"` —— shader 编译失败时退回,不黑屏
+  2. 新建 modifier 类 `Assets/Scripts/Bullet/<你的>Modifier.cs`,继承 `BulletModifier`,加 `[SRName("Modifier/<名字>")]`
+  3. 在 modifier 里走 **`MaterialPropertyBlock`**(不是 `Renderer.color` / `material.instance`),因为:
+     - `Renderer.color` 走内置 `tex * color` 公式,做不到"亮像素保持白"
+     - `material.instance` 会破坏 batching(STG 高弹量场景下掉帧)
+     - MPB 走 per-instance 覆盖,不破坏 batching
+  4. modifier.ApplyPattern:
+     ```csharp
+     // 标准三件套:
+     if (_mpb == null) _mpb = new MaterialPropertyBlock();
+     b.Renderer.GetPropertyBlock(_mpb);
+     _mpb.SetColor("_XxxColor", c);
+     b.Renderer.SetPropertyBlock(_mpb);
+     ```
+  5. 新建材质 `.mat`,把 shader 指给它,挂到 prefab(同 §2.4.1 步骤 1-3)
+
+**Shader 性能底线:**
+- 1 个 Pass(不要用 multi-pass,STG 子弹数量大)
+- 不用 `tex2Dlod` / 多重采样(SpriteRenderer 不会传 mip)
+- 不用 `discard`(除非真的需要 alpha cutout,会破坏 early-Z)
+- 顶点变换用 `UnityObjectToClipPos`(标准),不要写自己的矩阵
+
+**不要做的事:**
+- ❌ 在 modifier 里 `b.Renderer.material = ...`(会 instance 化,破坏 batching)
+- ❌ 在 modifier 里 `b.Renderer.color = ...`(走乘法,无法"保留高光")
+- ❌ 在 runtime 创建 .mat 资产(`new Material(...)` 内存泄漏,改用 `Shader.Find` + MPB)
+- ❌ 给 visual modifier 加 `[RequireComponent]`(modifier 是纯 C#,不是 MonoBehaviour)
 
 ---
 
@@ -383,7 +441,7 @@ FireAction.OnTick
 **协作边界:**
 
 - **总控统一挂载,不暴露 Inspector 拖拽** —— `Player.cs` / `Enemy.cs` / `Bullet.cs` 都用 `[RequireComponent(typeof(HitboxComponent))]` + Awake 里 `GetComponent` 自动注入,无需手填。
-- Boss 暂时不挂 HitboxComponent(走 `BossHealth` 自己的逻辑,正交);若未来想用同一套 AABB,可直接挂 HitboxComponent 子类。
+- Boss 现在与普通敌人一致,挂 `BossHitbox : HitboxComponent`(`Team=Enemy`),玩家弹按 Player↔Enemy 阵营配对打到 Boss,CollisionService 走与普通敌人同构的查询路径。
 - `CollisionService` 是唯一一处真正遍历"子弹 vs 实体"的地方,不直接读写 HP 字段 —— 玩家弹伤害来自 `b.Damage`,敌人弹命中无视 Damage,固定扣玩家 1 命。
 - modifier 通过 `CollisionService.Grid` 读网格是**只读**的,不得调用 `Clear` / `Insert`(否则会破坏本帧的碰撞判定)。
 

@@ -55,7 +55,8 @@
 | 新发射扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡 ...) | `Assets/Scripts/Bullet/FireExtension/` | 子类继承 `FireExtension` + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单 |
 | 新敌人行为(动画 / 隐身 / 加血) | `Assets/Scripts/Enemy/AI/Actions/` | 子类继承 `EnemyAction`,加 `[SRName("Action/<名字>")]` |
 | 新移动方式(贝塞尔 / 圆形 / 追踪) | `Assets/Scripts/Enemy/AI/MoveBehaviours/` | 子类继承 `MoveBehaviour`,加 `[SRName("Move/<名字>")]` |
-| 新子弹效果(加速 / 转向 / 减速 / 分裂 / 追踪) | `Assets/Scripts/Bullet/` | 子类继承 `BulletModifier`,加 `[SRName("Modifier/<名字>")] + [Serializable]`,在 `Modify(Bullet, dt)` 里改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed`。引用类型字段要 override `Clone()` 深拷 |
+| **新子弹逻辑效果(加速 / 转向 / 减速 / 分裂 / 追踪)** | `Assets/Scripts/Bullet/` | 子类继承 `BulletModifier`,加 `[SRName("Modifier/<名字>")] + [Serializable]`,在 `Modify(Bullet, dt)` 里改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed` 等飞行字段。引用类型字段要 override `Clone()` 深拷 |
+| **新子弹视觉效果(染色 / 描边 / 残影 / 自发光)** | C# modifier 放 `Assets/Scripts/Bullet/`;配套 shader 放 `Assets/Shaders/`;配套 material `.mat` 放 `Assets/Shaders/` 或 `Assets/Materials/` | modifier 走 **MaterialPropertyBlock**(不走 `Renderer.color` / `material.instance`,详见 ARCHITECTURE §2.4.1 + §2.5 末段)。shader 文件命名 `STG/<名字>`,必须有 `Fallback "Sprites/Default"` 防编译失败黑屏 |
 | 新"行为流"资产(符卡 / 小怪模式) | Project 视图右键 → Create → STG → Behavior Flow | SO 资产,无需写代码 |
 | 新 Boss 阶段 | `Assets/Scripts/Enemy/Boss/Phases/` | 子类继承 `BossPhase` |
 | 新 Boss 阶段切换条件 | `Assets/Scripts/Enemy/Boss/Signals/` | 子类继承 `BossSignal` |

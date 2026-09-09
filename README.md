@@ -52,7 +52,7 @@ Assets/Scripts/
 │   ├── BulletPool.cs (+ BossShotCounter 钩子)
 │   ├── Bullet.cs                             # 飞行体 + modifier 调度
 │   ├── BulletModifier.cs                     # 多态修饰基类 + Accelerate / Steer / Homing Enemy 内置
-│   ├── BulletColorModifier.cs                # 视觉修饰:染色 / 渐变 / 闪烁(Modifier/Color)
+│   ├── BulletColorModifier.cs                # 视觉修饰:暗部染色 / 渐变 / 闪烁(Modifier/Color,配套 Shaders/BulletTint.shader)
 │   ├── FirePattern.cs (+ GetFireCount + FireExtension 扩展点)
 │   ├── FireExtension/                          # 基础发射逻辑的多态扩展(详见 ARCHITECTURE.md §3.1)
 │   │   ├── FireExtension.cs                    # 基类 + BaseAngleFireExtension / PlayerAimFireExtension 内置
@@ -72,13 +72,15 @@ Assets/Scripts/
 │   │   ├── EnemyAction.cs / MoveBehaviour.cs
 │   │   ├── MoveBehaviours/LinearMove.cs
 │   │   └── Actions/                          # Fire/Move/Wait/SelfDestruct/Parallel/Sequence
-│   └── Boss/                                 # Boss 多阶段系统
-│       ├── BossController.cs                 # 主驱动
-│       ├── BossHealth.cs                     # 多管血
-│       ├── BossShotCounter.cs                # 全局开火计数
+│   └── Boss/                                 # Boss 多阶段系统(对齐 Enemy 子树风格)
+│       ├── Boss.cs                            # 总控(对齐 Enemy.cs)+ [RequireComponent] 自动挂
+│       ├── BossController.cs                  # 协调器:阶段 / Signal / Stop()
+│       ├── BossHealth.cs                      # 多管血 + static Alive 池 + IHomingTarget
+│       ├── BossHitbox.cs                      # HitboxComponent 子类(Team=Enemy)
+│       ├── BossShotCounter.cs                 # 全局开火计数
 │       ├── BossPhase.cs / PhaseTrigger.cs
-│       ├── Phases/ShooterPhase.cs            # 行为流阶段(持 BehaviorFlow)
-│       └── Signals/                          # BossSignal + 6 个内置信号
+│       ├── Phases/ShooterPhase.cs             # 行为流阶段(持 BehaviorFlow)
+│       └── Signals/                           # BossSignal + 6 个内置信号
 └── Player/                                   # 玩家系统(详见 ARCHITECTURE.md §7)
     ├── Player.cs                             # 主控单例 + 输入分发
     ├── PlayerMovement.cs                     # 八方向 + Focus 低速
@@ -123,11 +125,13 @@ Project 窗口右键 → Create → STG → Behavior Flow
 
 ### 4. Boss
 
-- 创建 boss prefab,挂 `BossHealth` + `BossShotCounter` + `BossController`。
+- 创建 boss prefab,挂 `Boss` 总控(`[RequireComponent]` 自动加挂 `BossHealth` + `BossHitbox` + `BossShotCounter` + `BossController`,无需手填)。
 - 在 `BossHealth.Bars` 配置多管血。
 - 在 `BossController.Phases` 数组里下拉选 `Phase/Shooter`,把不同 .flow 资产拖到每个 phase 的 `Flow` 字段。
 - 在 `BossController.Signals` 数组里下拉选内置信号(HP / Bar / Total / Phase Time / Shots)。
 - 在每个 phase 的 `ExitTriggers` 数组里配退出条件(Signal + Op + Threshold)。
+- **玩家弹可打 Boss**:`BossHitbox` Team=Enemy,CollisionService 走同 EnemyHealth 同构的查询路径;
+- **追踪弹可锁 Boss**:`BossHealth` 实现 `IHomingTarget`,`HomingEnemyModifier` 统一识别。
 
 ### 5. 创建 FirePattern 资产
 

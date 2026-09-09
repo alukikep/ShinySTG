@@ -77,8 +77,8 @@ public class SteerTowardModifier : BulletModifier
 ///
 /// 注意:
 ///   - 只能挂玩家阵营的子弹上(语义约束:谁追击敌人)。
-///   - Boss 不在 EnemyHealth.Alive 中,因此不会被追踪(架构上 Boss 走 BossHealth,正交)。
-///   - modifier 不持有 target 的 Transform 引用,只持有 EnemyHealth(避免 target Destroy 时伪 null 漏检)。
+///   - 通过 IHomingTarget 接口识别目标,EnemyHealth 和 BossHealth 都可被锁定(已统一实现接口)。
+///   - modifier 不持有 target 的 Transform 引用,只持有 IHomingTarget 引用(避免 target Destroy 时伪 null 漏检)。
 ///   - 默认值:SearchRadius=6,TurnRate=180,LockOnDelay=0,MaxHomingTime=-1。
 /// </summary>
 [Serializable, SRName("Modifier/Homing Enemy")]
@@ -106,8 +106,8 @@ public class HomingEnemyModifier : BulletModifier
 
     // ── per-instance 状态(Clone 复制,安全) ──
     float _timer;
-    EnemyHealth _target;       // null = 未锁定
-    bool _warnedNoService;     // 是否已打印过"无 CollisionService"警告(每颗弹只警告一次)
+    IHomingTarget _target;                   // null = 未锁定;EnemyHealth / BossHealth 都可
+    bool _warnedNoService;                   // 是否已打印过"无 CollisionService"警告(每颗弹只警告一次)
 
     public override void Modify(Bullet b, float dt)
     {
@@ -145,7 +145,7 @@ public class HomingEnemyModifier : BulletModifier
         // 4. 目标失效检测 / 移出范围 → 重搜
         if (!IsTargetValid(b))
         {
-            _target = FindNearestEnemy(b, cs);
+            _target = FindNearestTarget(b, cs);
             if (_target == null)
             {
                 b.AngularSpeed = 0f;  // ★ 找不到目标 → 清零,子弹保持当前 SteerAngle 直线飞行
@@ -180,13 +180,16 @@ public class HomingEnemyModifier : BulletModifier
     }
 
     /// <summary>
-    /// 一次 QueryRadius 拿半径内所有 hitbox,过滤 Enemy 阵营,选最近。
+    /// 一次 QueryRadius 拿半径内所有 hitbox,过滤 Enemy 阵营,反查 IHomingTarget 组件,选最近。
     /// 等价于"先查自己 cell → 扩展到 3×3 → 5×5 ..."(因为单次 query 拿所有候选,选最近是同一个结果)。
+    ///
+    /// 反查用 GetComponentInParent<IHomingTarget>():一次 ComponentInParent 调用覆盖 EnemyHealth / BossHealth 两种类型,
+    /// 新目标类型只需加 : IHomingTarget,无需改本方法。
     /// </summary>
-    EnemyHealth FindNearestEnemy(Bullet b, ShinySTG.Hitbox.CollisionService cs)
+    IHomingTarget FindNearestTarget(Bullet b, ShinySTG.Hitbox.CollisionService cs)
     {
         var hits = cs.Grid.QueryRadius(b.Position, SearchRadius);
-        EnemyHealth best = null;
+        IHomingTarget best = null;
         float bestSqr = float.MaxValue;
         for (int i = 0; i < hits.Count; i++)
         {
@@ -194,17 +197,17 @@ public class HomingEnemyModifier : BulletModifier
             if (hb == null) continue;
             if (hb.Team != ShinySTG.Hitbox.CollisionTeam.Enemy) continue;
 
-            // 拿到 hitbox 对应的 EnemyHealth。
+            // 拿到 hitbox 对应的 IHomingTarget(EnemyHealth 或 BossHealth)。
             // 性能:这里走 GetComponentInParent ~200ns,但只在"首次搜索"时跑一次,
             // 后续锁定后每帧只做 IsTargetValid + Atan2 转向,不再 GetComponent。
-            var e = hb.GetComponentInParent<EnemyHealth>();
-            if (e == null || e.IsDead) continue;
+            var t = hb.GetComponentInParent<IHomingTarget>();
+            if (t == null || t.IsDead) continue;
 
-            float sqr = ((Vector2)b.Position - e.Position).sqrMagnitude;
+            float sqr = ((Vector2)b.Position - t.Position).sqrMagnitude;
             if (sqr < bestSqr)
             {
                 bestSqr = sqr;
-                best = e;
+                best = t;
             }
         }
         return best;

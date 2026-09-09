@@ -15,7 +15,7 @@ MonoBehaviour:
   BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
   ModifierPrefabs:
   - rid: 6177226939113930752
-  - rid: 6177226955828494345
+  - rid: 6177226960998236161
   FireExtension:
     rid: 6177226955828494342
   Speed: 2
@@ -34,13 +34,14 @@ MonoBehaviour:
       type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
       data:
         BaseAngle: 270
-    - rid: 6177226955828494345
+    - rid: 6177226960998236161
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:
         Mode: 0
-        Color: {r: 0, g: 0.26068115, b: 1, a: 1}
+        Color: {r: 0, g: 0.07257223, b: 1, a: 1}
         FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
         FadeStart: 0.5
         ReferenceLifetime: 1.5
         FlashFrequency: 5
         FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1

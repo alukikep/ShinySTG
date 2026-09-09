@@ -5,15 +5,15 @@ using UnityEngine;
 namespace ShinySTG.Level.SpawnEntries
 {
     /// <summary>
-    /// Boss 出场条目 —— 当前为留壳版本,只负责 "生成 boss prefab 到指定位置"。
-    /// 后续要接 BossController.EnterPhase / 多阶段 / OnDefeated 信号时,
-    /// 在本类里覆盖 OnTrigger 的 boss 启动部分即可,不动 LevelController。
+    /// Boss 出场条目:在指定时间点于指定位置实例化 boss prefab,并触发关卡级 OnBossSpawned 事件。
+    /// 死亡收尾的职责已下沉到 Boss 子树:
+    ///   - BossHealth.OnDeath → Boss 总控.HandleDeath → BossController.Stop()
+    ///     → phase.OnExit + LevelController.NotifyBossDefeated + Destroy。
+    /// 本类不再订阅任何 boss 内部事件,保持 SpawnEntry 子类"只管生成"的语义。
     ///
     /// 用法:
-    ///   - BossPrefab 上必须挂 BossController + BossHealth + BossShotCounter(BossController 的 RequireComponent 不在文件里,需手动配齐)。
-    ///   - 本类当前只调 Instantiate + 摆位,不主动 Start BossController
-    ///     (因为 BossController 已有 Start 自己跑第一阶段)。
-    ///   - 留给未来:接 OnBossDefeated → LevelController.OnBossDefeated → 后续 SpawnEntry 可订阅。
+    ///   - BossPrefab 上挂 Boss 总控即可,`[RequireComponent]` 自动加挂 BossHealth + BossHitbox + BossShotCounter + BossController,无需手填。
+    ///   - BossController.Start 会自动跑第一阶段,本类不主动驱动。
     /// </summary>
     [Serializable, SRName("Entry/Boss")]
     public class BossSpawnEntry : SpawnEntry
@@ -55,7 +55,10 @@ namespace ShinySTG.Level.SpawnEntries
             }
 
             runtime.Track(go);
-            // 留口:未来可在此订阅 BossHealth.OnDeath → LevelController.NotifyBossDefeated(go)
+
+            // 广播 OnBossSpawned:对齐 §9 "事件发送权集中在 Controller" 的协作边界。
+            // UI / 计分 / 音效系统订阅 LevelController.OnBossSpawned 即可知道 boss 何时入场。
+            LevelController.Instance?.NotifyBossSpawned(go);
         }
     }
 }

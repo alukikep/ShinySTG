@@ -56,6 +56,32 @@ public class Bullet : MonoBehaviour
         // Renderer 是可选的(走 [SerializeReference] 多态视觉 modifier 的入口);
         // 用 GetComponentInChildren(true) 兼顾 SpriteRenderer 在子物体上的 prefab 结构。
         if (Renderer == null) Renderer = GetComponentInChildren<SpriteRenderer>(true);
+
+        // ★ 视觉兼容兜底:BulletColorModifier 通过 MaterialPropertyBlock 写 _TintColor,
+        //   但配套 shader STG/BulletTint 才会读这个字段。如果 prefab 的 SpriteRenderer 用了
+        //   其他 shader(最常见的就是忘了切的 Sprites/Default),染色/渐变/闪烁会"静默失效"。
+        //   这里做一次懒切换:不是 STG/BulletTint → 自动换成配套 shader 派生的 .mat 实例。
+        //   ★ 不会破坏 batching:STG/BulletTint 的 _TintColor 走 [PerRendererData],MPB 友好。
+        //   ★ 不会污染 prefab:这里改的是 runtime 实例的 sharedMaterial,prefab 源资产不动。
+        EnsureTintCompatibleMaterial();
+    }
+
+    /// <summary>
+    /// 确保 SpriteRenderer.sharedMaterial 的 shader 是 STG/BulletTint。
+    /// 如果不是,运行时用 Shader.Find 创建一个 material 替换上去(per-instance 不破坏 prefab)。
+    /// 配套 shader 路径:Assets/Shaders/BulletTint.shader。
+    /// </summary>
+    void EnsureTintCompatibleMaterial()
+    {
+        if (Renderer == null) return;
+        var sm = Renderer.sharedMaterial;
+        if (sm == null || sm.shader == null) return;
+        if (sm.shader.name == "STG/BulletTint") return;  // 已对,跳过
+
+        var sh = Shader.Find("STG/BulletTint");
+        if (sh == null) return;  // shader 没编进来(不应该发生,兜底静默)
+        var tint = new Material(sh) { name = "BulletTint (auto-fallback)" };
+        Renderer.sharedMaterial = tint;
     }
 
     void Reset()

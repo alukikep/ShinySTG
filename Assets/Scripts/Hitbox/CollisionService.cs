@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
-using ShinySTG.EnemyAI; // EnemyHealth (正交解耦,只通过 TakeDamage / Alive 接口通信)
+using ShinySTG.EnemyAI; // EnemyHealth / BossHealth (正交解耦,只通过 TakeDamage / Alive 接口通信)
+using ShinySTG.EnemyAI.Boss; // BossHealth(Boss 子树命名空间)
 // 注意:不要 using ShinySTG.Player,因为它的 Player 类与 namespace 同名,
 //       using 后 C# 会优先把 Player 解析为 namespace,导致 Player.Instance 找不到类成员。
 //       下面所有 Player / PlayerHealth 都用全限定名 ShinySTG.Player.X。
@@ -30,7 +31,7 @@ namespace ShinySTG.Hitbox
     ///
     /// 与既有架构的边界:
     ///   - 不读 Player / Enemy 的 HP 字段,只调 TakeDamage / TakeHit 入口。
-    ///   - Boss 走 BossHealth(不在 EnemyHealth.Alive 里),本服务不处理 Boss vs 玩家弹。
+    ///   - Boss 走 BossHealth(与 EnemyHealth 并列的全局 alive 池),玩家弹同样按 Player↔Enemy 阵营配对打 Boss。
     ///   - 不处理子弹 vs 子弹(STG 通常不处理)。
     ///   - 网格是默认且唯一实现,无开关。
     /// </summary>
@@ -84,6 +85,8 @@ namespace ShinySTG.Hitbox
         public UniformGrid Grid => _grid;
         /// <summary>HitboxComponent.GetInstanceID() → EnemyHealth 反查表,每帧从 EnemyHealth.Alive 重建。</summary>
         readonly Dictionary<int, EnemyHealth> _enemyByHitboxID = new(64);
+        /// <summary>HitboxComponent.GetInstanceID() → BossHealth 反查表,每帧从 BossHealth.Alive 重建。Boss 走相同阵营配对。</summary>
+        readonly Dictionary<int, BossHealth> _bossByHitboxID = new(16);
         readonly List<Bullet> _toReturn = new(64);
 
         Rect _playerCachedBounds;
@@ -122,6 +125,18 @@ namespace ShinySTG.Hitbox
                 _enemyByHitboxID[e.Hitbox.GetInstanceID()] = e;
             }
 
+            // 2b. Boss → 网格 + ID 缓存(跟普通敌人同样的 Player↔Enemy 阵营配对)
+            var aliveBoss = BossHealth.Alive;
+            for (int i = 0; i < aliveBoss.Count; i++)
+            {
+                var b = aliveBoss[i];
+                if (b == null || b.IsDead) continue;
+                if (b.Hitbox == null) continue;
+                b.Hitbox.RefreshCachedBounds();
+                _grid.Insert(b.Hitbox);
+                _bossByHitboxID[b.Hitbox.GetInstanceID()] = b;
+            }
+
             // 3. 子弹 → 网格(玩家弹 + 敌人弹都进网格,由查询侧的阵营过滤来配对)
             foreach (var b in BulletPool.Instance.ActiveBullets)
             {
@@ -147,6 +162,9 @@ namespace ShinySTG.Hitbox
 
             // 5. 玩家弹 vs 敌人
             TickPlayerBulletsVsEnemies();
+
+            // 5b. 玩家弹 vs Boss(同 EnemyHealth 路径,但反查 _bossByHitboxID)
+            TickPlayerBulletsVsBoss();
 
             // 6. 敌人弹 vs 玩家(含擦弹)
             if (_playerAlive) TickEnemyBulletsVsPlayer();
@@ -201,6 +219,46 @@ namespace ShinySTG.Hitbox
                         // 玩家弹伤害由 b.Damage 决定(由 FirePattern.Damage 经 pool.Get 写入)。
                         enemy.TakeDamage(b.Damage);
                         OnPlayerBulletHitEnemy?.Invoke(b, enemy);
+                        _toReturn.Add(b);
+                        hit = true;
+                    }
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 玩家弹 vs Boss
+        // 跟 TickPlayerBulletsVsEnemies 同构:Query3x3 候选 → 阵营过滤 → 反查 BossHealth → AABB → TakeDamage + 事件。
+        // 当前未抽泛型:两个分支重复 ~30 行,可读性优先;后续要加新阵营再抽 TickPlayerBulletsVsTargets<T>。
+        // ═══════════════════════════════════════════════════════════
+        void TickPlayerBulletsVsBoss()
+        {
+            foreach (var b in BulletPool.Instance.ActiveBullets)
+            {
+                if (b == null || b.Hitbox == null) continue;
+                if (b.Hitbox.Team != CollisionTeam.Player) continue;
+
+                Vector2 bPos = b.Hitbox._cachedBounds.center;
+                var cands = _grid.Query3x3(bPos);
+                Rect bRect = b.Hitbox._cachedBounds;
+                bool hit = false;
+
+                for (int i = 0; i < cands.Count && !hit; i++)
+                {
+                    var hb = cands[i];
+                    if (hb == null) continue;
+                    if (hb.Team != CollisionTeam.Enemy) continue;
+
+                    // ID 缓存反查 BossHealth(优先 boss 缓存;若同一 Hitbox 也登记在 enemy 缓存,普通敌人查不到)
+                    if (!_bossByHitboxID.TryGetValue(hb.GetInstanceID(), out var boss)) continue;
+                    if (boss.IsDead) continue;
+
+                    if (HitboxMath.AABBOverlap(bRect, hb._cachedBounds))
+                    {
+                        boss.TakeDamage(b.Damage);
+                        // OnPlayerBulletHitEnemy 事件签名是 (Bullet, EnemyHealth),这里不触发 —
+                        //   Boss 命中后通过 BossHealth.OnAnyDeath 广播死亡,Boss 总控再广播 OnBossDefeated。
+                        //   未来若要 Boss 命中特效/计分,可单独加 OnPlayerBulletHitBoss(Bullet, BossHealth)。
                         _toReturn.Add(b);
                         hit = true;
                     }

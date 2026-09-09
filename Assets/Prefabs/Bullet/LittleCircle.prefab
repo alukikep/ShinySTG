@@ -54,7 +54,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 824fca0efcf6b6e4dbb70fcdf104dde3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -125,6 +125,8 @@ MonoBehaviour:
   AngularSpeed: 0
   SteerAngle: 0
   Lifetime: 0
+  HasGrazed: 0
   SourcePrefab: {fileID: 0}
   Damage: 1
   Hitbox: {fileID: 6187665568572905087}
+  Renderer: {fileID: 0}

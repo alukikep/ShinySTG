@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+// IHomingTarget 在全局命名空间(与 Bullet/BulletModifier/BulletPool 同款),无需 using。
 
 namespace ShinySTG.EnemyAI.Boss
 {
@@ -12,9 +14,24 @@ namespace ShinySTG.EnemyAI.Boss
     ///   - CurrentBarIndex     : 当前管编号(0/1/2/...)
     ///   - TotalHpPercent      : 所有管加权累计剩余百分比
     ///   - MaxHp / CurrentHp   : 单管兼容属性(Bars 为空时退化)
+    ///
+    /// 与 EnemyHealth 对齐(参考同名 EnemyHealth 字段):
+    ///   - Hitbox:HitboxComponent 引用(由 Boss 总控 Awake 自动注入)
+    ///   - Position:读 Hitbox 优先,fallback 到 transform.position
+    ///   - static Alive:IReadOnlyList<BossHealth> 全局池(供 CollisionService 拉取)
+    ///   - static OnAnyDeath 事件(全局死亡广播)
+    ///   - 实例 OnDeath 事件(供 Boss 总控订阅,统一收尾)
+    ///
+    /// 实现 IHomingTarget:追踪弹统一目标接口。Position / IsDead 已存在,签名兼容。
     /// </summary>
-    public class BossHealth : MonoBehaviour
+    public class BossHealth : MonoBehaviour, IHomingTarget
     {
+        // ─── 全局 alive 池(供 CollisionService / 全局统计拉取)──
+        static readonly List<BossHealth> _alive = new();
+        public static IReadOnlyList<BossHealth> Alive => _alive;
+
+        /// <summary>任何 Boss 死亡时触发。订阅者自行 null-check 或按需过滤。</summary>
+        public static event Action<BossHealth> OnAnyDeath;
         [Serializable]
         public class HealthBar
         {
@@ -41,15 +58,41 @@ namespace ShinySTG.EnemyAI.Boss
         [Tooltip("兼容字段:Bars 为空时把 MaxHp 当单管血。")]
         public float LegacyMaxHp = 1000f;
 
-        [HideInInspector] public int   CurrentBarIndex;
+        [Header("Hitbox (供碰撞层读位置)")]
+        [Tooltip("由 Boss 总控 Awake 自动注入,无需手填。\n" +
+                 "空时回退到 transform.position。")]
+        public ShinySTG.Hitbox.HitboxComponent Hitbox;
+
+        [HideInInspector] public int CurrentBarIndex;
         [HideInInspector] public float LegacyCurrentHp;
+
+        public Vector2 Position =>
+            Hitbox != null ? Hitbox.Position : (Vector2)transform.position;
+
+        // OnDeath 防重入:TakeDamage 每次进入只触发一次。
+        bool _deathFired;
 
         /// <summary>某管被打空事件(int = 被清空的 BarIndex)。</summary>
         public event Action<int> OnBarDepleted;
 
+        /// <summary>整个 Boss 被打空(所有管清零 / LegacyCurrentHp 归零)时触发一次。由 BossController 订阅做收尾。</summary>
+        public event Action OnDeath;
+
         void Awake()
         {
             InitBars();
+            Hitbox = GetComponent<BossHitbox>();
+        }
+
+        void OnEnable()
+        {
+            if (!_alive.Contains(this)) _alive.Add(this);
+
+        }
+
+        void OnDisable()
+        {
+            _alive.Remove(this);
         }
 
         void InitBars()
@@ -112,6 +155,7 @@ namespace ShinySTG.EnemyAI.Boss
         /// <summary>
         /// 受到伤害(给玩家子弹的逻辑调用)。
         /// 自动处理"扣穿管"、"切到下一管"、"打空事件"、"全部死亡"。
+        /// 死亡时触发一次 OnDeath 事件(防重入),由 BossController 订阅做收尾。
         /// </summary>
         public void TakeDamage(float dmg)
         {
@@ -121,28 +165,38 @@ namespace ShinySTG.EnemyAI.Boss
             {
                 // 兼容单管模式
                 LegacyCurrentHp = Mathf.Max(0f, LegacyCurrentHp - dmg);
-                return;
+            }
+            else
+            {
+                float remaining = dmg;
+                while (remaining > 0f && CurrentBarIndex < Bars.Length)
+                {
+                    var bar = Bars[CurrentBarIndex];
+                    if (bar == null) { CurrentBarIndex++; continue; }
+
+                    bar.CurrentHp -= remaining;
+                    if (bar.CurrentHp <= 0f)
+                    {
+                        remaining = -bar.CurrentHp; // 溢出伤害继续扣下一管
+                        bar.CurrentHp = 0f;
+                        if (bar.TriggerOnEmpty)
+                            OnBarDepleted?.Invoke(CurrentBarIndex);
+                        CurrentBarIndex++;
+                    }
+                    else
+                    {
+                        remaining = 0f;
+                    }
+                }
             }
 
-            float remaining = dmg;
-            while (remaining > 0f && CurrentBarIndex < Bars.Length)
+            // 死亡判定(覆盖多管全清 + Legacy 单管归零 两条路径)。
+            // IsDead 已在函数开头早返,所以此处只在首次真正死亡时进入。
+            if (IsDead && !_deathFired)
             {
-                var bar = Bars[CurrentBarIndex];
-                if (bar == null) { CurrentBarIndex++; continue; }
-
-                bar.CurrentHp -= remaining;
-                if (bar.CurrentHp <= 0f)
-                {
-                    remaining = -bar.CurrentHp; // 溢出伤害继续扣下一管
-                    bar.CurrentHp = 0f;
-                    if (bar.TriggerOnEmpty)
-                        OnBarDepleted?.Invoke(CurrentBarIndex);
-                    CurrentBarIndex++;
-                }
-                else
-                {
-                    remaining = 0f;
-                }
+                _deathFired = true;
+                OnDeath?.Invoke();        // 实例事件:供 Boss 总控订阅做收尾
+                OnAnyDeath?.Invoke(this); // 静态事件:供全局订阅
             }
         }
     }

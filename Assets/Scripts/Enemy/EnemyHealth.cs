@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+// IHomingTarget 在全局命名空间(与 Bullet/BulletModifier/BulletPool 同款),无需 using。
 
 namespace ShinySTG.EnemyAI
 {
@@ -16,8 +17,10 @@ namespace ShinySTG.EnemyAI
     ///   每个 EnemyHealth 在 OnEnable 加入 _alive,OnDisable 移除;
     ///   KillRewardSpawner / ScoreManager 等系统订阅一次就能拿到所有敌人死亡通知,
     ///   不需要每帧 FindObjectsOfType。
+    ///
+    /// 实现 IHomingTarget:追踪弹统一目标接口。Position / IsDead 已存在,签名兼容。
     /// </summary>
-    public class EnemyHealth : MonoBehaviour
+    public class EnemyHealth : MonoBehaviour, IHomingTarget
     {
         // ─── 全局 alive 池(供订阅者高效过滤,场景切换由 OnDisable 自动清理)──
         static readonly List<EnemyHealth> _alive = new();
