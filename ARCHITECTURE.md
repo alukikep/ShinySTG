@@ -18,6 +18,7 @@
 8. [Hitbox 系统(统一 AABB)](#8-hitbox-系统统一-aabb)
 9. [关卡系统(LevelDefinition + LevelController)](#9-关卡系统leveldefinition--levelcontroller)
 10. [关卡编辑器子系统](#10-关卡编辑器子系统)
+11. [音频音乐系统(AudioSystem)](#11-音频音乐系统audiosystem)
 
 ---
 
@@ -284,22 +285,104 @@ FireAction.OnTick
 
 详见 `Assets/Scripts/Bullet/FirePattern*`。
 
-### 3.1 FireExtension 扩展点(基础发射逻辑的多态扩展)
+### 3.1 FireExtension 扩展点(模块数组 + Pipeline 模型)
 
-**职责:** 对 FirePattern 子类的"中心方向解析"做可插拔的多态扩展。任何"决定本轮发射方向"的策略(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...)都属于 FireExtension,而非 FirePattern 本身 —— FirePattern 负责"怎么射"的几何(几颗 / 扇形 / 环形 / 容器),FireExtension 负责"朝哪儿射"。
+**职责:** 对 FirePattern 子类的"中心方向解析"做可插拔、可组合的多态扩展。任何"决定本轮发射方向"的策略(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...)都属于 FireExtension,而非 FirePattern 本身 —— FirePattern 负责"怎么射"的几何(几颗 / 扇形 / 环形 / 容器),FireExtension 负责"朝哪儿射"。
+
+**★ 核心架构:模块数组 + 角度管道(Pipeline)**
+
+FirePattern 基类持有 `FireExtensions : FireExtension[]` 数组,数组里每个模块按顺序串成一条"角度管道":
+
+```
+center = rotationRad                                       ← 起点(外部累积角)
+for ext in FireExtensions (按数组顺序遍历):
+    center = ext.ProcessAngle(from, rotationRad, center)   ← 上一步 → 下一步
+return center
+```
+
+每个模块接收"上一步产出的角度"和"起点 rotationRad",产出"下一步要用的角度"。
+
+**模块类型分类(语义)**
+
+| 类型 | 行为 | 内置实例 |
+|---|---|---|
+| **覆盖型** | 直接把角度设为某值(忽略上一步的 currentAngleRad) | `BaseAngleFireExtension`(锚点)、`PlayerAimFireExtension`(瞄玩家时) |
+| **透传型** | 直接返回 currentAngleRad,不动 | (未来的"过滤/检测"型) |
+| **累加型** | 在 currentAngleRad 上叠加偏移 | `OffsetAngleFireExtension`(叠 N°,常配合 PlayerAim 实现"绕后弹":瞄向玩家但飞向玩家背后) |
+
+**★ 拼装示例 ★**
+
+```
+[]                                            → 兜底:270° + rotationRad(空数组等价旧版 default)
+[Base(270°)]                                  → 始终向下开火
+[Base(270°), PlayerAim]                       → 默认向下,瞄得到玩家时改指向玩家(等价旧版"瞄准 + 兜底")
+[Base(0°), PlayerAim]                         → 默认向右,瞄得到时改指向玩家
+[PlayerAim]                                   → 瞄得到指向玩家;瞄不到 → 透传 rotationRad(等于默认方向)
+[PlayerAim, Offset Angle(+180°)]              → 玩家方向的反方向("绕后弹":瞄准玩家但飞向玩家背后)
+[Base(270°), PlayerAim, Offset Angle(+180°)]  → 瞄得到:玩家反方向;瞄不到:默认向下
+```
 
 **协作边界:**
-- 字段挂在 FirePattern 基类上(`[SerializeReference, SR] FireExtension FireExtension`),所有 FirePattern 子类(Arc / Line / Ring / Composite / 未来)自动支持 Inspector 下拉。
-- 子类通过静态 helper `FireExtensionResolver.ResolveCenterAngle(...)` 拿方向;helper 与基类解耦,可被其他系统复用。
+- 字段挂在 FirePattern 基类上(`[SerializeReference, SR] FireExtension[] FireExtensions`),所有 FirePattern 子类(Arc / Line / Ring / Composite / 未来)自动支持 Inspector 下拉。
+- 子类通过静态 helper `FireExtensionResolver.ResolvePipeline(extensions, from, rotationRad)` 拿方向;helper 与基类解耦,可被其他系统复用。
 - 走 SpawnBullet 路径的"必须走基类 helper"约束不变(详见 §3)。
 - `CompositeFirePattern` 是纯容器(只有 `Children` + 透传 + 递归 GetFireCount),自己不持任何发射字段 —— 它对 FireExtension 的处理是"透传给 children,各自解析"。
 
 **类型:**
-- 基类:`FireExtension`(纯 C# `[Serializable] abstract class`)
-- 内置子类:`BaseAngleFireExtension` `[SRName("FireExtension/Base")]` / `PlayerAimFireExtension` `[SRName("FireExtension/Player Aim")]`
-- Helper:`FireExtensionResolver`(静态,Null-safe,`extension == null` 时 fallback 到默认方向,与旧版 normal 行为一致)
+- 基类:`FireExtension`(纯 C# `[Serializable] abstract class`),核心接口 `ProcessAngle(from, baseRotationRad, currentAngleRad)` 是抽象方法。
+- 内置子类:
+  - `BaseAngleFireExtension` `[SRName("FireExtension/Base")]` —— 覆盖型,角度 = `BaseAngle + baseRotationRad`(作为管道锚点)
+  - `PlayerAimFireExtension` `[SRName("FireExtension/Player Aim")]` —— 覆盖型,瞄得到玩家 → 角度 = atan2(player - from);瞄不到 → **透传** currentAngleRad(兜底交给上游 Base)
+  - `OffsetAngleFireExtension` `[SRName("FireExtension/Offset Angle")]` —— 累加型,角度 = currentAngleRad + OffsetAngle(逆时针为正);常配合 PlayerAim 实现"绕后弹"
+- Helper:`FireExtensionResolver`(静态,Null-safe,`extensions == null` 或空数组时 fallback 到默认 270° + rotationRad)。
 
-**扩展点:** 新增"瞄准 X / 旋转 / 振荡"等策略 = 新建 `FireExtension` 子类 + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单。详见 `Assets/Scripts/Bullet/FireExtension/`。
+**PlayerAim 的兜底语义变化(从单字段 → 数组)**
+- 旧版:`PlayerAimFireExtension.BaseAngle = 270`,瞄不到时退回 BaseAngle —— 字段既是"瞄准偏移"又是"兜底",语义脏。
+- 新版:删掉 `BaseAngle` 字段,瞄不到时直接透传 `currentAngleRad`。**兜底职责交给上游 Base 模块**(把 Base 放数组第一位即可)。
+
+**Base 模块的位置偏移(`PositionOffset` 字段)**
+
+`BaseAngleFireExtension` 除了 `BaseAngle` 外还持有一个 `PositionOffset: Vector2` 字段,**世界坐标**,用于设置"实际发射位置"相对"标准位置"的偏移:
+
+```
+标准位置 = FirePattern 调用方传入的 position(敌人/Boss/玩家所在位置)
+实际位置 = 标准位置 + BaseAngleFireExtension.PositionOffset
+```
+
+**生效时机:Resolver 入口处**(pipeline 开始之前)。
+- 调用方用 `FireExtensionResolver.ResolvePipelineWithOffset(extensions, ref from, rotationRad)`(3 个内置 FirePattern 子类都已改用此版本)。
+- 进入 pipeline 之前:如果 `extensions[0]` 是 `BaseAngleFireExtension`,先把 `PositionOffset` 加到 `from`,**所有后续模块(包括 PlayerAim 等瞄准类)都用修正后的 from**。
+- `ResolvePipeline`(不带 WithOffset):不应用位置偏移,仅返回角度。保留给"只想要方向、不想被位置影响"的场景。
+
+**典型用法:**
+- `PositionOffset = (0, 0.5)` —— 肩扛炮口在头顶(向上偏移 0.5)
+- `PositionOffset = (0.3, 0)` —— 双管炮右管在右侧(向右偏移 0.3)
+- `PositionOffset = (0, 0)` —— 默认值,**等价旧版行为**(所有现有资产零行为变更)
+
+**正交叠加**:`BaseAngleFireExtension.PositionOffset` 与具体 FirePattern 的"局部偏移"(`RingFirePattern.Radius` / `ArcFirePattern.Radius`)正交叠加 —— 前者是"全局炮口偏移",后者是"扇形/环形的几何起点偏移"。
+
+**扩展点:**
+- 新增"瞄准 X / 旋转 / 振荡"等策略 = 新建 `FireExtension` 子类 + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单。
+- 实现 pipeline 模块时,需要"覆盖"用 `ProcessAngle` 直接返回新角度;需要"透传"返回 `currentAngleRad`;需要"累加"用 `currentAngleRad + offset`。
+- "每发独立方向"场景(每发旋转 N° / 延迟扇形)override `ProcessAngleForBullet`。
+
+详见 `Assets/Scripts/Bullet/FireExtension/`(顶部有详细 pipeline 用法图示)。
+
+### 3.2 开火音多态扩展(FireSound)
+
+FirePattern 还有第二个多态模块数组 `FireSounds[]`,**与 FireExtensions 并行触发**(不是角度管道,是"并行触发器")。
+
+- **触发时机**:`BulletPool.FireGroup` 入口 → `pattern.PlayFireSounds(pos, ownerHitbox)` → 每次"开火组"播一次。CompositeFirePattern 的子 pattern **不重复触发**(只在最外层触发一次)。
+- **与 FireExtension 区别**:
+  - `FireExtension[]` = 角度管道(上一步输出角度 → 下一步输入)
+  - `FireSound[]`     = 并行触发器(每个模块独立播一个音,可叠播多个 cue)
+- **基类**:`FireSound`(`Assets/Scripts/Bullet/FireExtension/FireSound.cs`)
+- **内置**:`SfxCueFireSound`(走 SfxCue 体系,含限流/Pipeline/Bus)、`NullFireSound`(显式静音)
+- **扩展**:新建 `XxxFireSound.cs : FireSound` + `[SRName("FireSound/<名字>")]`,Inspector 自动下拉出现
+- **与 PlayerShooting._shootSfx 关系**(可并存):`_shootSfx` 是"玩家整体开火"(不论哪个 pattern),`FireSounds[]` 是"特定 pattern 的特征音"(同一 pattern 在玩家 vs 敌人可配不同 cue)
+
+详见 `Assets/Scripts/Bullet/FireExtension/FireSound.cs` 顶部注释 + `Assets/Scripts/Audio/README.md` §6.5。
+
 ---
 
 ## 4. 敌人 AI(BehaviorFlow + EnemyAction)
@@ -332,12 +415,93 @@ FireAction.OnTick
 **职责:** 与普通敌人**正交**的 Boss 编排层,提供多阶段 / 阶段触发条件 / 多管血。普通敌人就一段行为流,Boss 需要这些"上层编排"概念,所以单独建一层。
 
 **协作边界:**
-- Boss GameObject 上挂 `BossController + BossHealth + BossShotCounter`,**不挂 ShooterEnemy**。
+- Boss GameObject 上挂 `Boss + BossHealth + BossHitbox + BossController`,**不挂 ShooterEnemy**,**也不挂 BossShotCounter**。
+- `BossShotCounter` 是**场景级单例**(`Singleton<BossShotCounter>`),由场景里单独挂一份。把它从 Boss prefab 摘掉的原因:之前它是 `static Instance + RequireComponent` 双绑,在"同场景多 Boss" / "Boss 多次入场销毁" 场景下会把 Instance 误清成 null;改成 Singleton 后重复挂载自动 Destroy(只留第一份),`BulletPool.FireGroup` 钩子读 Instance 永远稳。
 - 阶段用 `ShooterPhase` 直接持 BehaviorFlow 资产,boss 行为复用普通敌人那套行为流。
 - 多管血 / 多阶段 / 信号切换都在 Inspector 配,无需新代码。
 
+**死亡收尾流程(单一路径):**
+```
+玩家弹 → CollisionService → BossHealth.TakeDamage(dmg)
+                              ↓ 切管 → 触发 OnBarDepleted(int)
+                              ↓ 全部清空 → 触发 OnDeath(防重入 _deathFired)
+                                    ↓
+                              Boss 总控.HandleDeath(_dead 防重入)
+                                    ↓
+                              BossController.Stop(_stopped 防重入)
+                                    ├─ 当前 phase.OnExit
+                                    ├─ LevelController.NotifyBossDefeated(_defeated 防重入)
+                                    └─ _current = null
+                                    ↓
+                              Destroy(gameObject)
+```
+
 **扩展点:**
 - 新增 Boss 阶段:新建 `BossPhase` 子类,加到 `BossController.Phases`(详见 `Assets/Scripts/Enemy/Boss/`)。
+- 新增阶段退出信号源:新建 `BossSignal` 子类,加 `[Serializable, SRName("Signal/<你的名字>")]`,在 `BossController.Signals` 数组里下拉选(详见下文"内置 Signal")。
+
+### 5.1 内置 Signal(BossSignal 多态信号源)
+
+`BossSignal` 是 `BossController` 每帧 tick 的信号源,产出 `CurrentValue`,供 `PhaseTrigger.IsSatisfied(signal)` 读取。**新增 transition = 新建一个 BossSignal 子类 + 加 `[SRName("Signal/<名字>")]`,自动出现在 `Signals` 数组下拉**。
+
+| 类型名 | SRName | 含义 | 典型触发 |
+|---|---|---|---|
+| `HpSignal` | `Signal/HP %` | 单管剩余 HP%(0~100,Bars 为空时 100) | `LessOrEqual + 50` = 当前管打掉一半切下阶段 |
+| `CurrentBarPercentSignal` | `Signal/Current Bar %` | 当前血管剩余 HP%(0~100,打空自动重置到下一管) | `LessOrEqual + 0` = 当前管打空切下阶段 ⚠️ 见下方"多管血 + 大伤害"坑 |
+| `CurrentBarIndexSignal` | `Signal/Current Bar Index` | 当前血管编号(0/1/2/...,Int,打完管单调递增) | `Equal + 1` = 打完第 1 管切下阶段;`GreaterOrEqual + 2` = 进入第 3 管 |
+| `TotalHpPercentSignal` | `Signal/Total HP %` | 所有血管累计剩余百分比(0~100,按 MaxHp 加权) | `LessOrEqual + 30` = 残血 30% 切暴走 phase |
+| `PhaseTimeSignal` | `Signal/Phase Time` | 当前阶段已持续秒数(每阶段 EnterPhase 时自动 Reset) | `GreaterOrEqual + 30` = 本阶段打了 30 秒强切下阶段 |
+| `ShotsFiredSignal` | `Signal/Shots Fired` | Boss 全局累计开火数(BossShotCounter.Total,跨阶段累计) | `GreaterOrEqual + 500` = 开火 500 次后切下阶段 |
+
+**配置模式:阶段退出触发 = (SignalIndex, Op, Threshold) 三元组**
+
+`PhaseTrigger` 不再直接持有 `BossSignal` 实例(避免 SerializeReference 独立实例导致 `_health` 没绑),改成持有 `int SignalIndex`,引用 `BossController.Signals` 数组里的下标。Inspector 里给每个 PhaseTrigger 配 SignalIndex 时,下拉/数字框列出可用 Signal。
+
+```text
+Phase 1 (开场符卡)
+  ExitTriggers:
+    [0] SignalIndex = 0  (默认指向 Signals[0] = CurrentBarPercentSignal)
+        Op = LessOrEqual
+        Threshold = 0
+        // 当前管打空就切 → Phase 2
+
+Phase 2 (中期弹幕)
+  ExitTriggers:
+    [0] SignalIndex = 0  (指向 Signals[0] = TotalHpPercentSignal,见 Signals 数组配置)
+        Op = LessOrEqual
+        Threshold = 30
+        // 残血 30% → Phase 3(暴走)
+
+Phase 3 (暴走)
+  (没有 ExitTrigger,玩家继续打到 BossHealth 全清 → BossHealth.OnDeath 触发总控收尾)
+```
+
+**算子选择要点:**
+- `LessOrEqual` 是绝大多数 HP 触发的默认。
+- `GreaterOrEqual` 是 PhaseTime / ShotsFired 累加型信号的默认(打够 N 秒 / N 发)。
+- `Equal` 仅推荐用于 `CurrentBarIndexSignal`(离散 Int);不推荐用于累加型浮点(详见 `PhaseTrigger.cs` 注释)。
+
+**⚠️ 多管血 + 大伤害的"击穿"坑**
+
+`TakeDamage` 在 `LateUpdate` 同步上下文里走完整个扣血循环,可能**一帧内**把多管打空(溢出伤害),而 `BossController.Update()` 已经跑过了。下一帧 `Update` 检测时 `CurrentBarPercent` 已经是新 Bar 的满血值,**永远检测不到 `= 0` 的瞬间**。
+
+**解决**:`BossController.OnEnable` 订阅了 `Health.OnBarDepleted`,在 Bar 切管的瞬间同步检查 ExitTrigger。这样无论伤害多大,只要 Bar 切管就会立即切阶段。**正常使用 `CurrentBarPercentSignal + LessOrEqual + 0` 即可正常工作**。
+
+**如果伤害极大**(`dmg > 单管 MaxHp`,一发生命同时击穿多管),`CurrentBarIndexSignal + Equal + N` 比 `CurrentBarPercentSignal + LessOrEqual + 0` 更稳 —— 因为 int 信号不会被"瞬时跳过",下一帧 Update 一定能看到新值。
+
+### 5.2 多管血(BossHealth.Bars)
+
+每管血有独立的 `MaxHp` + `Name` + `TriggerOnEmpty` 字段。`TakeDamage` 自动处理扣穿(溢出伤害继续扣下一管),每管打空触发 `OnBarDepleted(int)` 事件,全部清空触发 `OnDeath`。
+
+供 Signal 读的属性:
+
+| 属性 | 含义 |
+|---|---|
+| `HpPercent` | 单管剩余百分比(兼容旧 HpSignal) |
+| `CurrentBarPercent` | 当前管剩余百分比 |
+| `CurrentBarIndex` | 当前管编号(打空后自增) |
+| `TotalHpPercent` | 所有管加权累计百分比(残血/暴走触发用) |
+| `IsDead` | 所有管清空(Legacy 模式 LegacyCurrentHp 归零) |
 
 ---
 
@@ -349,7 +513,7 @@ FireAction.OnTick
 
 ### 6.1 多态扩展点的统一套路
 
-项目里有 9 个用 `[SerializeReference]` + 子类多态的扩展点,全部走同一个三步套路:
+项目里有 10 个用 `[SerializeReference]` + 子类多态的扩展点,全部走同一个三步套路:
 
 1. 在约定文件夹新建 `<你的>类名.cs`
 2. 继承对应的抽象基类 + 加 `[Serializable, SRName("<下拉菜单路径>")]`
@@ -367,6 +531,8 @@ FireAction.OnTick
 | 子机位置 | `OptionPositionForm` | 子机怎么排队 |
 | 关卡条目 | `SpawnEntry` | 配关卡时一行下拉 |
 | 关卡编辑器画法 | `ISpawnEntryDrawer` | 编辑器时间轴 / Scene 视图怎么画 |
+| 音效规则 | `SfxRule` | SFX 处理规则(随机抽 clip / pitch 抖动 / 自定义修饰),挂在 SfxCue 上,详见 §11 |
+| 开火音模块 | `FireSound` | FirePattern 开火时发声(单 cue / 叠多 cue / 按状态发声),挂在 FirePattern 上,与 FireExtension 并行触发,详见 §3 |
 
 **为什么 `[SerializeReference]` + `[SRName]`(而不是直接子类列表 / enum)**:
 - 改 Inspector 不需要重编 / 不动宿主组件代码
@@ -497,3 +663,55 @@ FireAction.OnTick
 
 **总 ~1500 行**,14 个源文件 + 1 个 asmdef,**对运行时的影响 = 0**。
 
+
+## 11. 音频音乐系统(AudioSystem)
+
+负责把「什么时机播什么音」封装成可复用资产,并在场景里按需调度 SFX + BGM。**与既有层完全正交** —— 不修改 Player / Enemy / Bullet / Level 任何代码,仅复用项目已有的「数据驱动 + 多态 + Pipeline」套路。
+
+**职责分工:**
+
+- `AudioMix`(静态门面) —— 唯一调用入口,所有调用方走 `AudioMix.PlaySfx(...)` / `AudioMix.PlayTrack(...)`,不直接拿单例。
+- `AudioSystem`(场景单例,`PersistentSingleton`) —— 持 `SfxRouter` / `MusicPlayer` / `BusMixer` / `AudioEventHub`,挂场景里一个 GameObject(命名 Audio)。
+- `SfxRouter`(普通 class) —— SFX 池 + 同 cue 限流 + Pipeline 调度。
+- `MusicPlayer`(普通 class) —— 交叉淡化 + Playlist 顺序/随机播放。
+- `BusMixer`(普通 class) —— 总线音量(兼容/不兼容 Unity AudioMixer 两条路径)+ PlayerPrefs 持久化。
+
+**数据资产(SO):**
+
+- `SfxCue` —— 单个 SFX(Clips 数组 + 默认音量/pitch + 限流参数 + Rules Pipeline)。
+- `BgmTrack` —— 单首 BGM(Clip + 默认音量 + Loop + 路由 Bus + StartTime)。
+- `BgmPlaylist` —— BGM 列表(Tracks + Shuffle + Loop + CrossfadeDuration)。
+- `AudioBus` —— 总线配置(兼容 Unity AudioMixerGroup + PlayerPrefs 持久化)。
+- `AudioBank` —— SfxCue 分组容器(纯 Inspector 组织用,不强制走)。
+- `LevelAudioBinding` —— 关卡↔BGM 绑定(**接口预留,运行时默认不启用**,供 LevelEditor 后续扩展「切换 BGM」方法时使用)。
+
+**多态扩展点(走 `[Serializable, SRName]` 下拉,与 FireExtension / EnemyAction / BossPhase 同套路):**
+
+- `SfxRule`(`Assets/Scripts/Audio/Sfx/`) + 内置 `RandomPickRule` / `PitchVariationRule` / `CooldownRule`。Pipeline 模型:每个规则 `Process(SfxRequest)` 串行处理。
+- 后续新增规则 = 新建 `xxxRule.cs : SfxRule` + `[SRName("Rule/<名字>")]`,Inspector 自动出现。
+
+**协作边界:**
+
+- **不侵入其他模块**:所有挂点都是「在调用方已有的逻辑里加一行 `AudioMix.PlaySfx(...)`」,不修改 Player / Enemy / Bullet / Boss 任何接口/事件/字段。
+- **嵌入方式**:在 `PlayerHealth` / `BossHealth` / `EnemyHealth` / `PlayerShooting` 上加 `[SerializeField] SfxCue` 字段 + 在 TakeDamage / TakeHit / OnDeath 处调 `AudioMix.PlaySfx(...)`。
+- **静态门面 null-safe**:`AudioSystem.Instance == null` 时调用静默返回,不报错 —— 调用方不需要 null check。
+- **场景单例**:场景里挂一个 `AudioSystem` MonoBehaviour,`PersistentSingleton` 跨场景保留,菜单切关卡不重置音量。
+- **时间暂停**:`Time.timeScale = 0` 时 `AudioSystem.Update` 自动停 SFX + Pause BGM(对齐 STG 暂停菜单)。
+
+**与既有层的关系:**
+
+| 既有层 | 音频怎么用它 | 是否修改它 |
+|---|---|---|
+| `PlayerHealth` / `BossHealth` / `EnemyHealth` | 加 `[SerializeField] SfxCue` 字段,在 TakeDamage / OnDeath 调 `AudioMix.PlaySfx(...)` | ✅ 改动但**只增字段 + 只增调用,不改签名/事件/字段顺序** |
+| `PlayerShooting` | 加 `[SerializeField] SfxCue _shootSfx` 字段,FireGroup 后调 `AudioMix.PlaySfx(...)` | ✅ 同上 |
+| `Bullet` / `CollisionService` / `Enemy` | 0 改动 —— SFX 由宿主在自己的 TakeDamage 处触发 | ❌ 完全不动 |
+| `LevelController` / `BehaviorFlow` | 0 改动 —— BGM 切换由调用方通过 `AudioMix.PlayTrack(...)` 触发(`AudioEventHub` 接口预留,默认禁用) | ❌ 完全不动 |
+| `DOTween` | 后续可复用于音量淡入淡出(`DOFloat` / `DOVolume`),已集成 | 复用 |
+
+**自动切歌机制(预留,默认关闭):**
+
+- `AudioEventHub.EnableAutoSwitch()` 启用后,会订阅 `LevelController.OnLevelStart / OnBossSpawned / OnBossDefeated`,按 `LevelAudioBinding.Playlist / BossMusic / DefeatMusic` 自动切歌。
+- 用户决策:暂时不需要(后续在 LevelEditor 加切换 BGM 的方法,直接调 `AudioMix.PlayTrack(...)` 即可,不走自动订阅)。
+- 预留接口不引入任何运行时开销(未启用 = 0 订阅 = 0 协程)。
+
+详见 `Assets/Scripts/Audio/README.md`(配置说明)。

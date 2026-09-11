@@ -16,8 +16,8 @@ MonoBehaviour:
   ModifierPrefabs:
   - rid: 6177226939113930752
   - rid: 6177226960998236161
-  FireExtension:
-    rid: 6177226955828494342
+  FireExtensions:
+  - rid: 6177226955828494342
   Speed: 2
   AngularSpeed: 0
   Damage: 1
@@ -32,8 +32,6 @@ MonoBehaviour:
         TurnRate: 5
     - rid: 6177226955828494342
       type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
-      data:
-        BaseAngle: 270
     - rid: 6177226960998236161
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:

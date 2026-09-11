@@ -18,14 +18,43 @@ public abstract class FirePattern : ScriptableObject
     [SerializeReference, SR]
     public BulletModifier[] ModifierPrefabs;
 
-    [Header("Fire Extension (可选,下拉选基础发射逻辑的扩展)")]
-    [Tooltip("对基础发射逻辑(中线方向)的扩展。\n" +
-             "  - 留空(null) = 默认模式:中心方向 = 270°(向下)+ rotationRad(等价旧版 normal)\n" +
-             "  - FireExtension/Base:中心方向 = BaseAngle + rotationRad(自己设整体方向)\n" +
-             "  - FireExtension/Player Aim:中心方向 = 指向玩家(无玩家时退回 BaseAngle + rotationRad)\n" +
-             "扩展方法:新建 FireExtension 子类 + 加 [SRName(\"FireExtension/<名字>\")] —— 自动出现在所有 FirePattern 资产的下拉菜单。")]
+    [Header("Fire Extensions (Pipeline 模块数组,按顺序串成角度管道)")]
+    [Tooltip("基础发射逻辑的模块数组 —— 每个模块是 FireExtension 子类实例,按数组顺序串成\"角度管道\":\n" +
+             "  - 空数组 / null = 默认模式:中心方向 = 270° + rotationRad(等价旧版 default)\n" +
+             "  - FireExtension/Base:覆盖型,把角度设为 BaseAngle + rotationRad(通常放数组第一位作\"锚点\")\n" +
+             "  - FireExtension/Player Aim:覆盖型 —— 瞄得到玩家 → 角度设为指向玩家;瞄不到 → 透传上游角度\n" +
+             "  - FireExtension/Offset Angle:累加型 —— 在上一步角度上叠加 N°(逆时针为正);常配合 PlayerAim 实现 \"绕后弹\"\n" +
+             "\n" +
+             "★ 拼装示例 ★\n" +
+             "  [Base(270°)]                              → 始终向下\n" +
+             "  [Base(270°), PlayerAim]                   → 瞄不到玩家时向下,瞄得到时改指向玩家\n" +
+             "  [Base(0°), PlayerAim]                     → 瞄不到时向右,瞄得到时改指向玩家\n" +
+             "  [PlayerAim, Offset Angle(+180°)]          → 玩家方向的反方向(瞄准玩家但飞向玩家背后 —— \"绕后弹\")\n" +
+             "  [PlayerAim, Offset Angle(+30°)]           → 玩家方向 + 30°(从玩家右侧掠过)\n" +
+             "  [Base(270°), PlayerAim, Offset Angle(+180°)] → 瞄得到:玩家反方向;瞄不到:向下\n" +
+             "\n" +
+             "扩展方法:新建 FireExtension 子类 + 加 [SRName(\"FireExtension/<名字>\")] —— 自动出现在所有 FirePattern 资产的下拉菜单。\n" +
+             "Pipeline 细节:见 Assets/Scripts/Bullet/FireExtension/FireExtension.cs 顶部注释。")]
     [SerializeReference, SR]
-    public FireExtension FireExtension;
+    public FireExtension[] FireExtensions;
+
+    [Header("Fire Sounds (开火音多态模块,按数组顺序并行触发)")]
+    [Tooltip("开火音模块数组 —— 每次 BulletPool.FireGroup 调用都会按顺序触发所有模块。\n" +
+             "★ 与 FireExtensions 的区别 ★\n" +
+             "  - FireExtensions = 角度管道(上一步输出角度 → 下一步输入角度)\n" +
+             "  - FireSounds     = 并行触发器(每个模块独立播一个音,可叠播多个 cue)\n" +
+             "\n" +
+             "触发时机:BulletPool.FireGroup 入口 → pattern.Fire(...) 之前 → PlayFireSounds()。\n" +
+             "CompositeFirePattern 的子 pattern 不重复触发(只在最外层触发一次)。\n" +
+             "留空数组 = 不播放(性能开销 ≈ 0)。\n" +
+             "\n" +
+             "扩展方法:新建 FireSound 子类 + 加 [SRName(\"FireSound/<名字>\")],Inspector 自动出现。\n" +
+             "与 PlayerShooting._shootSfx 的区别(可并存):\n" +
+             "  - _shootSfx  = 玩家整体开火音(不论哪个 pattern)\n" +
+             "  - FireSound  = 特定 pattern 的特征音(同一 pattern 在玩家 vs 敌人可配不同 cue)\n" +
+             "详见 Assets/Scripts/Audio/README.md §6.5 / Assets/Scripts/Bullet/FireExtension/FireSound.cs。")]
+    [SerializeReference, SR]
+    public FireSound[] FireSounds;
 
     [Header("Motion (可被子类覆盖)")]
     public float Speed = 5f;
@@ -55,6 +84,27 @@ public abstract class FirePattern : ScriptableObject
     /// Boss 系统的 ShotsFiredSignal 用它做全局开火计数。
     /// </summary>
     public virtual int GetFireCount() => 0;
+
+    /// <summary>
+    /// 触发 FireSounds 数组里的所有开火音模块。
+    /// 由 BulletPool.FireGroup 在调 pattern.Fire(...) 之前调用一次(每次"开火组"触发一次)。
+    ///
+    /// 子类可 override 此方法做更复杂行为(例如 Composite 改成"遍历所有子 pattern 各触发一次"),
+    /// 默认实现 = 按数组顺序串行触发每个模块。留空数组 / null 跳过(零开销)。
+    ///
+    /// 注意:此方法与 pattern.Fire(...) 解耦 —— 即使某次 Fire() 因为弹药耗尽等条件没真的发射子弹,
+    /// 已经调过本方法播过音。这是预期行为(开火意图已发生,与子弹是否成功生成无关)。
+    /// 若子类需要"实际生成子弹时才播",应在 Fire() 内的 SpawnBullet 处手动调 FireSound。
+    /// </summary>
+    public virtual void PlayFireSounds(Vector2 position, ShinySTG.Hitbox.HitboxComponent ownerHitbox)
+    {
+        if (FireSounds == null) return;
+        for (int i = 0; i < FireSounds.Length; i++)
+        {
+            var s = FireSounds[i];
+            if (s != null) s.OnFireTriggered(position, ownerHitbox);
+        }
+    }
 
     /// 便捷方法：基于某颗子弹（敌人自身）的位置发射。
     public void FireFromOwner(Bullet owner, float rotationRad, BulletPool pool)

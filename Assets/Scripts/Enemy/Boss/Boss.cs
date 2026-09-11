@@ -10,8 +10,11 @@ namespace ShinySTG.EnemyAI.Boss
     ///   Boss 总控(本组件)
     ///     ├─ BossHealth       (HP + 多管血 + IsDead + OnDeath 事件)
     ///     ├─ BossHitbox       (HitboxComponent 子类,Team=Enemy)
-    ///     ├─ BossShotCounter  (全局开火计数)
     ///     └─ BossController   (阶段协调器 + Signal)
+    ///
+    /// 注:BossShotCounter **不挂**在 Boss prefab 上 —— 它是场景级单例(Singleton&lt;T&gt;),
+    /// 由场景单独挂一份(详见 BossShotCounter.cs 注释)。ShotsFiredSignal 通过 BossController
+    /// 的 BossShotCounter 引用读值,而不是读静态 Instance。
     ///
     /// 协作边界(对齐 Enemy):
     ///   - Boss 总控是公共访问入口:外部系统通过 boss.Health / boss.Hitbox / boss.Controller 访问
@@ -27,13 +30,11 @@ namespace ShinySTG.EnemyAI.Boss
     /// </summary>
     [RequireComponent(typeof(BossHealth))]
     [RequireComponent(typeof(BossHitbox))]
-    [RequireComponent(typeof(BossShotCounter))]
     [RequireComponent(typeof(BossController))]
     public class Boss : MonoBehaviour
     {
         public BossHealth      Health    { get; private set; }
         public BossHitbox      Hitbox    { get; private set; }
-        public BossShotCounter ShotCount { get; private set; }
         public BossController  Controller{ get; private set; }
 
         bool _dead;
@@ -42,7 +43,6 @@ namespace ShinySTG.EnemyAI.Boss
         {
             Health     = GetComponent<BossHealth>();
             Hitbox     = GetComponent<BossHitbox>();
-            ShotCount  = GetComponent<BossShotCounter>();
             Controller = GetComponent<BossController>();
 
             // 把 Hitbox 组件灌给 BossHealth(总控统一管理,BossHealth.Hitbox 不再需要 Inspector 手填)
@@ -63,6 +63,9 @@ namespace ShinySTG.EnemyAI.Boss
         {
             if (_dead) return;
             _dead = true;
+
+            // __BOSSDEBUG__ #8:Boss 死亡路径
+            Debug.Log($"[__BOSSDEBUG__] Boss.HandleDeath @ t={Time.time:F2} name={name}", this);
 
             // 1. 停阶段(走当前 phase.OnExit + 广播 Defeated,语义对齐 ShooterEnemy.Stop)
             if (Controller != null) Controller.Stop();

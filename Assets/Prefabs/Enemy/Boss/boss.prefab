@@ -1,0 +1,213 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7202559043894379566
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5054886776094005020}
+  - component: {fileID: 7700888437549780794}
+  - component: {fileID: 7872440711454073438}
+  - component: {fileID: 7759524593254179921}
+  - component: {fileID: 2787990563082413582}
+  - component: {fileID: 5153665219166452950}
+  m_Layer: 0
+  m_Name: boss
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5054886776094005020
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202559043894379566}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.65, y: 0.34, z: -0.15460053}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &7700888437549780794
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202559043894379566}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_Sprite: {fileID: 2747690628134850419, guid: 16037dbd798344f57a526d53d48f5ead, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 1, y: 1}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_MaskInteraction: 0
+  m_SpriteSortPoint: 0
+--- !u!114 &7872440711454073438
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202559043894379566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6774763b5ae027346bb3d9ffa6324afa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Bars:
+  - Name: Bar 1
+    MaxHp: 500
+    CurrentHp: 0
+    TriggerOnEmpty: 1
+  - Name: Bar 2
+    MaxHp: 800
+    CurrentHp: 0
+    TriggerOnEmpty: 1
+  - Name: Bar 3
+    MaxHp: 500
+    CurrentHp: 0
+    TriggerOnEmpty: 1
+  LegacyMaxHp: 1000
+  Hitbox: {fileID: 0}
+  CurrentBarIndex: 0
+  LegacyCurrentHp: 0
+--- !u!114 &7759524593254179921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202559043894379566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d25bd3eaef15c64da68b05d87510d7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Size: {x: 1, y: 1}
+  Color: {r: 0, g: 1, b: 0.3, a: 0.9}
+  SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
+  AlwaysDraw: 1
+  Team: 2
+  _cachedBounds:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 0
+    height: 0
+--- !u!114 &2787990563082413582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202559043894379566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2eab7a2ba796ba4c8106417961afb7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Health: {fileID: 0}
+  ShotCount: {fileID: 0}
+  Signals:
+  - rid: 6177226981840519179
+  Phases:
+  - rid: 6177226960998236162
+  - rid: 6177226966485434376
+  - rid: 6177226966485434380
+  Loop: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177226960998236162
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        ExitTriggers:
+        - rid: 6177226968670666752
+        Flow: {fileID: 11400000, guid: e06e59cefb0c2694daba10125ea8cd42, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177226966485434376
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        ExitTriggers:
+        - rid: 6177226986570383360
+        Flow: {fileID: 11400000, guid: aa8988b41be8512458b964141c6af7d0, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177226966485434380
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        ExitTriggers: []
+        Flow: {fileID: 11400000, guid: e06e59cefb0c2694daba10125ea8cd42, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177226968670666752
+      type: {class: PhaseTrigger, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        SignalIndex: 0
+        Op: 1
+        Threshold: 0
+    - rid: 6177226981840519179
+      type: {class: CurrentBarPercentSignal, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data: 
+    - rid: 6177226986570383360
+      type: {class: PhaseTrigger, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        SignalIndex: 0
+        Op: 1
+        Threshold: 0
+--- !u!114 &5153665219166452950
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202559043894379566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 696d336c11ec7bb4ead1c55426bee297, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

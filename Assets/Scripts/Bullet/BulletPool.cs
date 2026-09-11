@@ -150,6 +150,12 @@ public class BulletPool : MonoBehaviour
                           ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                           BulletModifier[] extraModifiers = null)
     {
+        // 触发 FirePattern 的开火音(FireSounds 数组)。
+        // 在 pattern.Fire(...) 之前调 —— 每次"开火组"触发一次。
+        // CompositeFirePattern 内部递归 Fire() 不走本入口,所以子 pattern 的 FireSounds 不重复触发。
+        // 详见 Assets/Scripts/Bullet/FireExtension/FireSound.cs 顶部注释。
+        pattern.PlayFireSounds(pos, ownerHitbox);
+
         pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers);
         // Boss 系统钩子:每发一弹自动累计,供 ShotsFiredSignal 读取。
         // 没有挂 BossShotCounter 时(BossShotCounter.Instance == null)直接跳过,不影响普通敌人。

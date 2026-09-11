@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 195aad2d24357ad4eae3908cbbc82049, type: 3}
+  m_Name: NatsuhaAOption
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: -2975666842598118849, guid: beb9c826164b8a246ac475dcbc2fd9f3, type: 3}
+  ModifierPrefabs:
+  - rid: 6177226981840519173
+  FireExtensions:
+  - rid: 6177226981840519174
+  FireSounds:
+  - rid: 6177226998917365764
+  Speed: 8
+  AngularSpeed: 0
+  Damage: 5
+  Count: 1
+  DeltaSpeed: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177226981840519173
+      type: {class: HomingEnemyModifier, ns: , asm: Assembly-CSharp}
+      data:
+        SearchRadius: 6
+        TurnRate: 180
+        LockOnDelay: 0
+        MaxHomingTime: -1
+    - rid: 6177226981840519174
+      type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseAngle: 90
+        PositionOffset: {x: 0, y: 0}
+    - rid: 6177226998917365764
+      type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 0}
+        VolumeMul: 1
+        Pitch: 1

@@ -18,7 +18,14 @@ namespace ShinySTG.EnemyAI
 
         public override void OnEnter(Transform enemy)
         {
-            if (Move != null) Move.OnEnter(enemy);
+            if (Move != null)
+            {
+                Move.OnEnter(enemy);
+                // "绝对锚定"型 Move 在 OnEnter 后立即以 dt=0 同步一次位置,
+                // 避免切到下一条 Action 时敌人从旧位置瞬移到新轨迹远处。
+                // 增量型 Move(SnapOnEnter=false)走默认值,OnTick(dt=0) 不会改 enemy.position。
+                if (Move.SnapOnEnter) Move.OnTick(enemy, 0f);
+            }
         }
 
         public override void OnTick(Transform enemy, float dt)

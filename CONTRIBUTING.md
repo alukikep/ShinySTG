@@ -52,7 +52,7 @@
 | 想加什么 | 在哪个文件夹新建 | 备注 |
 |---|---|---|
 | 新弹幕形态(螺旋 / 樱花 / ...) | `Assets/Scripts/Bullet/FirePattern/` | 子类继承 `FirePattern`,生成子弹必须走基类 `SpawnBullet` helper(否则 modifier 不挂) |
-| 新发射扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡 ...) | `Assets/Scripts/Bullet/FireExtension/` | 子类继承 `FireExtension` + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单 |
+| 新发射扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡 ...) | `Assets/Scripts/Bullet/FireExtension/` | 子类继承 `FireExtension` + 加 `[SRName("FireExtension/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单。**Pipeline 模型**:每个模块实现 `ProcessAngle(from, baseRotationRad, currentAngleRad)`,数组按顺序串成"角度管道"(详见 ARCHITECTURE §3.1)。**位置偏移**:只在 Base 模块上,通过 `PositionOffset: Vector2` 字段在世界坐标系下设置炮口偏移(由 Resolver 在 pipeline 入口处应用) |
 | 新敌人行为(动画 / 隐身 / 加血) | `Assets/Scripts/Enemy/AI/Actions/` | 子类继承 `EnemyAction`,加 `[SRName("Action/<名字>")]` |
 | 新移动方式(贝塞尔 / 圆形 / 追踪) | `Assets/Scripts/Enemy/AI/MoveBehaviours/` | 子类继承 `MoveBehaviour`,加 `[SRName("Move/<名字>")]` |
 | **新子弹逻辑效果(加速 / 转向 / 减速 / 分裂 / 追踪)** | `Assets/Scripts/Bullet/` | 子类继承 `BulletModifier`,加 `[SRName("Modifier/<名字>")] + [Serializable]`,在 `Modify(Bullet, dt)` 里改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed` 等飞行字段。引用类型字段要 override `Clone()` 深拷 |
@@ -63,6 +63,9 @@
 | 新玩家子机位置形态 | `Assets/Scripts/Player/Options/Forms/` | 子类继承 `OptionPositionForm` |
 | 新 SpawnEntry 编辑器画法 | `Assets/Scripts/Level/Editor/Drawers/` | 子类继承 `ISpawnEntryDrawer`(**abstract class**,必须 `override Handles` 声明接管类型) |
 | 新关卡编辑器 Preview 实现 | `Assets/Scripts/Level/Editor/Views/Preview/` | 实现 `ILevelEditorPreview` 6 个方法 |
+| 新 SFX 处理规则(随机抽 clip / pitch 抖动 / cooldown / 自定义) | `Assets/Scripts/Audio/Sfx/` | 子类继承 `SfxRule` + 加 `[SRName("Rule/<名字>")] + [Serializable]`,在 `Process(SfxRequest)` 里改 `req.Clip / req.Volume / req.Pitch` 等。**Pipeline 模型**:SfxCue.Rules 是 `SfxRule[]` 数组,按顺序串行处理(与 FireExtension 同套路)。所有引用类型字段要 override `Clone()` 深拷(若加),否则多颗子弹共享同 SfxCue 时状态会污染 |
+| 新 BGM 资产 / 总线 / Cue 分组 | Project 视图右键 → Create → STG → Audio → BGM Track / BGM Playlist / Audio Bus / SFX Cue / SFX Bank / Level Audio Binding | SO 资产,无需写代码 |
+| 新 FirePattern 开火音模块(单 cue / 叠多 cue / 按状态发声) | `Assets/Scripts/Bullet/FireExtension/` | 子类继承 `FireSound` + 加 `[SRName("FireSound/<名字>")] + [Serializable]`,在 `OnFireTriggered(position, ownerHitbox)` 里调 `AudioMix.PlaySfx(...)`。**与 FireExtension 的区别**:`FireSound[]` 是"并行触发器"(各模块独立),不是"角度管道"。由 `BulletPool.FireGroup` 在 `pattern.Fire(...)` 之前自动调 `PlayFireSounds()`,Composite 子 pattern 不重复触发 |
 
 
 **"用 SerializeReference 下拉"的多态扩展点**,三步套路是固定的:
@@ -172,3 +175,58 @@
   - **逐章节替换**:用每个章节的 `## N. <标题>` 作为锚点 `old_text`,一次只动一节。
   - **收尾用 PowerShell 做整体切片**:把"保留头" + "保留 §N" + "新追加"拼起来再写回文件,比逐段删更可靠。
   - 完工后 `git diff <file>.bak <file>` 全文对比,人工 review 一遍再 commit。
+
+### 4.6 C# Tooltip 字符串禁止嵌套未转义的 `"`
+
+- **症状**:Unity Console 报 `CS1003: Syntax error, ',' expected`,报错行通常在 `[Tooltip("...")]` 字符串里。
+- **原因**:C# 字符串直接量里写 `"` 会提前关闭字符串,编译器把后续文字当成新 token;`@""` verbatim 字符串里 `"` 也必须用 `""` 双写转义。
+- **正确写法**:嵌套引号一律 `\"` 转义:
+  ```csharp
+  [Tooltip("勾上 → 绝对世界坐标(如\"飞到屏幕中央 (0,0)\")。")]
+  ```
+- **错误示例**:
+  ```csharp
+  [Tooltip("勾上 → 绝对世界坐标(如"飞到屏幕中央 (0,0)")。")]   // ← CS1003
+  ```
+- **预防**:
+  - 在 Tooltip 里举例子时,优先用中文「」书名号(或『』)替代英文引号,避免引号嵌套。
+  - 见 `Assets/Scripts/Enemy/AI/MoveBehaviours/BezierMove.cs:54` 和 `HomingMove.cs:41` 的同款修复(均改用「」)。
+
+### 4.7 namespace 与类同名陷阱(不要 using 后写类成员)
+
+- **症状**:Unity Console 报
+  ```
+  error CS0234: The type or namespace name 'Instance' does not exist
+  in the namespace 'ShinySTG.Player'
+  ```
+  且实际代码里只写了 `Player.Instance`。
+- **原因**:本项目的 `ShinySTG.Player` 是 **namespace**,同时 namespace 里又有一个叫 `Player` 的类(玩家主控)。如果在外层文件写:
+  ```csharp
+  using ShinySTG.Player;
+  ...
+  Player.Instance  // ← C# 编译器把 Player 解析为 namespace,找不到 .Instance 成员
+  ```
+- **正确写法**:**不要 using**,直接用全限定名(第二个 `Player` 是类名):
+  ```csharp
+  Transform p = ShinySTG.Player.Player.Instance != null
+      ? ShinySTG.Player.Player.Instance.transform
+      : null;
+  ```
+- **已踩过此坑的现有代码**(供对照参考):
+  - `Assets/Scripts/Hitbox/CollisionService.cs:5-7` — 顶层注释明确说明
+  - `Assets/Scripts/Bullet/FireExtension/FireExtension.cs:137-139` — 用了全限定名
+  - `Assets/Scripts/Enemy/AI/MoveBehaviours/HomingMove.cs` — 本次会话踩坑后修复
+- **预防**:写"引用玩家单例 / 玩家组件"的代码时,先在文件头部确认有没有 `using ShinySTG.Player;`,有就改全限定名。LLM 看到这个 namespace 名要警觉。
+
+### 4.8 Ease 曲线作用于"剩余比例"不是"已走比例"
+
+- **症状**:`PatrolMove`(以及旧版 `EaseMove`)配了 `InOutSine` 曲线后,敌人**完全不动**(t=2s 还在入场点)。
+- **原因**:Ease 函数的语义是 "t=0 返回 0,t=1 返回 1,中段最大"。如果 `t = 1 - dist/initialDist`(已走比例),则起步时 `t=0`,`Ease(InOutSine, 0) = 0`,`speedFactor = 0`,step = 0 → **永远不动**。
+- **正确写法**(以 `PatrolMove` 为例):让 `t = dist / initialDist`(**剩余距离比例**,1=远,0=到),并对 `Linear` 模式做特例 —— 返回常数 1(匀速),不要返回 `t`,否则变成"距离衰减 ODE"指数渐近永远到不了:
+  ```csharp
+  case EaseMode.Linear:    return 1f; // 匀速,无缓动
+  case EaseMode.InOutSine: return InOutSine(t); // 起步 0.5,中段 1.0,收尾 0.5
+  ```
+- **新 `EaseMove`(子弹式「角度方向 + 时长」重构,2026-09 改)**:`t` 改为**剩余时间比例**(`1 - _elapsed/Duration`),不是距离比例 —— 概念一样(1=起步全速,0=到时停下),但来源不同:`EaseMove` 与敌人入场位置完全解耦,只关心方向与时长,资产跨场景可复用(详见 `Assets/Scripts/Enemy/AI/MoveBehaviours/EaseMove.cs` 注释)。
+- **配套字段**:`EaseMove` / `PatrolMove` 必须有 `MinSpeedFactor` 字段,InOutSine / OutBack 曲线在 `tRemain=0`(收尾)时 `Ease(...) = 0`,需要 `MinSpeedFactor > 0` 才能在收尾段继续动(默认 0,Tooltip 提示用户调)。
+- **预防**:写"距离/时间 → 速度因子"的代码时,先画一个数轴:t=1(起步)对应"全速"还是"零速"?**全速对应 t=1** 才符合"起步 = 快"的直觉。

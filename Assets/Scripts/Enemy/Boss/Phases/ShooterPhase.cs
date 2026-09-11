@@ -22,6 +22,8 @@ namespace ShinySTG.EnemyAI.Boss
 
         public override void OnEnter(Transform boss)
         {
+            // __BOSSDEBUG__ #5:阶段进入时打印 Flow
+            Debug.Log($"[__BOSSDEBUG__] ShooterPhase.OnEnter Flow={(Flow == null ? "NULL" : Flow.name)} reset={ResetOnEnter}", boss);
             if (Flow == null) return;
             _runtime = Flow.Instantiate();
             if (ResetOnEnter) _runtime.Reset();
@@ -29,7 +31,12 @@ namespace ShinySTG.EnemyAI.Boss
 
         public override void OnTick(Transform boss, float dt)
         {
-            _runtime?.Tick(boss, dt);
+            if (_runtime == null)
+            {
+                // __BOSSDEBUG__ #6:Runtime 已被清空(说明 Flow 跑完或 OnExit 调过了),不再 tick
+                return;
+            }
+            _runtime.Tick(boss, dt);
         }
 
         public override void OnExit(Transform boss)

@@ -16,8 +16,9 @@ MonoBehaviour:
   ModifierPrefabs:
   - rid: 6177226937391906820
   - rid: 6177226960998236160
-  FireExtension:
-    rid: 6177226955828494341
+  FireExtensions:
+  - rid: 6177226981840519177
+  - rid: 6177226981840519178
   Speed: 1
   AngularSpeed: 0
   Damage: 1
@@ -31,10 +32,6 @@ MonoBehaviour:
       type: {class: AccelerateModifier, ns: , asm: Assembly-CSharp}
       data:
         Acceleration: 1
-    - rid: 6177226955828494341
-      type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
-      data:
-        BaseAngle: 270
     - rid: 6177226960998236160
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:
@@ -46,3 +43,11 @@ MonoBehaviour:
         FlashFrequency: 5
         FlashMinAlpha: 0.3
         AutoSetDrawMode: 1
+    - rid: 6177226981840519177
+      type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseAngle: 0
+        PositionOffset: {x: 0, y: 0}
+    - rid: 6177226981840519178
+      type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
+      data: 

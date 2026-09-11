@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cc563725aafb1d408110d33cec35c14, type: 3}
+  m_Name: Boss1
+  m_EditorClassIdentifier: 
+  Actions:
+  - rid: 6177226966485434368
+  - rid: 6177226966485434370
+  Loop: 1
+  StartDelay: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177226966485434368
+      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Duration: 1
+        Move:
+          rid: 6177226966485434369
+    - rid: 6177226966485434369
+      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Direction: 0
+        CustomAngleDeg: 270
+        Speed: 3
+    - rid: 6177226966485434370
+      type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Duration: 1
+        Children:
+        - rid: 6177226966485434373
+        - rid: 6177226966485434375
+    - rid: 6177226966485434373
+      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Duration: 1
+        Move:
+          rid: 6177226966485434374
+    - rid: 6177226966485434374
+      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Direction: 1
+        CustomAngleDeg: 270
+        Speed: 3
+    - rid: 6177226966485434375
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Duration: 1
+        Pattern: {fileID: 11400000, guid: e877089c07f368142a586984ff222bfa, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs: []

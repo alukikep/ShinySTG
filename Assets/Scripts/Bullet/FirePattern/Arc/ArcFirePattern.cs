@@ -12,13 +12,15 @@ public class ArcFirePattern : FirePattern
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
-        // 中线方向由 FireExtension 解析(null 时 fallback = 270° + rotationRad,等价旧版 normal)
-        float centerRad = FireExtensionResolver.ResolveCenterAngle(FireExtension, position, rotationRad);
+        // position 转本地变量再传 ref,让 Base.PositionOffset 在 Resolver 入口处叠加。
+        Vector2 from = position;
+        // 中线方向由 FireExtensions pipeline 解析(空数组 → fallback 270° + rotationRad,等价旧版 normal)
+        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(FireExtensions, ref from, rotationRad);
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
 
         if (Count <= 1)
         {
-            FireOne(position, centerRad, pool, team, extraModifiers);
+            FireOne(from, centerRad, pool, team, extraModifiers);
             return;
         }
         float start = centerRad - (ArcLength * Mathf.Deg2Rad) / 2f;
@@ -26,8 +28,9 @@ public class ArcFirePattern : FirePattern
         for (int i = 0; i < Count; i++)
         {
             float rad = start + step * i;
+            // Radius 是扇形起始偏移(本地,沿每发子弹方向),与 Base.PositionOffset 正交叠加。
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
-            FireOne(position + offset, rad, pool, team, extraModifiers);
+            FireOne(from + offset, rad, pool, team, extraModifiers);
         }
     }
 

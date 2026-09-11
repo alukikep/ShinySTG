@@ -58,6 +58,14 @@ namespace ShinySTG.EnemyAI.Boss
         [Tooltip("兼容字段:Bars 为空时把 MaxHp 当单管血。")]
         public float LegacyMaxHp = 1000f;
 
+        [Header("Audio (optional — 留空则不播放)")]
+        [Tooltip("Boss 受击时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _hitSfx;
+        [Tooltip("某管血被打空时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _barDepletedSfx;
+        [Tooltip("Boss 死亡时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _deathSfx;
+
         [Header("Hitbox (供碰撞层读位置)")]
         [Tooltip("由 Boss 总控 Awake 自动注入,无需手填。\n" +
                  "空时回退到 transform.position。")]
@@ -81,7 +89,9 @@ namespace ShinySTG.EnemyAI.Boss
         void Awake()
         {
             InitBars();
-            Hitbox = GetComponent<BossHitbox>();
+            // Hitbox 不在这里赋值 —— 由 Boss 总控统一注入(避免 Awake 顺序耦合,
+            // BossHealth 不需要知道 Boss 总控的存在,语义对齐 EnemyHealth)。
+            // Boss 总控没找到时 Hitbox 留空,Position 属性会回退到 transform.position。
         }
 
         void OnEnable()
@@ -174,17 +184,25 @@ namespace ShinySTG.EnemyAI.Boss
                     var bar = Bars[CurrentBarIndex];
                     if (bar == null) { CurrentBarIndex++; continue; }
 
+                    int oldBarIdx = CurrentBarIndex;
                     bar.CurrentHp -= remaining;
                     if (bar.CurrentHp <= 0f)
                     {
                         remaining = -bar.CurrentHp; // 溢出伤害继续扣下一管
                         bar.CurrentHp = 0f;
+                        // __BOSSDEBUG__ #7:每管打空都打印
+                        Debug.Log($"[__BOSSDEBUG__] Bar[{oldBarIdx}] depleted, remaining={remaining:F1} → switch to next", this);
                         if (bar.TriggerOnEmpty)
-                            OnBarDepleted?.Invoke(CurrentBarIndex);
+                        {
+                            if (_barDepletedSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_barDepletedSfx, position: Position);
+                            OnBarDepleted?.Invoke(oldBarIdx);
+                        }
                         CurrentBarIndex++;
                     }
                     else
                     {
+                        // 受击音(每次扣血都播;若觉得太密,在 cue 上设 Cooldown / MaxVoices 节流)
+                        if (_hitSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_hitSfx, position: Position);
                         remaining = 0f;
                     }
                 }
@@ -195,6 +213,9 @@ namespace ShinySTG.EnemyAI.Boss
             if (IsDead && !_deathFired)
             {
                 _deathFired = true;
+                // __BOSSDEBUG__ #7b:最终死亡
+                Debug.Log($"[__BOSSDEBUG__] BossHealth.IsDead → OnDeath @ t={Time.time:F2}", this);
+                if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: Position);
                 OnDeath?.Invoke();        // 实例事件:供 Boss 总控订阅做收尾
                 OnAnyDeath?.Invoke(this); // 静态事件:供全局订阅
             }

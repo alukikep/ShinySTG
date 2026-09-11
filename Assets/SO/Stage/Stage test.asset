@@ -13,42 +13,20 @@ MonoBehaviour:
   m_Name: Stage test
   m_EditorClassIdentifier: 
   Entries:
-  - rid: 6177226930933202944
-  - rid: 6177226930933202948
-  - rid: 6177226930933202949
+  - rid: 6177227000708333568
   Duration: 60
   Pool: {fileID: 0}
   references:
     version: 2
     RefIds:
-    - rid: 6177226930933202944
-      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
-      data:
-        TriggerTime: 0
-        OneShot: 1
-        Duration: 1
-        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
-        SpawnPosition: {x: 2, y: 2}
-        InitialRotation: 0
-        OverrideFlow: {fileID: 0}
-    - rid: 6177226930933202948
-      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
-      data:
-        TriggerTime: 1.08
-        OneShot: 1
-        Duration: 1
-        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
-        SpawnPosition: {x: -2, y: 2}
-        InitialRotation: 0
-        OverrideFlow: {fileID: 0}
-    - rid: 6177226930933202949
+    - rid: 6177227000708333568
       type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 2.146667
+        TriggerTime: 0.02666687
         OneShot: 1
-        Duration: 10
-        SpawnInterval: 2
-        EnemyPrefab: {fileID: 7432855126850182366, guid: 5b6659ee8c5d43b45a5922c983b389d9, type: 3}
-        SpawnPosition: {x: 0, y: 10}
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 3322077835522038162, guid: d2303041f257c1f41a7c9fc8664540de, type: 3}
+        SpawnPosition: {x: -5, y: 3}
         InitialRotation: 0
         OverrideFlow: {fileID: 0}

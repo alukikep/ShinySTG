@@ -15,11 +15,12 @@ MonoBehaviour:
   BulletPrefab: {fileID: 2577476433622056203, guid: bd97fe3ea7932464cba25b0c3e7e2842, type: 3}
   ModifierPrefabs:
   - rid: 6177226942301601792
-  FireExtension:
-    rid: 6177226955828494343
+  FireExtensions:
+  - rid: 6177226955828494343
+  FireSounds: []
   Speed: 8
   AngularSpeed: 0
-  Damage: 1
+  Damage: 10
   Count: 1
   DeltaSpeed: 2
   references:
@@ -36,3 +37,4 @@ MonoBehaviour:
       type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
       data:
         BaseAngle: 90
+        PositionOffset: {x: 0, y: 0}

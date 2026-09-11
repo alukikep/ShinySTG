@@ -12,14 +12,16 @@ public class LineFirePattern : FirePattern
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
-        // 中线方向由 FireExtension 解析(null 时 fallback = 270° + rotationRad,等价旧版 normal)
-        float rad = FireExtensionResolver.ResolveCenterAngle(FireExtension, position, rotationRad);
+        // position 转本地变量再传 ref,让 Base.PositionOffset 在 Resolver 入口处叠加。
+        Vector2 from = position;
+        // 中线方向由 FireExtensions pipeline 解析(空数组 → fallback 270° + rotationRad,等价旧版 normal)
+        float rad = FireExtensionResolver.ResolvePipelineWithOffset(FireExtensions, ref from, rotationRad);
         float speed = Speed; // 起点使用基类 Speed
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)
         {
             // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
-            SpawnBullet(pool, position, rad, speed, AngularSpeed, Damage, team, extraModifiers);
+            SpawnBullet(pool, from, rad, speed, AngularSpeed, Damage, team, extraModifiers);
             speed += DeltaSpeed;
         }
     }

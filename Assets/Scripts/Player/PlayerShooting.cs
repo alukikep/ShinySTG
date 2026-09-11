@@ -16,6 +16,11 @@ namespace ShinySTG.Player
     /// </summary>
     public class PlayerShooting : MonoBehaviour
     {
+        [Header("Audio (optional — 留空则不播放)")]
+        [Tooltip("开火音 SFX cue(留空 = 不播)。\n" +
+                 "建议在 cue 上设 Cooldown≈0.02s 防止「哒哒哒」一片,或 MaxVoices=2~3。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _shootSfx;
+
         [Header("Fire Patterns (复用现有 FirePattern 体系)")]
         [Tooltip("自机主弹。索引 = 火力级对应的弹幕槽位。")]
         public FirePattern[] MainPatterns;
@@ -58,6 +63,11 @@ namespace ShinySTG.Player
                 var ownerHb = Player.Instance?.Hitbox;
                 if (p != null) BulletPool.Instance.FireGroup(p, transform.position, 0f, ownerHb);
             }
+
+            // 开火音 —— 放在 FireGroup 之后,不影响子弹创建;只在「确实开火」时触发。
+            // Cooldown / MaxVoices 在 cue 上设。
+            if (_shootSfx != null)
+                ShinySTG.Audio.AudioMix.PlaySfx(_shootSfx, position: (Vector2)transform.position);
         }
     }
 }

@@ -40,6 +40,12 @@ namespace ShinySTG.EnemyAI
         public float HpPercent  => MaxHp > 0 ? Mathf.Clamp01(_currentHp / MaxHp) * 100f : 0f;
         public bool  IsDead     => _currentHp <= 0f;
 
+        [Header("Audio (optional — 留空则不播放)")]
+        [Tooltip("敌人受击时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _hitSfx;
+        [Tooltip("敌人死亡时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _deathSfx;
+
         [Header("Hitbox (供碰撞层读位置)")]
         [Tooltip("由 Enemy 总控 Awake 自动注入,无需手填。\n" +
                  "空时回退到 transform.position。")]
@@ -75,10 +81,13 @@ namespace ShinySTG.EnemyAI
             if (IsDead || dmg <= 0f) return;
 
             _currentHp = Mathf.Max(0f, _currentHp - dmg);
+            // 受击音(每次扣血都播;若太密,在 cue 上设 Cooldown / MaxVoices 节流)
+            if (_hitSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_hitSfx, position: Position);
             OnDamaged?.Invoke(dmg);
 
             if (_currentHp <= 0f)
             {
+                if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: Position);
                 OnDeath?.Invoke();
                 OnAnyDeath?.Invoke(this);
             }

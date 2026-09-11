@@ -25,6 +25,16 @@ namespace ShinySTG.Player
     /// </summary>
     public class PlayerHealth : MonoBehaviour
     {
+        [Header("Audio (optional — 留空则不播放)")]
+        [Tooltip("玩家受伤时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _hitSfx;
+        [Tooltip("玩家死亡时(残机归零)播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _deathSfx;
+        [Tooltip("擦弹时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _grazeSfx;
+        [Tooltip("火力提升时播放的 SFX cue(留空 = 不播)。")]
+        [SerializeField] ShinySTG.Audio.SfxCue _powerUpSfx;
+
         [Header("Lives")]
         [Tooltip("初始残机数(含本体,例如 3 = 玩家 + 2 续命)。")]
         public int InitialLives = 3;
@@ -111,6 +121,11 @@ namespace ShinySTG.Player
             // 后续若需要按弹类型 / 玩家状态做差异化(例如对追踪弹擦弹额外加分),可在此扩展。
             GrazeCount++;
             OnGraze?.Invoke(GrazeCount);
+            if (_grazeSfx != null)
+            {
+                Vector2? pos = bullet != null ? (Vector2?)bullet.transform.position : (Vector2?)transform.position;
+                ShinySTG.Audio.AudioMix.PlaySfx(_grazeSfx, position: pos);
+            }
         }
 
         /// <summary>
@@ -144,11 +159,13 @@ namespace ShinySTG.Player
             if (Lives <= 0) return;
 
             OnLifeLost?.Invoke();
+            if (_hitSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_hitSfx, position: (Vector2)transform.position);
 
             Lives -= 1;
             if (Lives <= 0)
             {
                 Lives = 0;
+                if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: (Vector2)transform.position);
                 OnAllLivesLost?.Invoke();
                 return;
             }
@@ -166,6 +183,7 @@ namespace ShinySTG.Player
             if (next == PowerLevel) return;
             PowerLevel = next;
             OnPowerUp?.Invoke(PowerLevel);
+            if (_powerUpSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_powerUpSfx, position: (Vector2)transform.position);
         }
 
         /// <summary>强制复活 / 加命(给续命道具用)。</summary>

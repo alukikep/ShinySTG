@@ -9,10 +9,12 @@
 - 💉 **多管血**:`BossHealth` 内置多管血机制,TakeDamage 自动切管
 - 🧩 **可组合 Action**:`Parallel` / `Sequence` 容器支持无限嵌套,边移动边射击等复杂行为直接配置
 - 🎨 **数据驱动**:`FirePattern` SO 系统(Ring/Line/Arc/Composite 等),改一个资产 = 改全场景
-- 🧭 **FireExtension 多态扩展**:`FireExtension` 是对基础发射逻辑(中线方向)的可插拔扩展点(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...),挂在 FirePattern 上,Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
+- 🧭 **FireExtension 多态扩展**:`FireExtensions` 是 FirePattern 上的 **模块数组 + Pipeline 模型**——按数组顺序串成"角度管道"(Base → PlayerAim → Offset Angle → ...),拼装出"基础方向 + 瞄准玩家 + 再叠 N°"等复杂逻辑(例:`[PlayerAim, Offset Angle(+180°)]` = 瞄向玩家但飞向玩家背后的"绕后弹")。Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
+- 🔊 **FireSound 开火音多态扩展**:`FireSounds` 是 FirePattern 上的**并行触发器数组**——与 FireExtension 的"角度管道"对仗,FireSound 是"每个模块独立播音"(可叠多 cue / 按状态发声 / 自定义行为)。走 SfxCue 体系(限流/Pipeline/Bus 全继承)。BulletPool.FireGroup 入口自动调一次,Composite 子 pattern 不重复触发。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.2 + [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) §6.5
 - 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂 / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC
 - 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
 - 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
+- 🔊 **音频音乐系统**:`AudioMix` 静态门面 + `AudioSystem` 场景单例 + `SfxCue` / `BgmTrack` / `BgmPlaylist` / `AudioBus` SO 资产;SFX 多态规则 `SfxRule` 走 `[SerializeReference, SR]` 下拉(随机抽 clip / pitch 抖动 / cooldown);BGM 交叉淡化 + 顺序/随机播放;嵌入到 `PlayerHealth` / `BossHealth` / `EnemyHealth` / `PlayerShooting` 仅增加 `[SerializeField] SfxCue` 字段,其他模块 0 改动。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §11,配置方法见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)
 - 📘 **关卡可视化编辑器**(菜单 `STG → Level Editor`):时间轴 + 列表 + 详情面板 + Preview + Scene Gizmo,支持增/删/复制/撤销(`Ctrl+Z`)+ 快捷键,详见 [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md);架构见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10
 
 ## 📐 架构说明
@@ -30,6 +32,7 @@
 - 关卡可视化编辑器子系统(LevelEditorWindow + Drawer / Preview / Gizmo 扩展点)
 - 内置 Action / MoveBehaviour / BossSignal 列表
 - 如何新增 Action、MoveBehaviour、FirePattern、Modifier、BossSignal、BossPhase、子机位置形态
+- **音频音乐系统(AudioSystem)的数据资产 / 多态扩展 / 嵌入挂点**
 - 11 个常见问题与设计决策记录
 
 ## 🛠️ 开发约定
@@ -53,10 +56,11 @@ Assets/Scripts/
 │   ├── Bullet.cs                             # 飞行体 + modifier 调度
 │   ├── BulletModifier.cs                     # 多态修饰基类 + Accelerate / Steer / Homing Enemy 内置
 │   ├── BulletColorModifier.cs                # 视觉修饰:暗部染色 / 渐变 / 闪烁(Modifier/Color,配套 Shaders/BulletTint.shader)
-│   ├── FirePattern.cs (+ GetFireCount + FireExtension 扩展点)
+│   ├── FirePattern.cs (+ GetFireCount + FireExtension 扩展点 + FireSound 扩展点)
 │   ├── FireExtension/                          # 基础发射逻辑的多态扩展(详见 ARCHITECTURE.md §3.1)
 │   │   ├── FireExtension.cs                    # 基类 + BaseAngleFireExtension / PlayerAimFireExtension 内置
-│   │   └── FireExtensionResolver.cs            # 静态 helper(Null-safe 解析中心方向)
+│   │   ├── FireExtensionResolver.cs            # 静态 helper(Null-safe 解析中心方向)
+│   │   └── FireSound.cs                        # 开火音多态基类 + SfxCueFireSound / NullFireSound 内置(详见 ARCHITECTURE.md §3.2)
 │   └── FirePattern/{Ring,Line,Arc,Composite}/...
 ├── Hitbox/                                   # 统一 AABB + 网格索引(详见 ARCHITECTURE.md §8)
 │   ├── HitboxComponent.cs                    # 通用 AABB 组件
@@ -100,6 +104,28 @@ Assets/Scripts/
         ├── SimpleSpawnEntry.cs               # [SRName("Entry/Simple")] 时间+位置+单 prefab
         ├── WaveSpawnEntry.cs                 # [SRName("Entry/Wave")]   时间+中心点+多 prefab 自动铺
         └── BossSpawnEntry.cs                 # [SRName("Entry/Boss")]   时间+位置+boss prefab(留壳)
+└── Audio/                                   # 音频音乐系统(详见 ARCHITECTURE.md §11;配置方法见 Assets/Scripts/Audio/README.md)
+    ├── AudioMix.cs                           # 静态门面(唯一调用入口:PlaySfx/PlayTrack/SetBusVolume/...)
+    ├── AudioSystem.cs                        # PersistentSingleton 总控 + AudioHelper
+    ├── Sfx/
+    │   ├── SfxRouter.cs                      # SFX 池 + 同 cue 限流(MaxVoices/Cooldown)+ 调度
+    │   ├── SfxPlayer.cs                      # 池化 AudioSource 封装(支持跟随 Parent / 世界坐标)
+    │   └── SfxRule.cs                        # 多态 Pipeline 基类 + 内置 RandomPick/PitchVariation/Cooldown 规则
+    ├── Music/
+    │   ├── MusicPlayer.cs                    # 交叉淡化 + Playlist 顺序/随机播放 + 暂停恢复
+    │   ├── MusicChannel.cs                   # 单 BGM AudioSource(A/B 双通道交叉淡化)
+    │   ├── BgmTrack.cs                       # SO:单首 BGM(Clip + 默认音量 + Loop + 路由)
+    │   └── BgmPlaylist.cs                    # SO:BGM 列表(Tracks + Shuffle + Loop + CrossfadeDuration)
+    ├── Mixer/
+    │   ├── AudioBus.cs                       # SO:总线配置(兼容 AudioMixerGroup + PlayerPrefs 持久化)
+    │   ├── AudioBusKind.cs                   # 总线枚举(Master/Bgm/Sfx/UI)
+    │   └── BusMixer.cs                       # 总线音量管理 + PlayerPrefs
+    ├── Bank/
+    │   ├── SfxCue.cs                         # SO:单个 SFX(Clips + 限流参数 + Rules Pipeline)
+    │   └── AudioBank.cs                      # SO:SfxCue 分组容器(可选,纯 Inspector 组织)
+    └── Event/
+        ├── AudioEventHub.cs                  # 关卡事件桥接(默认禁用;后续 LevelEditor 扩展 BGM 切换时启用)
+        └── LevelAudioBinding.cs              # SO:关卡↔BGM 绑定(预留接口)
 ```
 
 ## 🚀 快速上手
@@ -107,7 +133,8 @@ Assets/Scripts/
 ### 1. 场景准备
 
 - 场景里创建一个 GameObject,挂 `BulletPool` 组件,设置 `DefaultPrefab`。
-- (Boss 场景)另起一个 GameObject,挂 `BossShotCounter` 组件。
+- (Boss 场景)另起一个 GameObject(推荐命名 `BossShotCounter`),挂 `BossShotCounter` 组件。
+  - 这是**场景级单例**(`Singleton<BossShotCounter>`),全场景一份。**不要**在 Boss prefab 上挂,否则同场景多 Boss 会互相污染 Instance。
 
 ### 2. 创建行为流资产
 
@@ -125,11 +152,12 @@ Project 窗口右键 → Create → STG → Behavior Flow
 
 ### 4. Boss
 
-- 创建 boss prefab,挂 `Boss` 总控(`[RequireComponent]` 自动加挂 `BossHealth` + `BossHitbox` + `BossShotCounter` + `BossController`,无需手填)。
+- 创建 boss prefab,挂 `Boss` 总控(`[RequireComponent]` 自动加挂 `BossHealth` + `BossHitbox` + `BossController`,无需手填)。
 - 在 `BossHealth.Bars` 配置多管血。
 - 在 `BossController.Phases` 数组里下拉选 `Phase/Shooter`,把不同 .flow 资产拖到每个 phase 的 `Flow` 字段。
-- 在 `BossController.Signals` 数组里下拉选内置信号(HP / Bar / Total / Phase Time / Shots)。
-- 在每个 phase 的 `ExitTriggers` 数组里配退出条件(Signal + Op + Threshold)。
+- 在 `BossController.Signals` 数组里下拉选内置信号(`HP %` / `Current Bar %` / `Current Bar Index` / `Total HP %` / `Phase Time` / `Shots Fired`)。
+- 在每个 phase 的 `ExitTriggers` 数组里配退出条件(`BossSignal` + `Op` + `Threshold` 三元组);内置算子:`LessThan` / `LessOrEqual` / `Equal` / `GreaterOrEqual` / `GreaterThan`。
+  - 推荐配置范式和 6 种 Signal 的适用场景详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §5.1。
 - **玩家弹可打 Boss**:`BossHitbox` Team=Enemy,CollisionService 走同 EnemyHealth 同构的查询路径;
 - **追踪弹可锁 Boss**:`BossHealth` 实现 `IHomingTarget`,`HomingEnemyModifier` 统一识别。
 
@@ -155,6 +183,22 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 - 想换子机形态:`PlayerOptions.PositionForm` 下拉选 `Form/Touhou Symmetric` / `Linear Row` / `Rear Line`
 
 **详细步骤、扩展指南、设计决策见 `ARCHITECTURE.md` §7。**
+
+### 7. 音频与音乐(详见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md))
+
+- 场景里创建一个 GameObject(命名 `Audio`),Add Component → `AudioSystem`(它会自动 `PersistentSingleton`,跨场景保留音量)。
+- 在 Project 窗口右键 → `Create → STG → Audio` 创建 `SfxCue` / `BgmTrack` / `BgmPlaylist` / `AudioBus` / `AudioBank` 资产。
+- 把 SfxCue 拖到对应宿主的字段:
+  - `PlayerHealth._hitSfx / _deathSfx / _grazeSfx / _powerUpSfx`
+  - `BossHealth._hitSfx / _barDepletedSfx / _deathSfx`
+  - `EnemyHealth._hitSfx / _deathSfx`
+  - `PlayerShooting._shootSfx`
+- 切 BGM:在场景脚本里调 `AudioMix.PlayTrack(track)` 或 `AudioMix.PlayPlaylist(playlist)`。
+- 设总线音量:`AudioMix.SetBusVolume(AudioBusKind.Sfx, 0.7f)`。
+- **FirePattern 开火音**:在 FirePattern 资产 Inspector 的 `Fire Sounds` 数组里点 `+` → 下拉选 `FireSound/SFX Cue` → 拖 SfxCue。可与 `PlayerShooting._shootSfx` 并存(后者是玩家整体开火音,前者是各 pattern 特征音)。详见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) §6.5
+- 留空字段 = 不播放,场景里没挂 `AudioSystem` = 调用静默返回,不报错。
+
+**架构与扩展见 `ARCHITECTURE.md` §11;详细 Inspector 配置步骤见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)。**
 
 <!-- AI_SECTION_ANCHOR -->
 ## 🤖 AI 协作约定

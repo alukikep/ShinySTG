@@ -23,15 +23,9 @@ MonoBehaviour:
     - rid: 6177226930933202945
       type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Duration: 1
+        Duration: 4
         Move:
-          rid: 6177226930933202946
-    - rid: 6177226930933202946
-      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
-      data:
-        Direction: 0
-        CustomAngleDeg: 270
-        Speed: 3
+          rid: 6177226988037079044
     - rid: 6177226930933202947
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -39,3 +33,12 @@ MonoBehaviour:
         Pattern: {fileID: 11400000, guid: b147e4cb9a432094ba25e9cbfc6a4fbb, type: 2}
         FireRate: 2
         AimOffsetDeg: 0
+        ExtraModifierPrefabs: []
+    - rid: 6177226988037079044
+      type: {class: SineMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        BaseAngle: 270
+        Speed: 2
+        Amplitude: 0.6
+        Frequency: 1.5
+        PhaseOffsetDeg: 0
