@@ -16,6 +16,8 @@ MonoBehaviour:
   - rid: 6177227000708333568
   Duration: 60
   Pool: {fileID: 0}
+  AutoSwitchBgm: 1
+  AudioBinding: {fileID: 11400000, guid: 5ba49e26e0a0d33449ac01fa09a48543, type: 2}
   references:
     version: 2
     RefIds:

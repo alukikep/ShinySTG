@@ -29,5 +29,16 @@ namespace ShinySTG.Level
         [Tooltip("关卡专用的 BulletPool(可选)。为空时 LevelController 会在 BeginLevel 自动 FindObjectOfType。\n" +
                  "用法:Boss 关卡挂专属弹 prefab 时配一个,普通关卡留空走场景默认池。")]
         public BulletPool Pool;
+
+        [Header("Audio")]
+        [Tooltip("勾上后,BeginLevel 时若场景里有 AudioSystem,会按 AudioBinding 自动切歌(" +
+                 "OnLevelStart → AudioBinding.Playlist,OnBossSpawned → AudioBinding.BossMusic," +
+                 "OnBossDefeated → AudioBinding.DefeatMusic)。\n" +
+                 "取消勾选 = 此关卡不参与自动切歌(BGM 由调用方手动控制,比如过场关 / 静音关)。")]
+        public bool AutoSwitchBgm = true;
+
+        [Tooltip("此关卡对应的 LevelAudioBinding。AudioEventHub 按它切歌。空 = 不切 BGM(可与 AutoSwitchBgm 配合,实现『允许自动切但本关不切』)。\n" +
+                 "关卡编辑器工具栏有「Create AudioBinding」一键创建并自动反引用。")]
+        public ShinySTG.Audio.LevelAudioBinding AudioBinding;
     }
 }

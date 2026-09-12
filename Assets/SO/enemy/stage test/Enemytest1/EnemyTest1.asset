@@ -16,6 +16,7 @@ MonoBehaviour:
   - rid: 6177227000708333569
   - rid: 6177227000708333576
   - rid: 6177227000708333579
+  - rid: 6177227027782303748
   Loop: 0
   StartDelay: 0
   references:
@@ -68,3 +69,7 @@ MonoBehaviour:
         Direction: 3
         CustomAngleDeg: 270
         Speed: 3
+    - rid: 6177227027782303748
+      type: {class: SelfDestructAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Duration: 1

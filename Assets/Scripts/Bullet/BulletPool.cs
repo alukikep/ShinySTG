@@ -99,6 +99,9 @@ public class BulletPool : MonoBehaviour
     /// 注意:Modifier 是纯 C# 对象(SerializeReference 路线),
     /// 不是 GameObject 子对象 —— bullet.transform 下不再产生 modifier 子层级,
     /// modifier 不继承 bullet 的 transform 缩放。
+    ///
+    /// ★ 挂完所有 modifier 后,统一调一次 ResetWindow,把每颗子弹的时间窗口计时器归零
+    ///   (OneShot modifier 重新具备触发机会;Delay/Duration 从这一刻起算)。
     /// </summary>
     static void AttachModifiers(Bullet bullet, BulletModifier[] mods)
     {
@@ -111,6 +114,10 @@ public class BulletPool : MonoBehaviour
             // 避免多颗子弹共享同一 modifier 模板导致状态污染。
             bullet.AddModifier(mod.Clone());
         }
+        // ★ 挂在 _modifiers 之后才调 ResetWindow(此前 _modifiers 已由 Bullet.Init 的 ClearModifiers 清空过)。
+        // 这里没暴露 ResetAllModifierWindows,因为它需要遍历 _modifiers(私有列表),
+        // 由 Bullet 自己暴露一个 public ResetAllModifierWindows() 调用更干净。
+        bullet.ResetAllModifierWindows();
     }
 
     /// 回收一颗。

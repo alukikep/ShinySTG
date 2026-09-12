@@ -3,24 +3,26 @@ using UnityEngine;
 namespace ShinySTG.Audio
 {
     /// <summary>
-    /// 关卡 → BGM 绑定资产 —— 把 LevelDefinition 资产与 BGM 资产配对,供后续扩展用。
+    /// 关卡 → BGM 绑定资产 —— 把 LevelDefinition 资产与 BGM 资产配对。
     ///
-    /// ★ 当前状态:接口预留,不在运行时自动启用 ★
-    ///   用户后续打算在 LevelEditor 加「切换 BGM」方法。本类提供数据结构,
-    ///   让 LevelEditor 能在自己的 Inspector 里编辑这些绑定,但 AudioEventHub 默认不订阅
-    ///   LevelController 事件(用户决策:暂时不需要自动切歌)。
+    /// ★ 推荐用法 ★
+    ///   把 LevelAudioBinding 拖到 LevelDefinition.AudioBinding 字段(关卡资产一站式管理)。
+    ///   LevelController.BeginLevel() 会调 AudioEventHub.TryBind(definition) 自动启用切歌:
+    ///     - OnLevelStart    → Playlist(关卡默认 BGM)
+    ///     - OnBossSpawned   → BossMusic(Boss 出场切到 Boss BGM)
+    ///     - OnBossDefeated  → DefeatMusic(Boss 击败切到胜利 BGM)
     ///
-    /// 使用方式(后续 LevelEditor 扩展时):
-    ///   1. 用户在 LevelEditor 选中 LevelDefinition.asset 时,可以在右栏看到 LevelBindings 字段,
-    ///      让用户配 "此关卡播放哪首 BGM / Boss 战切到哪首 / 击败 Boss 切到哪首"。
-    ///   2. LevelEditor 内部把用户的编辑写入 LevelAudioBinding.Playlist / BossMusic / DefeatMusic。
-    ///   3. 运行时关卡开始 → 关卡结束,BGM 切换由调用方通过 AudioMix.PlayTrack / PlayPlaylist 触发
-    ///      (LevelEditor 可以用 LevelController.OnLevelStart / OnBossSpawned 事件,但本类本身不订阅)。
+    /// ★ 向后兼容用法 ★
+    ///   AudioSystem.LevelBindings[] 是全局查表模式:多个 LevelDefinition 共享同一套 binding 模板时使用。
+    ///   当 LevelDefinition.AudioBinding 为空时,AudioEventHub 才会去 LevelBindings 里按 Level 字段匹配。
+    ///
+    /// ★ 创建便利 ★
+    ///   关卡编辑器菜单 STG → Level Editor → 选中关卡 → 工具栏「+ Create AudioBinding」
+    ///   一键在关卡同目录创建同名 _AudioBinding.asset + 双向反引用。
     ///
     /// 与既有层关系:
-    ///   - 完全正交:不修改 LevelController,不修改 AudioSystem,仅作为「数据容器」存在。
-    ///   - AudioSystem.LevelBindings 字段持有这些资产的引用,但 AudioSystem 启动时不会枚举它们
-    ///     (除非用户后续在 AudioEventHub 里启用事件订阅)。
+    ///   - 完全正交:不修改 LevelController / AudioSystem 的接口,仅作为「数据容器」存在。
+    ///   - AudioSystem.LevelBindings 字段保留作为向后兼容入口(老用法仍可工作)。
     /// </summary>
     [CreateAssetMenu(menuName = "STG/Audio/Level Audio Binding", fileName = "NewLevelAudioBinding", order = 105)]
     public class LevelAudioBinding : ScriptableObject

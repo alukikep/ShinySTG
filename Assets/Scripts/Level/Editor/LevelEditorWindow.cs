@@ -173,12 +173,105 @@ namespace ShinySTG.Level.Editor
             }
 
             GUILayout.Space(8);
+            DrawAudioBindingButtons();
+
+            GUILayout.Space(8);
             DrawPreviewControls();
 
             GUILayout.FlexibleSpace();
             GUILayout.Label(_definition.name, EditorStyles.toolbarButton);
 
             EditorGUILayout.EndHorizontal();
+        }
+
+        /// <summary>
+        /// 关卡音频绑定便利按钮:让用户在关卡编辑器里一站式管理 LevelAudioBinding,免去手动建资产 + 拖引用的繁琐。
+        ///
+        /// 三种状态:
+        ///   - AudioBinding == null   → 显示「Create AudioBinding」一键创建并反引用
+        ///   - AudioBinding != null  → 显示「Open AudioBinding」在 Project 窗口选中并打开 Inspector
+        ///
+        /// 「Create」按钮的具体行为:
+        ///   1. 在 LevelDefinition.asset 同目录下建一个同名 .asset(如 Stage1.asset → Stage1_AudioBinding.asset)
+        ///   2. LevelAudioBinding.Level 字段自动填上当前 LevelDefinition(反引用)
+        ///   3. LevelDefinition.AudioBinding 反向填上这个新建的 binding
+        ///   4. 选中 + Ping 这个新资产
+        /// </summary>
+        void DrawAudioBindingButtons()
+        {
+            if (_definition == null) return;
+
+            var binding = _definition.AudioBinding;
+
+            if (binding == null)
+            {
+                if (GUILayout.Button("+ Create AudioBinding", EditorStyles.toolbarButton, GUILayout.Width(160)))
+                    CreateAudioBindingForCurrentLevel();
+            }
+            else
+            {
+                if (GUILayout.Button("♪ Open AudioBinding", EditorStyles.toolbarButton, GUILayout.Width(160)))
+                {
+                    Selection.activeObject = binding;
+                    EditorGUIUtility.PingObject(binding);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 在 LevelDefinition 同目录创建同名 LevelAudioBinding 资产,并双向反引用。
+        /// 失败时(例如已存在同名 binding)弹错误对话框,不污染状态。
+        /// </summary>
+        void CreateAudioBindingForCurrentLevel()
+        {
+            if (_definition == null) return;
+
+            // 1. 算资产路径:LevelDefinition.asset 同目录 + "<LevelName>_AudioBinding.asset"
+            string defPath = AssetDatabase.GetAssetPath(_definition);
+            if (string.IsNullOrEmpty(defPath))
+            {
+                EditorUtility.DisplayDialog("错误",
+                    "LevelDefinition 尚未保存为资产,无法自动创建 AudioBinding。请先保存关卡。", "OK");
+                return;
+            }
+            string dir = System.IO.Path.GetDirectoryName(defPath).Replace('\\', '/');
+            string baseName = System.IO.Path.GetFileNameWithoutExtension(defPath);
+            string newPath  = $"{dir}/{baseName}_AudioBinding.asset";
+
+            // 2. 防重名(同名 asset 已存在 → 直接选中 + 反引用,不新建)
+            var existing = AssetDatabase.LoadAssetAtPath<ShinySTG.Audio.LevelAudioBinding>(newPath);
+            if (existing != null)
+            {
+                Undo.RecordObject(_definition, "Bind Existing AudioBinding");
+                _definition.AudioBinding = existing;
+                existing.Level = _definition;     // 反引用同步
+                EditorUtility.SetDirty(_definition);
+                EditorUtility.SetDirty(existing);
+                AssetDatabase.SaveAssets();
+                Selection.activeObject = existing;
+                EditorGUIUtility.PingObject(existing);
+                Repaint();
+                return;
+            }
+
+            // 3. 创建新 binding 资产
+            var binding = ScriptableObject.CreateInstance<ShinySTG.Audio.LevelAudioBinding>();
+            binding.Level = _definition;
+
+            // 4. 写盘
+            AssetDatabase.CreateAsset(binding, newPath);
+            AssetDatabase.SaveAssets();
+
+            // 5. 反向引用 + Undo 支持
+            Undo.RecordObject(_definition, "Create AudioBinding");
+            _definition.AudioBinding = binding;
+            EditorUtility.SetDirty(_definition);
+            AssetDatabase.SaveAssets();
+
+            // 6. Project 窗口选中 + Ping
+            Selection.activeObject = binding;
+            EditorGUIUtility.PingObject(binding);
+            Repaint();
         }
 
         void DrawPreviewControls()

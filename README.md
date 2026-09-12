@@ -11,7 +11,7 @@
 - 🎨 **数据驱动**:`FirePattern` SO 系统(Ring/Line/Arc/Composite 等),改一个资产 = 改全场景
 - 🧭 **FireExtension 多态扩展**:`FireExtensions` 是 FirePattern 上的 **模块数组 + Pipeline 模型**——按数组顺序串成"角度管道"(Base → PlayerAim → Offset Angle → ...),拼装出"基础方向 + 瞄准玩家 + 再叠 N°"等复杂逻辑(例:`[PlayerAim, Offset Angle(+180°)]` = 瞄向玩家但飞向玩家背后的"绕后弹")。Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
 - 🔊 **FireSound 开火音多态扩展**:`FireSounds` 是 FirePattern 上的**并行触发器数组**——与 FireExtension 的"角度管道"对仗,FireSound 是"每个模块独立播音"(可叠多 cue / 按状态发声 / 自定义行为)。走 SfxCue 体系(限流/Pipeline/Bus 全继承)。BulletPool.FireGroup 入口自动调一次,Composite 子 pattern 不重复触发。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.2 + [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) §6.5
-- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂 / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC
+- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂 / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC;**所有 modifier 自动支持 `Delay` / `Duration` 时间窗口 + `OneShot` 一次性触发**(详见 ARCHITECTURE §2.6)
 - 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
 - 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
 - 🔊 **音频音乐系统**:`AudioMix` 静态门面 + `AudioSystem` 场景单例 + `SfxCue` / `BgmTrack` / `BgmPlaylist` / `AudioBus` SO 资产;SFX 多态规则 `SfxRule` 走 `[SerializeReference, SR]` 下拉(随机抽 clip / pitch 抖动 / cooldown);BGM 交叉淡化 + 顺序/随机播放;嵌入到 `PlayerHealth` / `BossHealth` / `EnemyHealth` / `PlayerShooting` 仅增加 `[SerializeField] SfxCue` 字段,其他模块 0 改动。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §11,配置方法见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)

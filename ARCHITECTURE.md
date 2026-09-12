@@ -185,8 +185,11 @@ FireAction.OnTick
 | `SteerTowardModifier` | `Modifier/Steer` | 每帧把 `b.AngularSpeed = TurnRate * Deg2Rad`(由 `Bullet.Update` 第 2 步自动累加到 `SteerAngle`) | `TurnRate` (度/秒, 默认 90) |
 | `HomingEnemyModifier` | `Modifier/Homing Enemy` | 通过 `CollisionService.Grid.QueryRadius(...)` 查最近敌人,按 `TurnRate` 限速转向 | `SearchRadius` / `TurnRate` / `LockOnDelay` / `MaxHomingTime` |
 | `BulletColorModifier` | `Modifier/Color` | 走 **MaterialPropertyBlock** 给 shader 的 `_TintColor` 染色(Solid / FadeByLifetime / Flash 三模式);**必须配套 `Assets/Shaders/BulletTint.shader`** —— 该 shader 只对暗像素染色,白色高光像素保持纯白(经典 STG 效果)。需 `Bullet.Renderer` 字段(Awake/Reset 自动 `GetComponentInChildren<SpriteRenderer>(true)` 抓取)。需把 bullet prefab 的 SpriteRenderer.Material 切到 `STG/BulletTint` | `Mode` / `Color` / `FadeOutColor` / `FadeStart` / `ReferenceLifetime` / `FlashFrequency` / `FlashMinAlpha` |
+| `SpawnRingOnDelayModifier` | `Modifier/Spawn Ring on Delay` | **OneShot 示例**:子弹飞 `Delay` 秒后,在当前位置生成一圈分裂弹,然后本 modifier 结束。分裂弹阵营 = Neutral(纯视觉效果)。 | `Delay` / `RingPattern`(FirePattern 资产)/ `RingCount` / `BulletSpeed` |
 
 **追踪玩家(敌人弹挂的 modifier)是常见扩展**,但当前项目未内置 `HomingPlayerModifier`(因玩家是单例,目标解析无需走网格);按下方"扩展点"小节的三步套路自行实现即可,大致套路是用 `ShinySTG.Player.Player.Instance?.transform` 拿到目标,其余转向逻辑与 `HomingEnemyModifier` 同源。
+
+> ★ 上表所有内置 modifier 都自动支持 §2.6 的 `Delay` / `Duration` / `OneShot` 时间窗口,基类统一管理,无需子类手动实现。
 
 #### 2.4.1 BulletColorModifier 首次使用步骤(★ 4 步)
 
@@ -212,7 +215,8 @@ FireAction.OnTick
 **新增 modifier 类型**:三步套路(与 EnemyAction 等完全一致)
 1. 在 `Assets/Scripts/Bullet/` 新建 `<你的>Modifier.cs`
 2. 继承 `BulletModifier`(`[Serializable]` abstract class),加 `[SRName("Modifier/<名字>")]`
-3. override `Modify(Bullet b, float dt)`,通过修改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed` / `b.Lifetime` 等子弹字段影响行为
+3. override `ModifyCore(Bullet b, float dt)`,通过修改 `b.Speed` / `b.SteerAngle` / `b.AngularSpeed` / `b.Lifetime` 等子弹字段影响行为
+   - ★ `Modify` 是 `sealed`(基类统一管时间窗口,不可 override),子类**必须** override `ModifyCore`,否则编译失败
 
 需要引用类型字段深拷时 override `Clone()`,默认 `MemberwiseClone` 对值类型字段够用。
 
@@ -220,7 +224,104 @@ FireAction.OnTick
 - `CollisionService` 公开只读属性 `Grid`(类型 `UniformGrid`),每帧 `LateUpdate` 开头 Clear + 重建,内含所有活跃 hitbox(玩家 + 敌人 + 子弹)。
 - 在 modifier 内调 `CollisionService.Instance.Grid.QueryRadius(point, radius)`,拿半径 r 内的所有 `HitboxComponent`,自己按 `hb.Team` 过滤(玩家阵营 / 敌人阵营 / 中立),按距离 / 角度等选目标。
 - `QueryRadius` 是 `UniformGrid` 暴露的公开 API,基于均匀网格索引,O(候选数) 选目标;同 `Query3x3(center)` 是 `QueryRadius(center, cellSize)` 的薄封装。
-- **生命周期约定**:modifier 的 `Modify` 由 `Bullet.Update` 调用(`Update` 阶段),`CollisionService.LateUpdate` 才建网格 —— 同一帧内 modifier 读到的网格是**上一帧**的快照。STG 帧率下两帧差异 < 1/60s,实际无感知,但**不能**假设"本帧新生成的目标立刻可见"。
+- **生命周期约定**:modifier 的 `ModifyCore` 由基类的 `Modify` 调度,`Modify` 由 `Bullet.Update` 调用(`Update` 阶段),`CollisionService.LateUpdate` 才建网格 —— 同一帧内 modifier 读到的网格是**上一帧**的快照。STG 帧率下两帧差异 < 1/60s,实际无感知,但**不能**假设"本帧新生成的目标立刻可见"。
+
+### 2.6 时间窗口(Delay / Duration / OneShot)
+
+**所有 BulletModifier 自动支持时间窗口**,由基类统一管理,子类只需 override `ModifyCore`(不要 override `Modify`,它是 sealed)。
+
+#### 字段语义
+
+| 字段 | 默认 | 含义 |
+|---|---|---|
+| `Delay` | `0` | 从子弹生成开始,等多少秒后才进入窗口。子弹生成时刻 = `BulletPool.AttachModifiers` 调完 `ResetAllModifierWindows()` 那一刻。 |
+| `Duration` | `0`(≤0 = 永久) | 进入窗口后持续多少秒。`<=0` 视为**永久生效**(与历史行为一致)。 |
+| `AutoSkipOutsideWindow` | `true` | 窗口外是否直接 return。`false` 时仍每帧调 `ModifyCore`,子类通过 `IsActive` 自行判断。 |
+| `OneShot` | `false` | 一次性触发:进入窗口瞬间调一次 `OnWindowEnter`,然后立刻退出(`ModifyCore` 不再被调用)。 |
+
+#### 时序图
+
+```
+时间轴  0 ──────── Delay ──────────── Delay+Duration ──────── ∞
+        │           │                  │              │
+        ├──窗外─────┤────窗口内────────┤────窗外──────┤
+        │ 不调 ModifyCore            │ 不调 ModifyCore
+        │ (除非 AutoSkip=false)       │
+        │                            │
+        └────  OneShot=true 时:进窗口瞬间调 OnWindowEnter 一次,立刻调 OnWindowExit 退出
+```
+
+#### 默认行为与历史兼容性
+
+| 默认字段组合 | 行为 | 与历史关系 |
+|---|---|---|
+| `Delay=0, Duration=0, AutoSkip=true` | 每帧调 ModifyCore | **与历史 100% 等价**(旧 .asset 完全无感) |
+| `Delay=0, Duration=2` | 出生 2 秒后 modifier 停止工作 | 新增能力:追踪 2 秒后切直线、闪烁 1.5s 后熄灭 |
+| `Delay=0.5, Duration=0` | 前 0.5 秒不工作,之后永久工作 | 新增能力:子弹先直线 0.5 秒,再开始追踪 |
+| `OneShot=true` | 进入窗口瞬间调一次 OnWindowEnter | 新增能力:定时分裂、定时音效、定时换贴图 |
+
+#### 钩子(override 即可)
+
+| 钩子 | 何时调 | 用途 |
+|---|---|---|
+| `OnWindowEnter(Bullet)` | 窗口从非激活 → 激活的瞬间 | **OneShot 主战场**(生成弹/播音效/切贴图);非 OneShot 也可做"进追踪瞬间播 lock-on 音效" |
+| `OnWindowExit(Bullet)` | 窗口从激活 → 非激活的瞬间(含 OneShot 触发后立刻退出、Duration 到期、子弹回池) | **基类默认**:清零 `b.AngularSpeed`(让子弹切直线,这是几乎所有 modifier 的共同期望)。子类需要追加清理时**不要 override 这个**,应 override `OnWindowExitCleanup` —— 这样 AngularSpeed 一定会被清,不会忘 |
+| `OnWindowExitCleanup(Bullet)` | 在基类 `OnWindowExit` 清完 `AngularSpeed` 后调用 | 子类追加自己的清理(恢复原色 / 清引用 / 停粒子)。**不要在这里改 AngularSpeed**(基类已清) |
+| `ModifyCore(Bullet, dt)` | 窗口内每帧(除非 OneShot) | 持续性逻辑(加速/转向/闪烁) |
+
+#### 与 HomingEnemyModifier 自身字段的关系(共存,方案 A)
+
+`HomingEnemyModifier` 内部已有 `LockOnDelay` / `MaxHomingTime`,与基类新字段正交共存:
+
+| 场景 | 用哪个字段 |
+|---|---|
+| 想让 modifier 整体"前 0.5 秒什么都不做" | 基类 `Delay = 0.5` |
+| 想让 modifier "前 0.5 秒工作但不搜索目标" | `LockOnDelay = 0.5`(HomingEnemy 自己的字段) |
+| 想让 modifier "2 秒后整体停用" | 基类 `Duration = 2` |
+| 想让 modifier "2 秒后停止搜索,但仍按当前方向飞" | `MaxHomingTime = 2` |
+
+两个 Delay / 两个 Duration 可叠加使用(基类外层 + HomingEnemy 内层),编译器 / 运行时都无冲突。
+
+#### 典型用法示例
+
+```csharp
+// 1. 延迟激活追踪
+HomingEnemyModifier h = new HomingEnemyModifier {
+    Delay = 0.5f,   // 前 0.5s 直线飞(整体不工作)
+    TurnRate = 360,
+};
+
+// 2. 燃料耗尽
+HomingEnemyModifier h = new HomingEnemyModifier {
+    Duration = 2f,  // 追踪 2 秒后整体停用(子弹保持最后方向直线)
+};
+
+// 3. OneShot:定时分裂
+SpawnRingOnDelayModifier s = new SpawnRingOnDelayModifier {
+    Delay = 0.8f,        // 飞 0.8 秒后爆开
+    RingPattern = myRing,// 拖一个 FirePattern 资产
+    RingCount = 12,
+    // OneShot 默认 true,ModifyCore 留空
+};
+
+// 4. 自定义 OneShot modifier
+[Serializable, SRName("Modifier/Play Sound Once")]
+public class PlaySoundOnceModifier : BulletModifier {
+    public SfxCue Sound;
+    public PlaySoundOnceModifier() { OneShot = true; }
+    protected override void OnWindowEnter(Bullet b) {
+        AudioMix.PlaySfx(Sound, b.Position);
+    }
+    public override void ModifyCore(Bullet b, float dt) { }
+}
+```
+
+#### 不变性 / 边界
+
+- `Duration == 0` 和 `Duration < 0` 都视为**永久生效**(不退出窗口)
+- `Time.timeScale = 0`(暂停菜单) → `Time.deltaTime = 0` → `_elapsed` 不增,modifier 不会"凭空结束"
+- 子弹回池复用 → `BulletPool.Return` 调 `ClearModifiers` → 下次 `AttachModifiers` 调 `ResetAllModifierWindows` → OneShot 重新具备触发机会
+- `[NonSerialized]` 字段 → 序列化进 .asset 文件时只存用户字段,`_elapsed` / `_isActive` 不存,符合预期
 
 **为什么不在 BulletPool.Get 里直接传 prefab 数组?**
 - 当前架构只走 `AttachModifiers` 单条挂载路径(在 pool 8 参重载里),保证 modifier 挂载的唯一入口;
@@ -620,20 +721,22 @@ Phase 3 (暴走)
 负责把"什么时间点生成什么敌人"封装成可复用的 SO 资产,并在场景里按时间轴驱动执行。**与现有层完全正交** —— 不修改 Player / Enemy / Bullet 任何代码,仅复用 `ShooterEnemy` + `BehaviorFlow` + `BulletPool` 等既有资产。
 
 **职责分工:**
-- `LevelDefinition`(SO 资产) —— 持有 `Entries: SpawnEntry[]`(多态下拉)+ `Duration`(总时长)+ `Pool`(可选专用 BulletPool)。
-- `LevelController`(场景单例,`Singleton<T>`) —— 持有 `Definition` + `Runtime`,提供关卡事件(OnLevelStart / OnLevelComplete / OnEnemySpawned / OnBossSpawned / OnBossDefeated)。
+- `LevelDefinition`(SO 资产) —— 持有 `Entries: SpawnEntry[]`(多态下拉)+ `Duration`(总时长)+ `Pool`(可选专用 BulletPool)+ `AutoSwitchBgm`(是否参与自动切歌)+ `AudioBinding`(关卡级 BGM 绑定,可选)。
+- `LevelController`(场景单例,`Singleton<T>`) —— 持有 `Definition` + `Runtime`,提供关卡事件(OnLevelStart / OnLevelComplete / OnEnemySpawned / OnBossSpawned / OnBossDefeated)。`BeginLevel` 调 `AudioEventHub.TryBind(definition)` 启用关卡级自动切歌。
 
 **协作边界:**
 
 - **不侵入 Enemy/Bullet/Player**:关卡只 `Instantiate(prefab)`,prefab 自己带 `ShooterEnemy` + `BehaviorFlow` + Hitbox/Health,沿用既有 AI 链。
+- **不侵入 Audio**:BGM 自动切换由 `AudioEventHub.TryBind` 触发,关卡只是数据源(Definition.AudioBinding),不直接调 `AudioMix.PlayTrack`。
 - **总控统一挂载**:`LevelController` 场景里只挂一份。
 - **事件发送权集中在 Controller**:`SpawnEntry` 子类不直接 Invoke 事件,而是通过 `LevelController.Instance` 的公开方法触发 —— 事件层与表现层分离。
 - **数据驱动一致性**:`LevelDefinition.Entries` 与 `BehaviorFlow.Actions` 同样走 `[SerializeReference, SR]`,Inspector 下拉体验完全一致。
 
 **扩展点:**
 
-- **新条目类型**(等玩家到位 / 周期性 / 全清触发 / 概率触发 / ...):新建 `SpawnEntry` 子类 + `[SRName("Entry/<名字>")]`,在 `ShouldTrigger` / `OnTrigger` 两个钩子实现,无需改 `LevelController`(详见 `Assets/Scripts/Level/`)。
+- **新条目类型**(等玩家到位 / 周期性 / 全清触发 / 概率触发 / **时间点 SFX** / ...):新建 `SpawnEntry` 子类 + `[SRName("Entry/<名字>")]`,在 `ShouldTrigger` / `OnTrigger` 两个钩子实现,无需改 `LevelController`(详见 `Assets/Scripts/Level/`)。
 - **可视化时间轴编辑器**:已实现完整的时间轴 / 列表 / 详情面板 + Preview + Scene Gizmos。详见 [§10](#10-关卡编辑器子系统)。
+- **关卡级 BGM 自动切歌**:在 `LevelDefinition.AudioBinding` 挂 `LevelAudioBinding` 资产,`BeginLevel` 时 `AudioEventHub.TryBind` 自动订阅事件切歌。详见 [§11](#11-音频音乐系统audiosystem)。
 
 
 ---
@@ -705,13 +808,18 @@ Phase 3 (暴走)
 | `PlayerHealth` / `BossHealth` / `EnemyHealth` | 加 `[SerializeField] SfxCue` 字段,在 TakeDamage / OnDeath 调 `AudioMix.PlaySfx(...)` | ✅ 改动但**只增字段 + 只增调用,不改签名/事件/字段顺序** |
 | `PlayerShooting` | 加 `[SerializeField] SfxCue _shootSfx` 字段,FireGroup 后调 `AudioMix.PlaySfx(...)` | ✅ 同上 |
 | `Bullet` / `CollisionService` / `Enemy` | 0 改动 —— SFX 由宿主在自己的 TakeDamage 处触发 | ❌ 完全不动 |
-| `LevelController` / `BehaviorFlow` | 0 改动 —— BGM 切换由调用方通过 `AudioMix.PlayTrack(...)` 触发(`AudioEventHub` 接口预留,默认禁用) | ❌ 完全不动 |
+| `LevelController` / `BehaviorFlow` | `LevelController.BeginLevel` 调一次 `AudioEventHub.TryBind(definition)`(3 行内,无侵入) | ✅ 改动但只增 1 行调用 |
 | `DOTween` | 后续可复用于音量淡入淡出(`DOFloat` / `DOVolume`),已集成 | 复用 |
 
-**自动切歌机制(预留,默认关闭):**
+**自动切歌机制(按关卡启用):**
 
-- `AudioEventHub.EnableAutoSwitch()` 启用后,会订阅 `LevelController.OnLevelStart / OnBossSpawned / OnBossDefeated`,按 `LevelAudioBinding.Playlist / BossMusic / DefeatMusic` 自动切歌。
-- 用户决策:暂时不需要(后续在 LevelEditor 加切换 BGM 的方法,直接调 `AudioMix.PlayTrack(...)` 即可,不走自动订阅)。
-- 预留接口不引入任何运行时开销(未启用 = 0 订阅 = 0 协程)。
+- 启用入口:`LevelController.BeginLevel()` 末尾调一次 `AudioEventHub.TryBind(Definition)`(在 `OnLevelStart` invoke 之前)。
+- 启用条件:`Definition.AutoSwitchBgm == true` 且 `Definition.AudioBinding != null`(关卡自带决定)。
+- 启用后:`AudioEventHub` 订阅 `LevelController.OnLevelStart / OnBossSpawned / OnBossDefeated`,按 `AudioBinding.Playlist / BossMusic / DefeatMusic` 自动切歌。
+- 关卡编辑器便利:`STG → Level Editor` 工具栏 `+ Create AudioBinding` 一键创建同名 `_AudioBinding.asset` + 双向反引用。
+- 关卡级开关:`Definition.AutoSwitchBgm`(默认 `true`),可单独关掉(过场关 / 静音关)。
+- 向后兼容:若 `Definition.AudioBinding == null`,回退到 `AudioSystem.LevelBindings[]` 全局查表模式(老用法仍工作)。
+- 关卡间切换:ReloadLevel / 切下一关时调 `TryBind` 是幂等的,自动解订旧订阅 + 订阅新 LevelController。
+- 无 AudioSystem 时静默跳过(`AudioSystem.Instance == null` → TryBind 不跑,关卡正常运行不受影响)。
 
-详见 `Assets/Scripts/Audio/README.md`(配置说明)。
+详见 `Assets/Scripts/Audio/README.md`(配置说明) + [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md#音频集成自动切歌--时间点-sfx)(关卡编辑器使用)。

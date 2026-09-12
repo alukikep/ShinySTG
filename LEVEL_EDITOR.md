@@ -62,7 +62,7 @@
 
 点开 `.asset` 的 `Entries` 数组,点 `+` 号新增条目。每个条目**通过下拉菜单选类型**(由项目自带 `SREditor` 插件提供,继承 `SpawnEntry` 的子类会自动出现在下拉里)。
 
-### 内置 4 种条目
+### 内置 5 种条目
 
 | 类型 | 下拉路径 | 用途 |
 |---|---|---|
@@ -70,6 +70,7 @@
 | **Wave** | `Entry/Wave` | 横排生成 — 配 `Prefabs[]` 数组 + `CenterPosition` + `SpacingX`,自动沿 X 轴等距铺 |
 | **Boss** | `Entry/Boss` | Boss 出场 — 配 `BossPrefab` + `SpawnPosition`(当前为留壳,后续接入多阶段) |
 | **Sustain** | `Entry/Sustain` | 在点位持续刷敌 — 配 `Duration` + `SpawnInterval`,期间每 N 秒生成一次(详见 §7) |
+| **Play SFX** | `Entry/Play SFX` | 时间点音效 — 配 `Cue` + 可选 `Position`,在 `TriggerTime` 播 SFX(详见[音频集成](#音频集成自动切歌--时间点-sfx)) |
 
 ### 典型配法示例
 
@@ -120,6 +121,64 @@ LevelController.Instance.OnBossDefeated  += go  => { /* boss 击败时(留口) *
 ```
 
 风格与 `PlayerHealth` 的实例事件一致(`OnLifeLost` / `OnRevive` / `OnAllLivesLost` 同款)。
+
+---
+
+## 音频集成(自动切歌 + 时间点 SFX)
+
+关卡编辑器提供两种把音频接进关卡的方式:**关卡级自动切歌**(`LevelAudioBinding` 配法)和**时间轴 SFX 条目**(`Entry/Play SFX`)。两种完全正交,可混用。
+
+### 关卡级自动切歌(`LevelAudioBinding`)
+
+每个关卡可以挂一个 `LevelAudioBinding` 资产,`LevelController.BeginLevel` 时 AudioEventHub 会自动启用切歌:
+
+| 事件 | 切到 |
+|---|---|
+| `OnLevelStart` | `AudioBinding.Playlist` |
+| `OnBossSpawned` | `AudioBinding.BossMusic`(交叉淡化 `ToBossCrossfade` 秒) |
+| `OnBossDefeated` | `AudioBinding.DefeatMusic`(交叉淡化 `ToDefeatCrossfade` 秒) |
+
+**两种用法**:
+1. **关卡资产一站式**(推荐):在 `LevelDefinition.AudioBinding` 字段挂 binding 资产,关卡自带决定切什么 BGM
+2. **全局模板**(向后兼容):多个关卡共用同一套 binding 时,在 `AudioSystem.LevelBindings[]` 集中配,关卡 AudioBinding 留空
+
+**三步配法**:
+1. 打开关卡编辑器 → 选中关卡资产
+2. 工具栏点 `+ Create AudioBinding`(自动创建同名 `_AudioBinding.asset` 并双向反引用)
+3. 选中新生成的 binding 资产,在 Inspector 里拖 BGM 资产到 `Playlist` / `BossMusic` / `DefeatMusic` 字段
+
+之后点 `♪ Open AudioBinding` 可以一键回到 binding 配置。
+
+#### 关卡级开关
+
+`LevelDefinition.AutoSwitchBgm`(默认 `true`):
+- `true` + AudioBinding 非空 → 自动切歌启用
+- `false` → 此关卡不参与自动切歌(BGM 由调用方手动控制,适合过场关 / 静音关)
+
+### 时间点 SFX 条目(`Entry/Play SFX`)
+
+按时间轴触发一次性 SFX(UI 警告、阶段切换音、剧情音效等)。`+ Add ▾` → `Entry/Play SFX` 添加。
+
+| 字段 | 用途 |
+|---|---|
+| `TriggerTime` | 触发时间(秒) |
+| `Cue` | SfxCue 资产(必填;空 = 跳过) |
+| `UsePosition` | 勾上 = 在 `Position` 世界坐标发声;不勾 = 2D 监听(跟随 Listener) |
+| `VolumeMul` / `Pitch` | 临时覆盖,与 SfxCue 默认值叠加乘 |
+
+Editor Preview 期间也会播(走 `LevelEditorPlayer.TriggerOne` → `OnTrigger` 路径);无 AudioSystem 时静默返回。
+
+### 时序示例
+
+```
+TriggerTime=0.0   AudioBinding.Playlist = StageTheme          ← 关卡开始
+TriggerTime=2.0   Simple   prefab=小怪                            ← 小怪入场
+TriggerTime=15.0  Play SFX Cue=WarnSound                       ← 警告音
+TriggerTime=30.0  Boss   BossPrefab=Boss1                        ← AudioBinding.BossMusic 自动切
+TriggerTime=60.0  BossDefeated → AudioBinding.DefeatMusic 自动切
+```
+
+详见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) 的「BGM 切换」章节。
 
 ---
 

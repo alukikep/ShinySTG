@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 531bc13806973874e9dc9fc5976fb435, type: 3}
+  m_Name: Stage test_AudioBinding
+  m_EditorClassIdentifier: 
+  Level: {fileID: 11400000, guid: 34cfcc19c0648af4a95739b38f7d081c, type: 2}
+  Playlist: {fileID: 0}
+  BossMusic: {fileID: 0}
+  DefeatMusic: {fileID: 0}
+  ToBossCrossfade: 2
+  ToDefeatCrossfade: 1.5

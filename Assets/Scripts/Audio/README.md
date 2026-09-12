@@ -56,6 +56,8 @@ Project 窗口右键 → Create → STG → Audio → SFX Cue
 
 ### 1.4 切 BGM(可选)
 
+#### 方式 A:代码手动切
+
 在场景脚本(如 Boss 总控 / 关卡控制器)里:
 
 ```csharp
@@ -65,6 +67,20 @@ AudioMix.PlayPlaylist(stage1Playlist);            // 列表(顺序/随机/循环
 ```
 
 详见 [§7](#7-代码调用场景脚本切-bgm--暂停音乐--设音量)。
+
+#### 方式 B:关卡级自动切歌(推荐)
+
+为每个关卡建一个 `LevelAudioBinding` 资产,挂在 `LevelDefinition.AudioBinding` 字段上。`LevelController.BeginLevel()` 会自动:
+
+| 事件 | 切到 |
+|---|---|
+| `OnLevelStart` | `AudioBinding.Playlist` |
+| `OnBossSpawned` | `AudioBinding.BossMusic` |
+| `OnBossDefeated` | `AudioBinding.DefeatMusic` |
+
+**便利创建**:在关卡编辑器(`STG → Level Editor`)选中关卡资产 → 工具栏 `+ Create AudioBinding` 一键创建同名 `_AudioBinding.asset` + 双向反引用。
+
+关卡资产一站式管理,不需要在场景脚本里手动调 `AudioMix.PlayTrack(...)`。详见 [`LEVEL_EDITOR.md`](../../../LEVEL_EDITOR.md#音频集成自动切歌--时间点-sfx)。
 
 ---
 
@@ -478,7 +494,15 @@ AudioSystem 继承 `PersistentSingleton`,**会** `DontDestroyOnLoad`。检查:
 
 ### Q6:LevelAudioBinding 资产配好了但 BGM 没切
 
-`AudioEventHub.EnableAutoSwitch()` **默认未调用**。如果你期望"关卡开始 → 自动切 BGM",在场景脚本里调一次 `EnableAutoSwitch()`。或者干脆不用自动订阅,在关卡事件订阅者里手动调 `AudioMix.PlayTrack(...)`。
+按以下顺序排查:
+
+1. `LevelDefinition.AutoSwitchBgm` 是否勾上?(默认勾)
+2. `LevelDefinition.AudioBinding` 字段是否拖了 binding 资产?(或 `AudioSystem.LevelBindings[]` 全局查表是否配了对应 def 的 binding)
+3. 场景里有 `AudioSystem` 组件吗?(没装 = AudioMix 静默返回)
+4. `LevelAudioBinding.Playlist / BossMusic / DefeatMusic` 字段是否拖了 BGM 资产?
+5. `LevelController.BeginLevel()` 是否真的跑了?(AutoStart=false 时需要外部触发)
+
+自动切歌由 `LevelController.BeginLevel()` 内调 `AudioEventHub.TryBind(Definition)` 启用 —— 不需要手动调 `EnableAutoSwitch()`,正常 BeginLevel 后会自动启用。
 
 ### Q7:Inspector 里 Rules 下拉没有出现新加的规则
 

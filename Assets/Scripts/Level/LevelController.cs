@@ -75,6 +75,10 @@ namespace ShinySTG.Level
             _running   = true;
             _completed = false;
 
+            // 3. 自动切歌:按 Definition.AutoSwitchBgm + Definition.AudioBinding 把音频系统接上
+            //    (AudioSystem 不存在 = 静默跳过,不影响关卡运行)
+            ShinySTG.Audio.AudioSystem.Instance?.EventHub?.TryBind(Definition);
+
             OnLevelStart?.Invoke(Definition);
         }
 
@@ -95,6 +99,10 @@ namespace ShinySTG.Level
             // 触发一次 OnLevelStart 让订阅者(UI / 计分 / 音效)知道关卡重开了
             _running   = true;
             _completed = false;
+
+            // 重绑音频(AudioEventHub.TryBind 幂等,会刷新 _activeBinding)
+            ShinySTG.Audio.AudioSystem.Instance?.EventHub?.TryBind(Definition);
+
             OnLevelStart?.Invoke(Definition);
         }
 

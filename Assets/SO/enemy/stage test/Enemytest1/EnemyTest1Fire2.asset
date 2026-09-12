@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: EnemyTest1Fire2
   m_EditorClassIdentifier: 
   BulletPrefab: {fileID: 6116438007695648348, guid: 2ad9a1c1c14e586459fa52ff0b7763d7, type: 3}
-  ModifierPrefabs: []
+  ModifierPrefabs:
+  - rid: 6177227027782303749
   FireExtensions:
   - rid: 6177227000708333584
   - rid: 6177227000708333586
@@ -33,3 +34,18 @@ MonoBehaviour:
       type: {class: OffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
       data:
         OffsetAngle: 180
+    - rid: 6177227027782303749
+      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 0
+        Color: {r: 0, g: 0.2121787, b: 1, a: 1}
+        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
+        FadeStart: 0.5
+        ReferenceLifetime: 1.5
+        FlashFrequency: 5
+        FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1

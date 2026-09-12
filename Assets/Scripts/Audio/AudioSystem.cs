@@ -35,10 +35,11 @@ namespace ShinySTG.Audio
         [Tooltip("Mute 当 Application.isFocused=false(失去焦点时静音)。默认 false。")]
         public bool MuteOnLoseFocus = false;
 
-        [Header("Level Audio Binding (后续扩展用 — 现在预留接口)")]
-        [Tooltip("关卡 → BGM 绑定资产。AudioEventHub 用此把 LevelController.OnLevelStart 事件转 BGM 切换。\n" +
-                 "目前仅预留接口:用户后续可在 LevelEditor 加「切换 BGM」方法时会通过 AudioMix.PlayTrack 调用,不走本字段。\n" +
-                 "留空 = 不自动切 BGM(完全由调用方控制)。")]
+        [Header("Level Audio Binding (向后兼容 — 优先用 LevelDefinition.AudioBinding)")]
+        [Tooltip("关卡 → BGM 绑定资产(全局查表,向后兼容)。AudioEventHub 在 LevelDefinition.AudioBinding 为空时,按 Level 字段匹配查表切 BGM。\n" +
+                 "★ 推荐做法:在每个 LevelDefinition 上挂自己的 AudioBinding(关卡资产一站式管理),这里留空。\n" +
+                 "若多个关卡共用同一套 BGM 模板(比如所有普通关卡共用 StageTheme),可以在这里集中配,关卡资产里 AudioBinding 留空。\n" +
+                 "留空 + 关卡 AudioBinding 也空 = 不切 BGM。")]
         public LevelAudioBinding[] LevelBindings;
 
         // 子模块

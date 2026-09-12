@@ -96,7 +96,7 @@ public class BulletColorModifier : BulletModifier
     bool _solidApplied;     // Solid 模式只设一次,避免覆盖美术在 prefab 上配的 sprite 颜色被反复回写(虽然等价)
     MaterialPropertyBlock _mpb;  // per-instance MPB,避免和别的子弹共享状态
 
-    public override void Modify(Bullet b, float dt)
+    public override void ModifyCore(Bullet b, float dt)
     {
         // 缓存缺失保护:bullet prefab 上若没有 SpriteRenderer(纯 VFX/粒子表现),
         // 安全跳过 — 不要 NRE 阻断其他 modifier。

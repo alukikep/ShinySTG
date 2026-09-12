@@ -111,6 +111,21 @@ public class Bullet : MonoBehaviour
     public void ClearModifiers() => _modifiers.Clear();
 
     /// <summary>
+    /// 重置所有 modifier 的时间窗口计时器(由 BulletPool.AttachModifiers 调用)。
+    /// 配合基类的 Delay / Duration / OneShot:
+    ///   - 每颗子弹从池里取出时,_elapsed=0,IsActive=false
+    ///   - OneShot modifier 重新具备触发机会(回池复用时不会"哑火")
+    ///
+    /// 为什么在 BulletPool 而不是 Bullet.Init 里调:
+    ///   Init 时刻 _modifiers 已被 ClearModifiers 清空;真正的 modifier 在 AttachModifiers
+    ///   才挂上,所以 ResetWindow 也必须在挂完之后立刻调,时间窗口从这一刻起算。
+    /// </summary>
+    public void ResetAllModifierWindows()
+    {
+        for (int i = 0; i < _modifiers.Count; i++) _modifiers[i].ResetWindow();
+    }
+
+    /// <summary>
     /// 由池在 Get 时调用:写入初始参数 + 重置 modifiers。
     /// </summary>
     /// <param name="position">发射位置</param>
@@ -134,6 +149,8 @@ public class Bullet : MonoBehaviour
         // 清空 modifier 列表。Clone 出的 modifier 是纯 C# 对象,可直接 GC 回收;
         // 没有 GameObject 子对象需要 Destroy(对比旧 MonoBehaviour 路线)。
         ClearModifiers();
+        // 注意:ResetAllModifierWindows 不在这里调 —— Init 时刻 _modifiers 已清空,
+        // 真正的 modifier 在 BulletPool.AttachModifiers 里挂上,所以 ResetWindow 也在那里调。
         // 重置擦弹标记:让上一轮擦过玩家的弹,回池后再发射可以重新擦(HasGrazed 由 CollisionService 在擦弹时置 true)。
         HasGrazed = false;
 
