@@ -9,7 +9,7 @@ namespace ShinySTG.Level.SpawnEntries
     /// 不预设为特定阵型 —— 给中心点 + 间距 + prefab 数组即可,后续若要 V 字 / 圆弧,
     /// 新建子类 CurvedWaveSpawnEntry 覆盖 OnTrigger,不动本类。
     /// </summary>
-    [Serializable, SRName("Entry/Wave")]
+    [Serializable, SRName("敌人生成/Wave")]
     public class WaveSpawnEntry : SpawnEntry
     {
         [Tooltip("这一波包含的预制体(数组里可重复,允许同 prefab 出现多次)。")]

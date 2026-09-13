@@ -1,6 +1,7 @@
 using ShinySTG.Level;
 using ShinySTG.Level.Editor;
 using ShinySTG.Level.SpawnEntries;
+using ShinySTG.Level.SpawnEntries.PositionStrategies;
 using UnityEditor;
 using UnityEngine;
 
@@ -101,12 +102,27 @@ namespace ShinySTG.Level.Editor.Drawers
         {
             if (entry == null) return;
             Vector3 pos = Vector3.zero;
+            // 仅 Sustain 用:非零 = 需要画"偏移轨迹"短线 + 终点小圆。
+            // 放到 switch 之外共享绘制区,避免内嵌 {} 块与下方 prev 重名(CS0136)。
+            Vector3 offsetDir = Vector3.zero;
 
             switch (entry)
             {
                 case SimpleSpawnEntry s: pos = s.SpawnPosition; break;
                 case WaveSpawnEntry w:   pos = w.CenterPosition; break;
                 case BossSpawnEntry b:   pos = b.SpawnPosition; break;
+                case SustainSpawnEntry st:
+                    pos = st.SpawnPosition;
+                    // 偏移轨迹 / 范围框由 strategy 类型决定:
+                    //   - FixedSpawnPositionStrategy → 朝 Offset 方向的短线 + 终点小圆
+                    //   - RandomSpawnPositionStrategy → 以 SpawnPosition 为中心的方框
+                    //   - 其它 / null → 不画额外 gizmo
+                    if (st.SpawnPositionStrategy is FixedSpawnPositionStrategy fixedStrat
+                        && fixedStrat.Offset != Vector2.zero)
+                    {
+                        offsetDir = new Vector3(fixedStrat.Offset.x, fixedStrat.Offset.y, 0f);
+                    }
+                    break;
                 default: return;
             }
 
@@ -117,6 +133,34 @@ namespace ShinySTG.Level.Editor.Drawers
             UnityEditor.Handles.DrawSolidDisc(pos, Vector3.forward, 0.12f);
             UnityEditor.Handles.Label(pos + new Vector3(0.18f, 0.18f, 0f),
                           $"{entry.TriggerTime:F1}s · {entry.GetType().Name}");
+
+            // Sustain Fixed 策略:偏移方向短线 + 终点小圆。长度上限 2 单位,避免大数值飞太远。
+            if (offsetDir != Vector3.zero)
+            {
+                var dirNorm = offsetDir.normalized;
+                var drawTo = pos + dirNorm * Mathf.Min(offsetDir.magnitude, 2f);
+                UnityEditor.Handles.DrawAAPolyLine(2f, pos, drawTo);
+                UnityEditor.Handles.DrawSolidDisc(drawTo, Vector3.forward, 0.06f);
+            }
+
+            // Sustain Random 策略:画一个 4 边的方框表示随机范围(SpawnPosition ± Range)。
+            if (entry is SustainSpawnEntry sust
+                && sust.SpawnPositionStrategy is RandomSpawnPositionStrategy randStrat
+                && randStrat.Range != Vector2.zero)
+            {
+                var r = randStrat.Range;
+                Vector3 c = sust.SpawnPosition;
+                Vector3 p0 = new Vector3(c.x - r.x, c.y - r.y, c.z);
+                Vector3 p1 = new Vector3(c.x + r.x, c.y - r.y, c.z);
+                Vector3 p2 = new Vector3(c.x + r.x, c.y + r.y, c.z);
+                Vector3 p3 = new Vector3(c.x - r.x, c.y + r.y, c.z);
+                UnityEditor.Handles.DrawAAPolyLine(2f, p0, p1, p2, p3, p0);
+                // 4 个角各画一个小圆点,直观看到"每只敌人会落在框内任意位置"
+                UnityEditor.Handles.DrawSolidDisc(p0, Vector3.forward, 0.04f);
+                UnityEditor.Handles.DrawSolidDisc(p1, Vector3.forward, 0.04f);
+                UnityEditor.Handles.DrawSolidDisc(p2, Vector3.forward, 0.04f);
+                UnityEditor.Handles.DrawSolidDisc(p3, Vector3.forward, 0.04f);
+            }
 
             UnityEditor.Handles.color = prev;
         }
@@ -139,6 +183,17 @@ namespace ShinySTG.Level.Editor.Drawers
                 case BossSpawnEntry b:
                     var bName = b.BossPrefab != null ? b.BossPrefab.name : "<no prefab>";
                     return $"{bName} @ {b.SpawnPosition}";
+                case SustainSpawnEntry st:
+                    var sName2 = st.EnemyPrefab != null ? st.EnemyPrefab.name : "<no prefab>";
+                    string stratHint = st.SpawnPositionStrategy switch
+                    {
+                        FixedSpawnPositionStrategy f when f.Offset != Vector2.zero
+                            => $" ·Fixed Δ{f.Offset}",
+                        RandomSpawnPositionStrategy r when r.Range != Vector2.zero
+                            => $" ·Random ±{r.Range}",
+                        _ => ""
+                    };
+                    return $"{sName2} @ {st.SpawnPosition}{stratHint}";
                 default:
                     return GetLabel(entry);
             }

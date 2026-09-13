@@ -1,5 +1,6 @@
 using ShinySTG.Level;
 using System;
+using System.Collections.Generic;
 using SerializeReferenceEditor;
 using ShinySTG.Level.Editor.Gizmos;
 using ShinySTG.Level.Editor.Views;
@@ -313,13 +314,60 @@ namespace ShinySTG.Level.Editor
 
         void ShowAddMenu()
         {
+            // 用 SRName("分类/条目") 字符串里的 "/" 让 Unity GenericMenu 自动生成子菜单。
+            // 例如 SRName("敌人生成/Simple") → 顶层 "敌人生成" 子菜单,下面挂 "Simple"。
+            // 同一分类内按条目名字典序排序;分类之间用 separator 分隔。
             var menu = new GenericMenu();
+
+            // 收集 (类型, 分类, 条目名) 三元组
+            var entries = new List<(Type type, string category, string name)>();
             foreach (var type in TypeCache.GetTypesDerivedFrom<SpawnEntry>())
             {
                 if (type.IsAbstract || type.IsInterface) continue;
                 var attr = (SRNameAttribute)Attribute.GetCustomAttribute(type, typeof(SRNameAttribute));
-                string label = attr?.FullName ?? type.Name;
-                menu.AddItem(new GUIContent(label), false, () => AddEntry(type));
+                if (attr == null) continue;  // 没有 SRName 的不进菜单(避免裸字符串污染)
+
+                string full = attr.FullName;
+                string category, name;
+                int slash = full.IndexOf('/');
+                if (slash >= 0)
+                {
+                    category = full.Substring(0, slash);
+                    name = full.Substring(slash + 1);
+                }
+                else
+                {
+                    // 没 "/" 的 fallback:放顶层"其它"分类(保持向后兼容)
+                    category = "其它";
+                    name = full;
+                }
+                entries.Add((type, category, name));
+            }
+
+            // 按 (分类, 条目名) 字典序排,GenericMenu 的 separator 依赖"同一分类内连续"
+            entries.Sort((a, b) =>
+            {
+                int c = string.CompareOrdinal(a.category, b.category);
+                return c != 0 ? c : string.CompareOrdinal(a.name, b.name);
+            });
+
+            // 多于 1 个分类时,顶层加分类 separator
+            bool multiCategory = false;
+            string lastCat = null;
+            foreach (var (_, cat, _) in entries)
+            {
+                if (lastCat != null && cat != lastCat) { multiCategory = true; break; }
+                lastCat = cat;
+            }
+
+            lastCat = null;
+            foreach (var (type, category, name) in entries)
+            {
+                // 不同分类之间:加顶层 separator(只在多分类时)
+                if (multiCategory && lastCat != null && category != lastCat)
+                    menu.AddSeparator("");
+                menu.AddItem(new GUIContent($"{category}/{name}"), false, () => AddEntry(type));
+                lastCat = category;
             }
             menu.ShowAsContext();
         }

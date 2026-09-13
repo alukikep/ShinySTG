@@ -17,7 +17,7 @@ namespace ShinySTG.Level.SpawnEntries
     ///     所以必须先覆盖再让 ShooterEnemy 启用。简单做法:Instantiate 后立刻 SetActive(false),
     ///     覆盖 Flow 后再 SetActive(true)。详见 OnTrigger。
     /// </summary>
-    [Serializable, SRName("Entry/Simple")]
+    [Serializable, SRName("敌人生成/Simple")]
     public class SimpleSpawnEntry : SpawnEntry
     {
         [Tooltip("敌人 prefab。要求挂 ShooterEnemy(+ Health + Hitbox + Enemy 总控);Flow 字段可空,由 OverrideFlow 覆盖。")]

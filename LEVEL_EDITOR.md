@@ -66,11 +66,15 @@
 
 | 类型 | 下拉路径 | 用途 |
 |---|---|---|
-| **Simple** | `Entry/Simple` | 单点生成 — 配 `TriggerTime` / `SpawnPosition` / `EnemyPrefab`,可选 `OverrideFlow` 临时换行为流 |
-| **Wave** | `Entry/Wave` | 横排生成 — 配 `Prefabs[]` 数组 + `CenterPosition` + `SpacingX`,自动沿 X 轴等距铺 |
-| **Boss** | `Entry/Boss` | Boss 出场 — 配 `BossPrefab` + `SpawnPosition`(当前为留壳,后续接入多阶段) |
-| **Sustain** | `Entry/Sustain` | 在点位持续刷敌 — 配 `Duration` + `SpawnInterval`,期间每 N 秒生成一次(详见 §7) |
-| **Play SFX** | `Entry/Play SFX` | 时间点音效 — 配 `Cue` + 可选 `Position`,在 `TriggerTime` 播 SFX(详见[音频集成](#音频集成自动切歌--时间点-sfx)) |
+| **Simple** | `敌人生成/Simple` | 单点生成 — 配 `TriggerTime` / `SpawnPosition` / `EnemyPrefab`,可选 `OverrideFlow` 临时换行为流 |
+| **Wave** | `敌人生成/Wave` | 横排生成 — 配 `Prefabs[]` 数组 + `CenterPosition` + `SpacingX`,自动沿 X 轴等距铺 |
+| **Boss** | `敌人生成/Boss` | Boss 出场 — 配 `BossPrefab` + `SpawnPosition`(当前为留壳,后续接入多阶段) |
+| **Sustain** | `敌人生成/Sustain` | 在点位持续刷敌 — 配 `Duration` + `SpawnInterval`,期间每 N 秒生成一次(详见 §7) |
+| **Play SFX** | `音效/Play SFX` | 时间点音效 — 配 `Cue` + 可选 `Position`,在 `TriggerTime` 播 SFX(详见[音频集成](#音频集成自动切歌--时间点-sfx)) |
+
+> **下拉分类规则**:Toolbar 的 `+ Add ▾` 菜单按 `[SRName("分类/条目")]` 自动生成子菜单。
+> 第一个 `/` 前是分类名,后面是条目名。当前内置两个分类:`敌人生成` / `音效`。
+> 自定义 SpawnEntry 子类时,**强烈建议**给 SRName 加分类前缀(例如 `自定义/我的条目`),避免菜单扁平化。
 
 ### 典型配法示例
 
@@ -229,7 +233,7 @@ namespace ShinySTG.Level.SpawnEntries
 | 等一波清完再出下一波 | `OnClearedEntry`,override `ShouldTrigger` 读 `runtime.ActiveUnits` |
 | 概率触发 | `ChanceSpawnEntry`,override `ShouldTrigger` 里 `Random.value < Chance` |
 | V 字 / 弧形 / 螺旋阵 | `CurvedWaveSpawnEntry : WaveSpawnEntry`,override `OnTrigger` |
-| 在点位持续刷敌(已实现) | `SustainSpawnEntry`(`[SRName("Entry/Sustain")]`),配 Duration + SpawnInterval |
+| 在点位持续刷敌(已实现) | `SustainSpawnEntry`(`[SRName("敌人生成/Sustain")]`),配 Duration + SpawnInterval |
 
 ---
 
@@ -269,6 +273,14 @@ namespace ShinySTG.Level.SpawnEntries
 | `Duration` | 持续时间(秒)。例如 3.0 表示从 t 持续到 t+3 |
 | `SpawnInterval` | 两次生成之间的间隔(秒)。<= 0 = 只生成一次(退化成 Simple) |
 | `EnemyPrefab` / `SpawnPosition` / `InitialRotation` / `OverrideFlow` | 同 Simple |
+| `SpawnPositionStrategy` | 每次生成时相对 `SpawnPosition` 的"偏移算法"([SerializeReference] 多态,下拉选)。详见下方"位置策略" |
+
+**位置策略 `SpawnPositionStrategy`**(对齐 SfxRule / FireExtension 的多态下拉套路):
+
+| 策略 | 说明 |
+|---|---|
+| `Fixed` | 固定累加:第 N 只 = `SpawnPosition + (N-1) × Offset`。`Offset=(0,0)` 时所有生成都在 `SpawnPosition`。 |
+| `Random` | 范围随机:每次独立抽 `[-Range, +Range]` 内的偏移(每只敌人位置独立,无累加)。`Range=(0,0)` 时所有生成都在 `SpawnPosition`。 |
 
 **典型配法**(关卡编辑器中的"+ Add ▾" → Entry/Sustain):
 ```
@@ -277,6 +289,29 @@ SpawnPosition = (0, 4)   EnemyPrefab = 刷怪A
 
 → 从 5.0s 到 8.0s,每 0.5s 生成一只刷怪A,共 7 只。
 ```
+
+**典型配法 2**(配合 `Fixed` 策略拉一条"小怪行军线"):
+```
+时间 = 5.0   Duration = 3.0   SpawnInterval = 0.5
+SpawnPosition = (0, 4)   SpawnPositionStrategy = Fixed(Offset=(1, 0))   EnemyPrefab = 刷怪A
+
+→ 从 5.0s 到 8.0s,每 0.5s 生成一只刷怪A,
+  位置依次为 (0,4)、(1,4)、(2,4)、(3,4)、(4,4)、(5,4)、(6,4),共 7 只。
+```
+
+**典型配法 3**(配合 `Random` 策略散开刷怪):
+```
+时间 = 5.0   Duration = 3.0   SpawnInterval = 0.5
+SpawnPosition = (0, 4)   SpawnPositionStrategy = Random(Range=(0.5, 0.5))   EnemyPrefab = 刷怪A
+
+→ 从 5.0s 到 8.0s,每 0.5s 生成一只刷怪A,位置在 (0±0.5, 4±0.5) 方框内独立随机抽,共 7 只。
+```
+
+> **位置策略语义**:
+> - `Fixed` 的 `Offset` **每次生成后累加**一份,所以 N 只的位置形成"行军线"。
+> - `Random` 的 `Range` 是单次抽样范围,每只独立抽,**不连续、不累加**。
+> - `OnTrigger` 时 strategy 内部状态会被 `Reset()`(Fixed 的累加器清零);同一条 entry 多次触发仍从原点开始。
+> - 加新策略(贝塞尔轨迹 / 围绕某点公转 / 正弦摆动 ...)= 新建 `SpawnPositionStrategy` 子类 + `[SRName("PositionStrategy/<名字>")]`,Inspector 下拉自动出现,无需改 `SustainSpawnEntry`。
 
 ### 自定义持续型条目
 

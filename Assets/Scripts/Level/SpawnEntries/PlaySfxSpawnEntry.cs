@@ -21,7 +21,7 @@ namespace ShinySTG.Level.SpawnEntries
     /// Editor Preview 期间也会播放(走 LevelEditorPlayer.TriggerOne → OnTrigger 路径);
     /// 若场景没 AudioSystem,AudioMix.PlaySfx 静默返回,不报错。
     /// </summary>
-    [Serializable, SerializeReferenceEditor.SRName("Entry/Play SFX")]
+    [Serializable, SerializeReferenceEditor.SRName("音效/Play SFX")]
     public class PlaySfxSpawnEntry : SpawnEntry
     {
         [Tooltip("要播放的 SfxCue 资产。空 = 跳过(不报错,方便临时禁用某个时机)。")]

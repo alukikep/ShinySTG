@@ -14,11 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
   ModifierPrefabs:
-  - rid: 6177226937391906820
   - rid: 6177226960998236160
   FireExtensions:
-  - rid: 6177226981840519177
-  - rid: 6177226981840519178
+  - rid: 6177227034789412874
+  FireSounds: []
   Speed: 1
   AngularSpeed: 0
   Damage: 1
@@ -28,13 +27,13 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 6177226937391906820
-      type: {class: AccelerateModifier, ns: , asm: Assembly-CSharp}
-      data:
-        Acceleration: 1
     - rid: 6177226960998236160
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:
+        Delay: 0
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
         Mode: 0
         Color: {r: 1, g: 0, b: 0, a: 1}
         FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
@@ -43,11 +42,8 @@ MonoBehaviour:
         FlashFrequency: 5
         FlashMinAlpha: 0.3
         AutoSetDrawMode: 1
-    - rid: 6177226981840519177
+    - rid: 6177227034789412874
       type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
       data:
-        BaseAngle: 0
+        BaseAngle: 300
         PositionOffset: {x: 0, y: 0}
-    - rid: 6177226981840519178
-      type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
-      data: 

@@ -24,11 +24,17 @@ MonoBehaviour:
     - rid: 6177227000708333568
       type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 0.02666687
+        TriggerTime: 0
         OneShot: 1
         Duration: 3
         SpawnInterval: 0.5
         EnemyPrefab: {fileID: 3322077835522038162, guid: d2303041f257c1f41a7c9fc8664540de, type: 3}
         SpawnPosition: {x: -5, y: 3}
+        SpawnPositionStrategy:
+          rid: 6177227047334576129
         InitialRotation: 0
         OverrideFlow: {fileID: 0}
+    - rid: 6177227047334576129
+      type: {class: RandomSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Range: {x: 0, y: 3}

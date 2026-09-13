@@ -15,7 +15,7 @@ namespace ShinySTG.Level.SpawnEntries
     ///   - BossPrefab 上挂 Boss 总控即可,`[RequireComponent]` 自动加挂 BossHealth + BossHitbox + BossShotCounter + BossController,无需手填。
     ///   - BossController.Start 会自动跑第一阶段,本类不主动驱动。
     /// </summary>
-    [Serializable, SRName("Entry/Boss")]
+    [Serializable, SRName("敌人生成/Boss")]
     public class BossSpawnEntry : SpawnEntry
     {
         [Tooltip("Boss prefab。要求挂 BossController + BossHealth + BossShotCounter。")]
