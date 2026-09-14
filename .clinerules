@@ -5,6 +5,8 @@
 > - 架构 / 扩展套路 → `ARCHITECTURE.md`
 > - 开发约定 / 编码规范 / 工具链踩坑 → `CONTRIBUTING.md`
 
+实现功能后记得同步到说明文件中
+
 ---
 
 ## 1. Windows Shell 强制规则(★ 最高优先级)
