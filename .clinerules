@@ -1,0 +1,83 @@
+# ShinySTG 项目 Cline 规则
+
+> 进入项目必读的精简提示。其他细节按需查阅:
+> - 项目概览 → `README.md`
+> - 架构 / 扩展套路 → `ARCHITECTURE.md`
+> - 开发约定 / 编码规范 / 工具链踩坑 → `CONTRIBUTING.md`
+
+---
+
+## 1. Windows Shell 强制规则(★ 最高优先级)
+
+本项目运行环境为 **Windows PowerShell**。
+
+1. 禁止使用 Unix 风格的环境变量前缀:`VAR=value command`
+2. 设置环境变量必须使用:`$env:VAR='value'; command`
+3. 禁止将 `$variable` 放入可能被外层 shell 解析的双引号命令字符串。
+4. 复杂 PowerShell 命令必须写入 `.ps1` 文件后执行(`powershell -ExecutionPolicy Bypass -File ".\xxx.ps1"`)。
+5. 复杂 Python 操作必须写入 `.py` 文件后执行。
+6. 禁止 `python -c` 承载大段文本、Markdown 或多行逻辑。
+7. Markdown 内容不得通过 shell 参数传递。
+8. 中文文本验证不得依赖终端显示结果,应直接使用 UTF-8 字节或 Python UTF-8 文件读取验证。
+9. 文件编码检查必须使用明确指定的 UTF-8 编码。
+10. 修改完成后的验证必须基于文件实际内容,而不是命令执行成功。
+
+---
+
+## 2. 文件编码:UTF-8 无 BOM(配合 §1.9)
+
+所有文本文件(.cs / .md / .json / .asset / .flow / .prefab / .ps1)**必须 UTF-8 无 BOM**。
+BOM 会让 Unity 重新生成 .meta,触发"什么都没改但 git diff 一大片"。
+
+**PowerShell 写文件标准写法**(避免 BOM 和默认编码陷阱):
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$utf8NoBom = New-Object System.Text.UTF8Encoding($False)
+[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
+```
+
+
+
+---
+
+## 3. 临时脚本归宿
+
+- PowerShell / Python 临时脚本 → 放 `Temp/<task_name>.ps1` 或 `Temp/<task_name>.py`,不要放项目根
+- `Temp/` 在 `.gitignore` 内,天然屏蔽
+- 任务结束前清理 `Temp/*.ps1` / `Temp/*.py`
+
+---
+
+## 4. 改 .md 文件流程(实战踩坑后补充)
+
+### 4.1 含中文的写入脚本优先用 Python,不要走 .ps1
+
+- **原因**:PowerShell 5.1 在中文 Windows 默认按 GBK 解析无 BOM 的 .ps1,即便脚本里写中文字面量,实际写入文件的可能是 GBK 字节
+- **正确做法**:
+  - 改写 / 追加 `.md` / `.cs` 文本 → 用 `.py` 脚本,Python 3 默认 UTF-8,无 BOM 陷阱
+  - 简单 PowerShell 验证(读字节 / 取行数)→ 走 `.ps1` 没问题(只输出 ASCII 数字)
+- **不要**:`editor` 工具里写含中文 + PowerShell 写文件的组合 —— 本次精简 .clinerules 时已踩坑
+
+### 4.2 改 .md 大文档建议整文件回写,不走 editor 分段
+
+- **原因**:`editor` 工具 `new_text` 上限 ~6000 字符,长文档(> 6000 字符)分段改易残留半截旧内容
+- **正确做法**:
+  - 小改动(单段 < 6000 字符) → `editor` 工具 old_text/new_text 替换
+  - 整章重写 / 大段增删 → Python 脚本整文件切片回写(`content[:idx] + new_section + content[idx:]`),比 editor 分段更稳
+  - 务必先 `copy <file> <file>.bak` 备份,完工后 `git diff <file>.bak <file>` 对比
+
+### 4.3 中文输出验证用 Python,不依赖 PowerShell 终端
+
+- **原因**:中文 Windows PowerShell 终端默认 GBK,即使脚本输出 UTF-8 中文也显示乱码(`涓存椂鑴氭湰褰掑牴` 这种),但**文件实际内容是正确的**
+- **正确做法**(对应 §1.8 + §1.10):
+  ```python
+  import os
+  with open(path, "rb") as f: first3 = f.read(3)
+  print("BOM:", first3 == b"\xef\xbb\xbf")  # 必须 False
+  with open(path, "r", encoding="utf-8") as f:
+      content = f.read()
+  print("Chinese visible:", "中文" in content)  # 字符级验证
+  ```
+- **不要**:看到 PowerShell 终端显示乱码就以为文件错了 —— 用 Python UTF-8 读 + 字节双重校验

@@ -11,6 +11,7 @@
 - 🎨 **数据驱动**:`FirePattern` SO 系统(Ring/Line/Arc/Composite 等),改一个资产 = 改全场景
 - 🧭 **FireExtension 多态扩展**:`FireExtensions` 是 FirePattern 上的 **模块数组 + Pipeline 模型**——按数组顺序串成"角度管道"(Base → PlayerAim → Offset Angle → ...),拼装出"基础方向 + 瞄准玩家 + 再叠 N°"等复杂逻辑(例:`[PlayerAim, Offset Angle(+180°)]` = 瞄向玩家但飞向玩家背后的"绕后弹")。Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
 - 🔊 **FireSound 开火音多态扩展**:`FireSounds` 是 FirePattern 上的**并行触发器数组**——与 FireExtension 的"角度管道"对仗,FireSound 是"每个模块独立播音"(可叠多 cue / 按状态发声 / 自定义行为)。走 SfxCue 体系(限流/Pipeline/Bus 全继承)。BulletPool.FireGroup 入口自动调一次,Composite 子 pattern 不重复触发。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.2 + [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) §6.5
+- 🌫️ **SpawnFog 出生雾化多态扩展**:`SpawnFog` 是 FirePattern 上的**多态下拉字段**(不是数组)——`[SerializeReference, SR]` 选 None(不使用) / Default(染色+缩放+缓动) / 未来的中雾化方法,决定子弹出生瞬间是否雾化(不动 / 不参与碰撞 / modifier 时间窗口不累计 / 视觉走 STG/BulletTintFog shader)。新增雾化方法 = 加一个 .cs + `[SRName("Spawn Fog/<名字>")]`,自动出现在所有 FirePattern 资产下拉。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.3
 - 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / 分裂 / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC;**所有 modifier 自动支持 `Delay` / `Duration` 时间窗口 + `OneShot` 一次性触发**(详见 ARCHITECTURE §2.6)
 - 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
 - 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
@@ -24,6 +25,7 @@
 - 子弹系统(BulletPool / Bullet / BulletModifier)原理(含 modifier 多态体系、美术朝向约定、Clone 深拷约定)
 - 射击模式 SO 体系(FirePattern)及扩展方法(含 `SpawnBullet` helper 强制使用)
 - FireExtension 扩展点(对基础发射逻辑的多态扩展,BaseAngle / 瞄准玩家 / 未来瞄准 Boss / 每发旋转 / ...)
+- **SpawnFog 出生雾化扩展**(单字段多态下拉,None / Default / 未来的中雾化方法)
 - 敌人 AI 时间轴(BehaviorFlow + EnemyAction)的三层架构
 - Boss 系统(BossController + 多阶段 + 多管血)的全部细节
 - 玩家系统(Player 主控 + 八方向 + Focus + 残机/火力/无敌 + 子机)
@@ -56,7 +58,11 @@ Assets/Scripts/
 │   ├── Bullet.cs                             # 飞行体 + modifier 调度
 │   ├── BulletModifier.cs                     # 多态修饰基类 + Accelerate / Steer / Homing Enemy 内置
 │   ├── BulletColorModifier.cs                # 视觉修饰:暗部染色 / 渐变 / 闪烁(Modifier/Color,配套 Shaders/BulletTint.shader)
-│   ├── FirePattern.cs (+ GetFireCount + FireExtension 扩展点 + FireSound 扩展点)
+│   ├── FirePattern.cs (+ GetFireCount + FireExtension 扩展点 + FireSound 扩展点 + SpawnFog 扩展点)
+│   ├── FirePattern/SpawnFog/                 # 出生雾化多态(详见 ARCHITECTURE.md §3.3)
+│   │   ├── SpawnFogConfig.cs                # 抽象基类 + FogEasing 枚举 + FogEasingUtil 缓动 helper
+│   │   ├── DefaultSpawnFog.cs               # 默认基础雾化(染色 + 缩放 + 缓动)
+│   │   └── NoSpawnFog.cs                    # 显式"不使用雾化"占位
 │   ├── FireExtension/                          # 基础发射逻辑的多态扩展(详见 ARCHITECTURE.md §3.1)
 │   │   ├── FireExtension.cs                    # 基类 + BaseAngleFireExtension / PlayerAimFireExtension 内置
 │   │   ├── FireExtensionResolver.cs            # 静态 helper(Null-safe 解析中心方向)
@@ -226,4 +232,22 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 ### 为什么有这些约定
 
 实际踩过的坑汇总在 [`CONTRIBUTING.md`](./CONTRIBUTING.md) §4(工具链踩坑笔记)。**修通这些问题的成本 >> 绕过它们的成本**(落盘一个临时脚本即可)。代理看到中文 + 多行场景应当自觉落盘,不要硬塞。
+
+### 文件编辑策略
+
+对于 Markdown、JSON、YAML、TXT 等文档：
+
+- 优先使用编辑工具进行局部修改。
+- 禁止通过 shell 的 `python -c` 拼接超过 200 字符的文本内容。
+- 禁止把完整 Markdown 章节作为 shell 命令参数传递。
+- 禁止为了单次文本替换创建多个 debug*.py 文件。
+- 如果目标文本匹配失败：
+  1. 先读取目标附近的实际内容；
+  2. 找到稳定的唯一锚点；
+  3. 根据锚点进行局部编辑；
+  4. 不要不断扩大 old_text 的精确匹配范围。
+- 修改 Markdown 表格时，只匹配表头或章节标题等稳定锚点，不要匹配整张表。
+- Windows 环境下不要假设换行符为 LF。
+- Python 文件操作统一使用 pathlib。
+- 文件编码统一显式指定 UTF-8。
 

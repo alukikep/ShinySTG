@@ -376,12 +376,16 @@ public class PlaySoundOnceModifier : BulletModifier {
 |---|---|---|
 | `BulletPrefab` | `Bullet` | 该 pattern 发射的子弹 prefab;留空走 BulletPool.DefaultPrefab 兜底 |
 | `ModifierPrefabs` | `[SerializeReference, SR] BulletModifier[]` | 每颗子弹自动挂的 modifier(详见 §2.2) |
+| `FireExtensions` | `[SerializeReference, SR] FireExtension[]` | 角度管道多态模块数组(详见 §3.1) |
+| `FireSounds` | `[SerializeReference, SR] FireSound[]` | 开火音多态模块数组,与 FireExtensions 并行触发(详见 §3.2) |
 | `Speed` | `float` | 飞行速度,默认 5 |
 | `AngularSpeed` | `float` | 固定角速度(弧度/秒),0 = 不转;等同于 modifier 里 Steer 的效果 |
 | `Damage` | `float` | 玩家弹伤害;敌人弹忽略 |
+| `SpawnFog` | `[SerializeReference, SR] SpawnFogConfig`(**单字段**) | 子弹出生后短暂雾化(null 或 Duration=0 = 不雾化,详见 §3.3) |
 
 **扩展点:**
 - 新增弹幕形态:新建 `FirePattern` 子类 + 创建对应 .asset(详见 `Assets/Scripts/Bullet/FirePattern/`)。
+- 新增出生雾化方法:新建 `SpawnFogConfig` 子类 + 加 `[SRName("Spawn Fog/<名字>")]`,自动出现在所有 FirePattern 资产的下拉菜单(详见 §3.3)。
 - 子类在生成子弹时**必须**用基类的 `protected Bullet SpawnBullet(...)` helper,**不要直接调** `pool.Get`,否则 modifier 不会挂上。
 
 详见 `Assets/Scripts/Bullet/FirePattern*`。
@@ -483,6 +487,49 @@ FirePattern 还有第二个多态模块数组 `FireSounds[]`,**与 FireExtension
 - **与 PlayerShooting._shootSfx 关系**(可并存):`_shootSfx` 是"玩家整体开火"(不论哪个 pattern),`FireSounds[]` 是"特定 pattern 的特征音"(同一 pattern 在玩家 vs 敌人可配不同 cue)
 
 详见 `Assets/Scripts/Bullet/FireExtension/FireSound.cs` 顶部注释 + `Assets/Scripts/Audio/README.md` §6.5。
+
+### 3.3 出生雾化多态扩展(SpawnFogConfig)
+
+**职责:** FirePattern 上的"出生雾化"多态配置字段(**单字段,不是数组**),控制子弹生成后短暂雾化期内的视觉 / 行为。
+
+**雾化期内的子弹行为**(由 `Bullet.cs` 统一执行,`Bullet.Update` 内 `FogDuration > 0` 时 early-return):
+
+- 位置固定(不按 Speed 移动)
+- 不参与碰撞(`HitboxComponent.IsFogged=true` → `CollisionService` 各 Tick 阵营过滤后会 continue)
+- modifier 时间窗口计时器不累计(雾化结束 → 时间窗口从 0 开始)
+- 视觉由子类 `override` 的 `ApplyVisual(Bullet b, float t01, Vector3 baseLocalScale)` 决定;默认走 STG/BulletTintFog shader,通过 `MaterialPropertyBlock` 写 `_FogAmount=1→0` + `_FogColor`
+
+**字段语义:**
+
+- `SpawnFog` 是单字段(不是数组),`[SerializeReference, SR]` 多态下拉,可选择:
+  - 字段为 `null`(默认,与历史行为 100% 等价)
+  - `[SRName("Spawn Fog/None")]` —— 显式"不使用雾化"占位选项(`Duration=0`,与 `null` 行为等价)
+  - `[SRName("Spawn Fog/Default")]` —— 默认基础雾化(染色 + 缩放 + 缓动)
+  - `[SRName("Spawn Fog/<中雾化>")]` —— 后续扩展位
+
+**协作边界:**
+
+- 字段挂在 `FirePattern` 基类上,所有 `FirePattern` 子类(Arc / Line / Ring / Composite / 未来)自动支持 Inspector 下拉。
+- `CompositeFirePattern` 的子 pattern **各自带自己的 SpawnFog**,互不影响。
+- `Bullet.cs` 提供 `public ApplyFogMaterialParams(float fogAmount, Color fogColor)` helper 给子类调用,**MPB 生命周期由 Bullet 统一管理**(懒分配 `_fogMpb`,与 `BulletColorModifier` 的 `_TintColor` 不冲突)。子类不要直接访问 `Bullet._fogMpb` 私有字段。
+- 子类若做缩放,务必走 `baseLocalScale × fogScale` 乘法,不要覆盖 `transform.localScale`,避免破坏 prefab 美术基准。
+
+**类型:**
+
+- 基类:`SpawnFogConfig`(`Assets/Scripts/Bullet/FirePattern/SpawnFog/SpawnFogConfig.cs`,纯 C# `[Serializable] abstract class`)
+- 内置子类:
+  - `NoSpawnFog` `[SRName("Spawn Fog/None")]` —— `Duration=0`,与 `null` 行为等价(显式占位,便于保留"选了 None"的意图可追溯)
+  - `DefaultSpawnFog` `[SRName("Spawn Fog/Default")]` —— 染色 + 缩放 + 缓动三件套(走 `STG/BulletTintFog` shader)
+- 共享枚举 / Helper:`FogEasing`(None / EaseOut / EaseIn / EaseInOut 缓动曲线) + `FogEasingUtil.Apply(t, easing)`(缓动函数,供所有子类的 `ApplyVisual` 调用)
+
+**扩展点:**
+
+- 新增"中雾化方法"(波形雾化 / 径向膨胀 / 颜色渐变 / 拖尾 / ...) = 新建 `SpawnFogConfig` 子类 + 加 `[SRName("Spawn Fog/<名字>")]`,**自动出现在所有 FirePattern 资产的下拉菜单**。
+- 子类需 `override`:
+  - `ApplyVisual(Bullet b, float t01, Vector3 baseLocalScale)` —— 雾化期内每帧调用(`t01=0` 出生瞬间,`t01=1` 雾化结束)
+  - `ClearVisual(Bullet b, Vector3 baseLocalScale)` —— 雾化结束调用一次,复位视觉
+
+详见 `Assets/Scripts/Bullet/FirePattern/SpawnFog/SpawnFogConfig.cs` 顶部注释。
 
 ---
 
@@ -631,6 +678,7 @@ Phase 3 (暴走)
 | Boss 切换条件 | `BossSignal` | 开场过场 / 玩家撞 N 次 / 自定义条件 |
 | 子机位置 | `OptionPositionForm` | 子机怎么排队 |
 | 关卡条目 | `SpawnEntry` | 配关卡时一行下拉 |
+| 子弹出生雾化 | `SpawnFogConfig` | 子弹出生瞬间的多态视觉/行为(不动 + 不参与碰撞 + 不累计 modifier + shader `_FogAmount` 渐变),挂在 FirePattern 上(**单字段**,不是数组),详见 §3.3 |
 | 关卡编辑器画法 | `ISpawnEntryDrawer` | 编辑器时间轴 / Scene 视图怎么画 |
 | 音效规则 | `SfxRule` | SFX 处理规则(随机抽 clip / pitch 抖动 / 自定义修饰),挂在 SfxCue 上,详见 §11 |
 | 开火音模块 | `FireSound` | FirePattern 开火时发声(单 cue / 叠多 cue / 按状态发声),挂在 FirePattern 上,与 FireExtension 并行触发,详见 §3 |
