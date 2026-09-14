@@ -21,6 +21,11 @@ MonoBehaviour:
   FireSounds: []
   Speed: 3
   AngularSpeed: 0
+  SpawnFog:
+    Duration: 0.1
+    FogColor: {r: 0.7, g: 0.85, b: 1, a: 1}
+    FogStartScale: 2
+    Easing: 0
   Damage: 1
   Count: 1
   DeltaSpeed: 1

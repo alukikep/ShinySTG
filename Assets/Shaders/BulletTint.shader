@@ -1,28 +1,26 @@
-// STG 子弹染色 shader —— 只对"暗部"染色,亮部(白色高光)保持原色。
+// STG 子弹染色 + 出生雾化 shader —— 二合一。
 //
-// 物理原理:
-//   Unity 内置 Sprites/Default 走 tex * color 乘法,白色像素会被完全染成主色。
-//   本 shader 把"染色权重"和"像素亮度"挂钩:
-//     - 暗像素 (luminance → 0):weight = 1,完全染色 → tex * _TintColor
-//     - 亮像素 (luminance → 1):weight = 0,完全保持 → tex
-//   中间像素按 smoothstep 平滑过渡。
+// 主通道(原有 tint):
+//   - _TintColor 只染暗部,亮部(白色高光)保留 — 经典 STG 子弹表现
+//   - BulletColorModifier 通过 MaterialPropertyBlock 写 _TintColor(per-instance)
+//
+// 雾化通道:
+//   - _FogAmount:0 = 清晰(等价历史);1 = 完全被 _FogColor 覆盖(雾团)
+//   - 默认 _FogAmount=0,未启用雾化的子弹零分支开销(只多一个 uniform 读)
+//
+// 视觉缩放走 C# 端 transform.localScale(由 Bullet.cs 在 SpawnFog 期写 _baseLocalScale * fogScale),
+// shader vertex 完全不动 → 100% 不产生位置偏移(与 FogStartScale 字段语义一致:FogStartScale=1.4 表示
+// 出生瞬间大小是正常的 1.4 倍)。
 //
 // 与 SpriteRenderer.color / MaterialPropertyBlock 的协作:
-//   - 必须通过 MaterialPropertyBlock 传 _TintColor(per-instance,SRP Batcher 友好)。
+//   - 必须通过 MaterialPropertyBlock 传 _TintColor / _FogAmount(per-instance,SRP Batcher 友好)。
 //   - 不用 material.instance(避免破坏 SRP Batcher)。
-//   - _TintColor.a 控制整体染色强度;0 = 完全不染色(显示原黑白图)。
 //
 // 适用:
-//   - STG 黑白灰 bullet 素材 → 主炮红 / 子机蓝 / Boss 紫(白色高光保留)。
-//   - 与 BulletColorModifier(modifier 内部走 MPB)完美配套。
+//   - 子弹染色(黑白灰素材 → 各种颜色),与 BulletColorModifier 配套
+//   - 出生雾化(由 Bullet.cs 在 FirePattern.SpawnFog 期间通过 MPB 写 _FogAmount + transform.localScale)
 //
-// 不适用:
-//   - 需要"亮像素也染色"或"全图单色化"的场景 —— 用 ParticleSystem 或自定义。
-//   - HDR / 自发光子弹 —— 本 shader 是纯 LDR tint,需要的话后续加 _Emission。
-//
-// 性能:
-//   - 顶点数 / draw call 与 Sprites/Default 同级(一个 Pass)。
-//   - per-instance 通过 MPB 传 _TintColor,不破坏 batching。
+// 性能:一个 Pass,per-instance MPB,不破坏 batching。
 
 Shader "STG/BulletTint"
 {
@@ -32,6 +30,10 @@ Shader "STG/BulletTint"
         _TintColor      ("Tint Color (RGB = tint, A = strength)", Color) = (1, 1, 1, 1)
         _LuminanceMin   ("Luminance Min (below = full tint)", Range(0, 1)) = 0.0
         _LuminanceMax   ("Luminance Max (above = no tint)", Range(0, 1)) = 0.65
+
+        // 出生雾化通道(per-instance,MaterialPropertyBlock 写入)
+        _FogAmount      ("Fog Amount (1 = full fog, 0 = clear)", Range(0, 1)) = 0.0
+        _FogColor       ("Fog Color (覆盖雾化期整体颜色)", Color) = (1, 1, 1, 1)
     }
 
     SubShader
@@ -79,8 +81,15 @@ Shader "STG/BulletTint"
             float     _LuminanceMin;
             float     _LuminanceMax;
 
+            // 出生雾化 uniforms(per-instance,MPB)
+            float     _FogAmount;
+            float4    _FogColor;
+
             v2f vert(appdata_t v)
             {
+                // vertex 完全不动 —— 视觉缩放走 C# 端 transform.localScale(Bullet.ApplyFogVisual)。
+                // 之前 _FogScale vertex 写法在 FogStartScale>1 时 Unity 内部出现"快速移动"视觉异常,
+                // 改用 transform.localScale 乘法后语义直观且不触发该 bug。
                 v2f OUT;
                 OUT.vertex   = UnityObjectToClipPos(v.vertex);
                 OUT.texcoord = v.texcoord;
@@ -110,10 +119,21 @@ Shader "STG/BulletTint"
                 // 5. 合成:暗像素 → tex * _TintColor.rgb,亮像素 → tex
                 fixed3 tinted = lerp(tex.rgb, tex.rgb * _TintColor.rgb, finalWeight);
 
-                // 6. 预乘 alpha 输出(配合 Blend One OneMinusSrcAlpha)
-                //    TintColor 也会降低 alpha 让暗部稍微更"轻",视觉更协调
-                fixed alpha = tex.a * lerp(1.0, _TintColor.a, finalWeight * 0.5);
-                return fixed4(tinted * alpha, alpha);
+                // 6. 基础 alpha(预乘输出专用)
+                fixed baseAlpha = tex.a * lerp(1.0, _TintColor.a, finalWeight * 0.5);
+
+                // ═══════════════════════════════════════════════════════════
+                // 出生雾化合成:
+                //   _FogAmount=1:整张弹被 _FogColor 替换(= 雾团)
+                //   _FogAmount=0:等价上面的 tinted(正常 tint)
+                //   中间值:lerp(清晰, 雾团)
+                //   雾化期整体 alpha 提升(雾团更不透明,聚焦视觉),清晰后回到 baseAlpha
+                // ═══════════════════════════════════════════════════════════
+                fixed3 finalRgb   = lerp(tinted, _FogColor.rgb, _FogAmount);
+                fixed  finalAlpha = lerp(baseAlpha, baseAlpha + (1.0 - baseAlpha) * 0.6, _FogAmount);
+
+                // 7. 预乘 alpha 输出(配合 Blend One OneMinusSrcAlpha)
+                return fixed4(finalRgb * finalAlpha, finalAlpha);
             }
             ENDCG
         }

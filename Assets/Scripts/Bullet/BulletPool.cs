@@ -64,15 +64,20 @@ public class BulletPool : MonoBehaviour
     /// <param name="ownerTeam">发射者阵营(透传给子弹 Hitbox.Team)。null = Neutral(不参与碰撞)。</param>
     public Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed,
                       float damage, ShinySTG.Hitbox.CollisionTeam ownerTeam)
-        => Get(prefab, pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, null);
+        => Get(prefab, pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, null, null);
 
     /// <summary>
     /// 取一颗子弹,并按指定 prefab 数组挂载 BulletModifier。
     /// Modifier 实例会被 Instantiate 到子弹的子层级,随子弹回池自动清理。
     /// </summary>
+    /// <param name="spawnFog">
+    /// 出生雾化配置(可空)。null 或 Duration=0 = 不雾化(默认,与历史行为 100% 等价)。
+    /// 由 FirePattern.SpawnFog 透传,详见 Assets/Scripts/Bullet/FirePattern/SpawnFog/SpawnFogConfig.cs。
+    /// </param>
     public Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed,
                       float damage, ShinySTG.Hitbox.CollisionTeam ownerTeam,
-                      BulletModifier[] modifiersToAttach)
+                      BulletModifier[] modifiersToAttach,
+                      SpawnFogConfig spawnFog = null)
     {
         // prefab 为空时兜底使用 DefaultPrefab(避免某些 Pattern 未配置时崩溃)
         var usePrefab = prefab != null ? prefab : DefaultPrefab;
@@ -86,7 +91,7 @@ public class BulletPool : MonoBehaviour
         var b = stack.Count > 0 ? stack.Pop() : Instantiate(usePrefab, transform);
         b.SourcePrefab = usePrefab;
         b.gameObject.SetActive(true);
-        b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam);
+        b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, spawnFog);
         AttachModifiers(b, modifiersToAttach);
         _active.Add(b);
         return b;

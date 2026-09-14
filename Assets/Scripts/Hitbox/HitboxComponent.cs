@@ -43,6 +43,12 @@ namespace ShinySTG.Hitbox
                  "手动配置:玩家弹 prefab 标 Player,敌人弹 prefab 标 Enemy;PlayerHitbox/EnemyHitbox Reset() 已给默认值。")]
         public CollisionTeam Team = CollisionTeam.Neutral;
 
+        [Tooltip("是否处于'出生雾化'期(true = 不参与碰撞、不参与擦弹、不参与伤害)。\n" +
+                 "由 Bullet 在 FirePattern.SpawnFog 期间写入;雾化结束自动置 false。\n" +
+                 "CollisionService 各 Tick 在阵营过滤之后会再过一遍 IsFogged,雾化期子弹直接 continue。\n" +
+                 "好处:阵营字段保持原值不动,雾化期结束后阵营无需'再设一次' — 简单可靠。")]
+        public bool IsFogged = false;
+
         public Vector2 Position => transform.position;
 
         /// <summary>世界空间 AABB(实时反映 transform.lossyScale)。</summary>

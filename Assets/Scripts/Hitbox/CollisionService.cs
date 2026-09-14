@@ -198,6 +198,7 @@ namespace ShinySTG.Hitbox
             {
                 if (b == null || b.Hitbox == null) continue;
                 if (b.Hitbox.Team != CollisionTeam.Player) continue;  // 阵营过滤
+                if (b.Hitbox.IsFogged) continue;                       // 出生雾化期:不参与碰撞/伤害
 
                 Vector2 bPos = b.Hitbox._cachedBounds.center;
                 var cands = _grid.Query3x3(bPos);
@@ -237,6 +238,7 @@ namespace ShinySTG.Hitbox
             {
                 if (b == null || b.Hitbox == null) continue;
                 if (b.Hitbox.Team != CollisionTeam.Player) continue;
+                if (b.Hitbox.IsFogged) continue;                       // 出生雾化期:不参与碰撞/伤害
 
                 Vector2 bPos = b.Hitbox._cachedBounds.center;
                 var cands = _grid.Query3x3(bPos);
@@ -288,6 +290,7 @@ namespace ShinySTG.Hitbox
             {
                 if (b == null || b.Hitbox == null) continue;
                 if (b.Hitbox.Team != CollisionTeam.Enemy) continue;  // 阵营过滤
+                if (b.Hitbox.IsFogged) continue;                       // 出生雾化期:不参与碰撞/伤害(包含擦弹)
 
                 Vector2 bPos = b.Hitbox._cachedBounds.center;
                 var cands = _grid.Query3x3(bPos);

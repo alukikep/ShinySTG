@@ -60,6 +60,21 @@ public abstract class FirePattern : ScriptableObject
     public float Speed = 5f;
     public float AngularSpeed = 0f;
 
+    [Header("Spawn Fog (子弹出生后短暂雾化期)")]
+    [Tooltip("出生后短暂雾化:子弹生成后这段时间内不动、不参与碰撞、modifier 时间窗口不累计。\n" +
+             "视觉走 STG/BulletTintFog shader(通过 MaterialPropertyBlock 写 _FogAmount / _FogColor)。\n" +
+             "Duration=0 或留空 = 不雾化(默认,与历史行为 100% 等价)。\n" +
+             "★ 设计动机 ★\n" +
+             "  - 玩家弹短雾化:给玩家视觉反馈刚出生还在'凝聚'(典型 0.08~0.15s)\n" +
+             "  - Boss 警示弹:出生 0.3~0.5s 内不撞人(玩家有时间反应)\n" +
+             "  - 不雾化:留空(Duration=0),行为 100% 等价历史\n" +
+             "CompositeFirePattern 的子 pattern 各自带自己的 SpawnFog,互不影响。\n" +
+             "★ 雾化期 modifier 行为 ★\n" +
+             "  - 雾化期内 modifier.Modify() 不被调用 → _elapsed 不增\n" +
+             "  - 雾化结束那一帧 → modifier 时间窗口从 0 开始\n" +
+             "  - 所以 'BulletSpawnFog + ModifierDelay=0.5' = '弹飞 0.5s 后才开始 modifier'(直觉一致)")]
+    public SpawnFogConfig SpawnFog;  // null-safe:null 视为"不雾化"
+
     [Header("Combat")]
     [Tooltip("子弹命中敌人时的伤害值。\n" +
              "玩家弹用:CollisionService 会按 b.Damage 调 enemy.TakeDamage(b.Damage)。\n" +
@@ -124,7 +139,8 @@ public abstract class FirePattern : ScriptableObject
                                  BulletModifier[] extraModifiers)
     {
         var combined = CombineArrays(ModifierPrefabs, extraModifiers);
-        return pool.Get(BulletPrefab, pos, rad, speed, angularSpeed, damage, team, combined);
+        // 透传 SpawnFog:每个子 pattern 各自带自己的雾化配置,CompositeFirePattern 不会被子覆盖。
+        return pool.Get(BulletPrefab, pos, rad, speed, angularSpeed, damage, team, combined, SpawnFog);
     }
 
     /// <summary>把 pattern 的 modifier 和调用方追加的 modifier 拼成一个数组。null-safe。</summary>

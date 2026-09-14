@@ -488,6 +488,7 @@ MonoBehaviour:
   SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
   AlwaysDraw: 1
   Team: 1
+  IsFogged: 0
   _cachedBounds:
     serializedVersion: 2
     x: 0
