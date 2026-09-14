@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea1136b335f1e429973dab1d865f75, type: 3}
+  m_Name: RingBigCircle
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
+  ModifierPrefabs:
+  - rid: 6177227073745846272
+  FireExtensions: []
+  FireSounds: []
+  Speed: 4
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 6177227073745846275
+  Damage: 1
+  Count: 8
+  Radius: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177227073745846272
+      type: {class: FireOnDurationBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Pattern: {fileID: 11400000, guid: f3205c7c405284c4181d334774ba21b4, type: 2}
+        InheritOwnerTeam: 1
+        ExtraModifiers: []
+        Interval: 0.5
+        MaxShots: -1
+    - rid: 6177227073745846275
+      type: {class: NoSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0

@@ -185,7 +185,9 @@ FireAction.OnTick
 | `SteerTowardModifier` | `Modifier/Steer` | 每帧把 `b.AngularSpeed = TurnRate * Deg2Rad`(由 `Bullet.Update` 第 2 步自动累加到 `SteerAngle`) | `TurnRate` (度/秒, 默认 90) |
 | `HomingEnemyModifier` | `Modifier/Homing Enemy` | 通过 `CollisionService.Grid.QueryRadius(...)` 查最近敌人,按 `TurnRate` 限速转向 | `SearchRadius` / `TurnRate` / `LockOnDelay` / `MaxHomingTime` |
 | `BulletColorModifier` | `Modifier/Color` | 走 **MaterialPropertyBlock** 给 shader 的 `_TintColor` 染色(Solid / FadeByLifetime / Flash 三模式);**必须配套 `Assets/Shaders/BulletTint.shader`** —— 该 shader 只对暗像素染色,白色高光像素保持纯白(经典 STG 效果)。需 `Bullet.Renderer` 字段(Awake/Reset 自动 `GetComponentInChildren<SpriteRenderer>(true)` 抓取)。需把 bullet prefab 的 SpriteRenderer.Material 切到 `STG/BulletTint` | `Mode` / `Color` / `FadeOutColor` / `FadeStart` / `ReferenceLifetime` / `FlashFrequency` / `FlashMinAlpha` |
-| `SpawnRingOnDelayModifier` | `Modifier/Spawn Ring on Delay` | **OneShot 示例**:子弹飞 `Delay` 秒后,在当前位置生成一圈分裂弹,然后本 modifier 结束。分裂弹阵营 = Neutral(纯视觉效果)。 | `Delay` / `RingPattern`(FirePattern 资产)/ `RingCount` / `BulletSpeed` |
+| ~~`SpawnRingOnDelayModifier`~~ | ~~`Modifier/Spawn Ring on Delay`~~ | **已弃用删除** —— 由 `FireOnEnterBulletModifier` 取代(通用 + 任意 FirePattern + 阵营可继承) | — |
+| `FireOnEnterBulletModifier` | `Modifier/Fire Pattern On Delay` | **OneShot 分裂**:子弹飞 `Delay` 秒后,在自身位置按 `Pattern` 再开一次火(走 `BulletPool.FireGroup` 完整链路:FireExtensions / ModifierPrefabs / SpawnFog / FireSounds 全生效),然后本 modifier 结束。分裂弹阵营可继承母弹(默认)或设为中性。 | `Pattern`(FirePattern 资产)/ `InheritOwnerTeam` / `ExtraModifiers` |
+| `FireOnDurationBulletModifier` | `Modifier/Fire Pattern While Active` | **持续型分裂**:窗口期内(Delay 之后 Duration 秒内)每 `Interval` 秒在自身位置按 `Pattern` 开一次火,最多 `MaxShots` 次。典型用法:弹尾粒子、激光拼接、Boss 散弹母弹持续生子弹。 | `Pattern` / `Interval` / `MaxShots` / `InheritOwnerTeam` / `ExtraModifiers` |
 
 **追踪玩家(敌人弹挂的 modifier)是常见扩展**,但当前项目未内置 `HomingPlayerModifier`(因玩家是单例,目标解析无需走网格);按下方"扩展点"小节的三步套路自行实现即可,大致套路是用 `ShinySTG.Player.Player.Instance?.transform` 拿到目标,其余转向逻辑与 `HomingEnemyModifier` 同源。
 
@@ -225,6 +227,13 @@ FireAction.OnTick
 - 在 modifier 内调 `CollisionService.Instance.Grid.QueryRadius(point, radius)`,拿半径 r 内的所有 `HitboxComponent`,自己按 `hb.Team` 过滤(玩家阵营 / 敌人阵营 / 中立),按距离 / 角度等选目标。
 - `QueryRadius` 是 `UniformGrid` 暴露的公开 API,基于均匀网格索引,O(候选数) 选目标;同 `Query3x3(center)` 是 `QueryRadius(center, cellSize)` 的薄封装。
 - **生命周期约定**:modifier 的 `ModifyCore` 由基类的 `Modify` 调度,`Modify` 由 `Bullet.Update` 调用(`Update` 阶段),`CollisionService.LateUpdate` 才建网格 —— 同一帧内 modifier 读到的网格是**上一帧**的快照。STG 帧率下两帧差异 < 1/60s,实际无感知,但**不能**假设"本帧新生成的目标立刻可见"。
+
+
+**新增「子弹再发射」modifier**(分裂类)走 FirePatternBulletModifier 抽象基类(`Assets/Scripts/Bullet/FirePatternBulletModifier.cs`):
+- 子类只需 override `ComputeCenterAngle(Bullet)`(默认返回 `b.SteerAngle`,母弹当前朝向) + 决定触发时机(OnWindowEnter / ModifyCore)
+- 走 `BulletPool.FireGroup(Pattern, b.Position, angle, ownerHitbox, extraModifiers)` 完整链路,自动透传 `Pattern` 的全部能力
+- `ownerHitbox` 取值由 `InheritOwnerTeam` 字段决定: true → `b.Hitbox`(继承母弹阵营),false → null(中性)
+- 想加新的分裂模式(如「按玩家方向分裂」「按母弹反方向分裂」)→ 新建 `FirePatternBulletModifier` 子类 + `[SRName("Modifier/<名字>")]`,无需改任何 Bullet / FirePattern / BulletPool
 
 ### 2.6 时间窗口(Delay / Duration / OneShot)
 
@@ -296,11 +305,11 @@ HomingEnemyModifier h = new HomingEnemyModifier {
     Duration = 2f,  // 追踪 2 秒后整体停用(子弹保持最后方向直线)
 };
 
-// 3. OneShot:定时分裂
-SpawnRingOnDelayModifier s = new SpawnRingOnDelayModifier {
+// 3. OneShot:延迟 N 秒后按 FirePattern 再开火(走完整链路:FireExtensions + 子 modifier + SpawnFog 全生效)
+FireOnEnterBulletModifier s = new FireOnEnterBulletModifier {
     Delay = 0.8f,        // 飞 0.8 秒后爆开
-    RingPattern = myRing,// 拖一个 FirePattern 资产
-    RingCount = 12,
+    Pattern = myPattern, // 拖一个 FirePattern 资产(Ring / Line / Arc / Composite / ...)
+    InheritOwnerTeam = true, // 分裂弹继承母弹阵营(可撞人)
     // OneShot 默认 true,ModifyCore 留空
 };
 

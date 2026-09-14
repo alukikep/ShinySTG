@@ -117,7 +117,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0dcc39aece299a4b930774fc5649db5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Flow: {fileID: 11400000, guid: 04a15e8a430ddcb428d6ed47ba1fc15f, type: 2}
+  Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
 --- !u!114 &5225294154759948681
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147,6 +147,7 @@ MonoBehaviour:
   SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
   AlwaysDraw: 1
   Team: 2
+  IsFogged: 0
   _cachedBounds:
     serializedVersion: 2
     x: 0

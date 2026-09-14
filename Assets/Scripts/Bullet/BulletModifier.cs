@@ -370,69 +370,7 @@ public class HomingEnemyModifier : BulletModifier
     }
 }
 
-/// <summary>
-/// 示例:<b>OneShot modifier</b> —— 子弹出生 N 秒后,在当前位置生成一圈分裂弹,然后本 modifier 立刻结束。
-///
-/// 用作 OneShot 用法的参考实现(详见 ARCHITECTURE §2.6):
-///   - OneShot = true(基类字段,Inspector 可见)→ 进入窗口瞬间调一次 OnWindowEnter,然后立刻退出
-///   - ModifyCore 在 OneShot=true 时不会被调用,所以这里留空
-///
-/// 典型配置:
-///   - Delay = 0.8    —— 子弹飞 0.8 秒后爆开
-///   - RingPattern    —— 拖一个 FirePattern 资产(如 RingFirePattern)作分裂形态
-///   - RingCount = 12 —— 爆开一圈 12 颗
-///
-/// 注意:本示例不持有 ownerHitbox 引用(分裂弹阵营 = Neutral,不参与碰撞)。
-///   如需"分裂弹继承母弹阵营",扩展 OnWindowEnter 加 ownerTeam 参数即可(架构上 owner 来自 FireAction 上下文,
-///   未来如需要可在 FirePattern 链路上透传,目前保持示例最小化)。
-/// </summary>
-[Serializable, SRName("Modifier/Spawn Ring on Delay")]
-public class SpawnRingOnDelayModifier : BulletModifier
-{
-    [Tooltip("触发延迟(秒)。子弹生成后等这么久,在当前位置生成一圈 RingPattern,然后本 modifier 结束。")]
-    [Min(0f)] public float Delay = 0.5f;
-
-    [Tooltip("爆开后要发射的 FirePattern 资产(留空则不爆,只作为延迟占位)。\n" +
-             "推荐:拖一个 Ring / Arc / Composite 的 .asset。")]
-    public FirePattern RingPattern;
-
-    [Tooltip("爆开时生成几颗弹。12 = 一圈,8 = 一圈少几颗,16 = 密一圈。")]
-    [Min(1)] public int RingCount = 12;
-
-    [Tooltip("分裂弹的飞行速度(直接传给 BulletPool.Get)。\n" +
-             "0 = 沿用 RingPattern 资产里配的 Speed;>0 = 本次覆盖。")]
-    public float BulletSpeed = 0f;
-
-    public SpawnRingOnDelayModifier()
-    {
-        // ★ 默认开启 OneShot —— 这是 OneShot 用法的参考实现,默认值就该是 one-shot。
-        OneShot = true;
-    }
-
-    protected override void OnWindowEnter(Bullet b)
-    {
-        // 没配 RingPattern 就安静跳过,不要 NRE
-        if (RingPattern == null || BulletPool.Instance == null) return;
-
-        // 在母弹当前位置爆开一圈,方向基于母弹当前朝向均匀分布
-        float baseAngle = b.SteerAngle;
-        for (int i = 0; i < RingCount; i++)
-        {
-            float angle = baseAngle + (i / (float)RingCount) * Mathf.PI * 2f;
-            // ownerHitbox = null → 分裂弹阵营 = Neutral,不参与碰撞(典型分裂弹表现:纯视觉效果)
-            // 用户如需继承母弹阵营,可扩展此 modifier 加 ownerTeam 字段,从外部传入
-            BulletPool.Instance.FireGroup(
-                RingPattern,
-                b.Position,
-                angle,
-                ownerHitbox: null,
-                extraModifiers: null);
-        }
-    }
-
-    public override void ModifyCore(Bullet b, float dt)
-    {
-        // OneShot=true → 基类不会调用本方法,留空即可。
-        // 如果 OneShot=false(用户在 Inspector 里关掉),则退化为"每帧生成一圈"的疯狂模式 —— 故意外,不优化。
-    }
-}
+// 原 SpawnRingOnDelayModifier(OneShot + 延迟分裂样例)已弃用并删除 ——
+// 通用能力(延迟/持续型 + 任意 FirePattern + 阵营透传)由 FirePatternBulletModifier
+// 及其子类 FireOnEnter / FireOnDuration 提供,详见 Assets/Scripts/Bullet/FirePatternBulletModifier.cs
+// 与 ARCHITECTURE.md §2.4。
