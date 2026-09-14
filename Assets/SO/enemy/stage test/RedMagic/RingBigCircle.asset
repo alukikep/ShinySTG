@@ -22,7 +22,7 @@ MonoBehaviour:
   SpawnFog:
     rid: 6177227073745846275
   Damage: 1
-  Count: 8
+  Count: 12
   Radius: 0
   references:
     version: 2
@@ -37,9 +37,23 @@ MonoBehaviour:
         Pattern: {fileID: 11400000, guid: f3205c7c405284c4181d334774ba21b4, type: 2}
         InheritOwnerTeam: 1
         ExtraModifiers: []
-        Interval: 0.5
+        Extra:
+          rid: 6177227074437120000
+        Interval: 0.2
         MaxShots: -1
     - rid: 6177227073745846275
       type: {class: NoSpawnFog, ns: , asm: Assembly-CSharp}
       data:
         Duration: 0
+    - rid: 6177227074437120000
+      type: {class: AngleOffsetFirePatternBulletExtra, ns: , asm: Assembly-CSharp}
+      data:
+        BaseOffset:
+          rid: 6177227074437120003
+        StepOffset: 10
+        BatchSample: 1
+    - rid: 6177227074437120003
+      type: {class: RandomRangeBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
+      data:
+        Min: 0
+        Max: 90

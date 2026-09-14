@@ -188,6 +188,14 @@ FireAction.OnTick
 | ~~`SpawnRingOnDelayModifier`~~ | ~~`Modifier/Spawn Ring on Delay`~~ | **已弃用删除** —— 由 `FireOnEnterBulletModifier` 取代(通用 + 任意 FirePattern + 阵营可继承) | — |
 | `FireOnEnterBulletModifier` | `Modifier/Fire Pattern On Delay` | **OneShot 分裂**:子弹飞 `Delay` 秒后,在自身位置按 `Pattern` 再开一次火(走 `BulletPool.FireGroup` 完整链路:FireExtensions / ModifierPrefabs / SpawnFog / FireSounds 全生效),然后本 modifier 结束。分裂弹阵营可继承母弹(默认)或设为中性。 | `Pattern`(FirePattern 资产)/ `InheritOwnerTeam` / `ExtraModifiers` |
 | `FireOnDurationBulletModifier` | `Modifier/Fire Pattern While Active` | **持续型分裂**:窗口期内(Delay 之后 Duration 秒内)每 `Interval` 秒在自身位置按 `Pattern` 开一次火,最多 `MaxShots` 次。典型用法:弹尾粒子、激光拼接、Boss 散弹母弹持续生子弹。 | `Pattern` / `Interval` / `MaxShots` / `InheritOwnerTeam` / `ExtraModifiers` |
+| `AngleOffsetFirePatternBulletExtra` | `Extra/Angle Offset` | **FirePatternBulletExtra 子类**:挂在上面两个分裂 modifier 的 `Extra` 字段上,让母弹每次 FireOnce 时按「本批次偏移 + 累加偏移」调整 rotationRad。第 N 次偏移 = `BaseOffset.Sample() + (N-1) * StepOffset`(度)。`BaseOffset` 本身是 SR 多态(可下拉选 `Base Offset/Fixed` 精确值 / `Base Offset/Random Range` 区间随机),抽样时机 = 每颗母弹第一次 FireOnce 时抽一次,窗口期内保持。典型用法:旋转喷射、扇形铺开、抖动扩散。 | `BaseOffset`(SR 多态)/ `StepOffset` |
+
+**§2.4 辅助类:`BaseOffsetStrategy` SR 多态**(挂在 `AngleOffsetFirePatternBulletExtra.BaseOffset` 上):
+
+| 类 | SRName | 用途 | 字段 |
+|---|---|---|---|
+| `FixedBaseOffsetStrategy` | `Base Offset/Fixed` | 精确值(对齐旧版 `BaseOffset = X` 行为) | `Value` |
+| `RandomRangeBaseOffsetStrategy` | `Base Offset/Random Range` | 区间随机抽样(每颗母弹第一次 FireOnce 时抽一次,之后保持) | `Min` / `Max`(float,度;对称区间如 Min = -15, Max = 15 = ±15° 抖动) |
 
 **追踪玩家(敌人弹挂的 modifier)是常见扩展**,但当前项目未内置 `HomingPlayerModifier`(因玩家是单例,目标解析无需走网格);按下方"扩展点"小节的三步套路自行实现即可,大致套路是用 `ShinySTG.Player.Player.Instance?.transform` 拿到目标,其余转向逻辑与 `HomingEnemyModifier` 同源。
 
@@ -234,6 +242,21 @@ FireAction.OnTick
 - 走 `BulletPool.FireGroup(Pattern, b.Position, angle, ownerHitbox, extraModifiers)` 完整链路,自动透传 `Pattern` 的全部能力
 - `ownerHitbox` 取值由 `InheritOwnerTeam` 字段决定: true → `b.Hitbox`(继承母弹阵营),false → null(中性)
 - 想加新的分裂模式(如「按玩家方向分裂」「按母弹反方向分裂」)→ 新建 `FirePatternBulletModifier` 子类 + `[SRName("Modifier/<名字>")]`,无需改任何 Bullet / FirePattern / BulletPool
+
+**母弹 → 分裂弹 信息传递**(挂在 `FirePatternBulletModifier.Extra` 的 `[SerializeReference, SR]` 多态字段):
+- 已内置:`Extra/None`(显式不传递占位)、`Extra/Angle Offset`(本批次偏移 + 累加偏移)
+- `Angle Offset` 的 `BaseOffset` 本身也是 SR 多态(`Base Offset/Fixed` 精确值 / `Base Offset/Random Range` 区间随机)
+- 接口:`GetRotationOffset()` 返回本次旋转角增量 + `OnFireTriggered(Bullet host)` 钩子 + `SampleBatch()` Synchronized 入口
+
+**本批 BaseOffset 共享**(挂在 `AngleOffsetFirePatternBulletExtra.BatchSample` 字段):
+- `Independent`(默认):每颗母弹独立 Sample(模糊抖动、不规则分裂)
+- `Synchronized`:本批只 Sample 一次,本批所有母弹共用(精准扇形、节拍同步)
+- 机制:`BulletPool.FireGroup` 入口遍历本批 `extraModifiers`(BulletModifier[]),找挂有 AngleOffset 的 `FirePatternBulletModifier` 子类(FireOnEnter / FireOnDuration),调其 `Extra` 字段的 `OnBatchFire()` 提前抽样一次
+  - 抽样结果(`_sampledBaseOffset` + `_fireCount` 归 0 + `_baseOffsetSampled=true`)通过 `MemberwiseClone` 字段浅拷贝传到本批每颗母弹 modifier 上 → 每颗母弹飞行 N 秒后 OnFireTriggered 直接用 `_sampledBaseOffset`,跳过抽样
+  - 仅当 `BatchSample = Synchronized` 才生效;Independent 模式 OnBatchFire 直接 return,每颗母弹 AngleOffset 在 OnFireTriggered 时各自 Sample(旧行为,完全兼容)
+- 字段位置刻意放在 `AngleOffset` 内部(而非 FirePattern 上),因为同步语义只影响有 AngleOffset 的母弹配置 —— 用户只在 AngleOffset 字段配置即可,不必双层切换
+- `CompositeFirePattern` 自动兼容:无论 AngleOffset 挂在 FirePattern.ModifierPrefabs 还是 FireAction.ExtraModifierPrefabs 或子 pattern 上,BulletPool 入口遍历 extraModifiers 都能找到
+- 旧 .asset 反序列化时 `BatchSample` 字段不存在 → 走枚举默认值 `Independent`,行为 100% 兼容历史
 
 ### 2.6 时间窗口(Delay / Duration / OneShot)
 
@@ -549,7 +572,7 @@ FirePattern 还有第二个多态模块数组 `FireSounds[]`,**与 FireExtension
 **职责分工:**
 - `BehaviorFlow`(SO 资产) —— 持有 `Actions: EnemyAction[]`,每条 Action 有 `Duration` + 三段式生命周期。
 - `EnemyAction`(`[Serializable] class` + `[SerializeReference]`) —— 原子 / 容器行为单元:Fire / Move / Wait / SelfDestruct / Parallel / Sequence / ...。
-- `MoveBehaviour`(`[Serializable] class` + `[SerializeReference]`) —— Move 内部再委托一层:匀速 / 线性 / 贝塞尔 / 圆形 / 追踪 / ...
+- `MoveBehaviour`(`[Serializable] class` + `[SerializeReference]`) —— Move 内部再委托一层:匀速 / 线性 / 贝塞尔 / 圆形 / 追踪 / 区域内随机直线 / ...
 - `ShooterEnemy`(MonoBehaviour) —— 极薄的总控组件,持 `Flow` 引用 + Update 驱动。
 
 **协作边界:**
@@ -559,11 +582,35 @@ FirePattern 还有第二个多态模块数组 `FireSounds[]`,**与 FireExtension
 
 **扩展点:**
 - 新增敌人行为(动画 / 隐身 / 加血):新建 `EnemyAction` 子类,加 `[Serializable, SRName("Action/<名字>")]`。
-- 新增移动方式(贝塞尔 / 圆形 / 追踪):新建 `MoveBehaviour` 子类,同套路。
+- 新增移动方式(贝塞尔 / 圆形 / 追踪 / 区域内随机直线):新建 `MoveBehaviour` 子类,同套路。
 - 详见 `Assets/Scripts/Enemy/AI/`。
 - 新增"行为流"(符卡 / 小怪模式):右键 → Create → STG → Behavior Flow,创建 SO 资产并配置 Actions。
 
 详见 `Assets/Scripts/Enemy/`。
+
+#### 4.1 内置 MoveBehaviour 速查表
+
+| 类型 | SRName | 范式 | 关键字段 |
+|---|---|---|---|
+| `LinearMove` | `Move/Linear` | 固定方向匀速直线 | `Direction`(枚举:Down/Up/Left/Right/ToPlayer/Custom) + `CustomAngleDeg` + `Speed` |
+| `AccelerateMove` | `Move/Accelerate` | 匀加速直线(`StartSpeed→MaxSpeed`) | `BaseAngle` + `StartSpeed` + `Acceleration` + `MaxSpeed` |
+| `EaseMove` | `Move/Ease` | 沿方向缓动 Duration 秒(时间维度) | `BaseAngle` + `Duration` + `PeakSpeed` + `Mode`(复用 `EaseMode`)+ `MinSpeedFactor` |
+| `SineMove` | `Move/Sine` | 匀速推进 + 垂直方向 sin 摆动 | `BaseAngle` + `Speed` + `Amplitude` + `Frequency` + `PhaseOffsetDeg` |
+| `PatrolMove` | `Move/Patrol` | 两点之间 PingPong / Once + Ease | `EndPosition` + `Speed` + `LoopMode` + `Mode` + `ArrivedThreshold` + `MinSpeedFactor` |
+| `CircularMove` | `Move/Circular` | 圆周运动(绝对锚定) | `Radius` + `AngularSpeed` |
+| `BezierMove` | `Move/Bezier` | 二次贝塞尔曲线(绝对锚定) | `StartMode` + `ControlPoint1/2` + `IsRelative/IsAbsolute` + `Duration` |
+| `HomingMove` | `Move/Homing` | 朝玩家持续转向 + 匀速前进 | `Speed` + `TurnRate` + `LockOnDelay` + `MaxHomingTime` |
+| `RandomWalkInRegionMove` | `Move/Random Walk In Region` | 矩形区域内随机直线 + 停顿循环 | `RegionCenter` + `RegionSize` + `MaxStepDistance` + `DirectionCenterDeg` + `DirectionSpreadDeg` + `IntervalMin/Max` + `Mode`(Constant/FastToSlow/SlowToFast) + `PeakSpeed` + `ArrivedThreshold` + `RandomSeedOffset` |
+
+**§4.1 辅助枚举 / Helper**(挂在 `RandomWalkInRegionMove` 上,作为"区域型移动"的参考实现):
+
+| 名称 | 用途 |
+|---|---|
+| `SpeedCurve`(类内 enum) | 三档速度曲线:`Constant`(匀速,因子 1) / `FastToSlow`(`cos(t·π/2)`,单调递减,撞墙感) / `SlowToFast`(`sin(t·π/2)`,单调递增,蓄力感) |
+| `Phase`(类内 enum) | 子状态机:`Moving`(在走)/ `Idle`(停顿中) |
+| `MaxDistanceInsideBox(start, dir, boxMin, boxMax)`(static helper) | 算"从 start 沿 dir 走到 box 边界前能走多远",用于把 `MaxStepDistance` 裁剪到区域内。圆形区域 / 多边形区域只要重写这个 helper 即可扩展 |
+| `CurveFactor(mode, t01)`(static helper) | 把 `t01` 映射到 `[0,1]` 速度因子,三条曲线都光滑且始终 ≥ 0,无需 `MinSpeedFactor` 兜底 |
+| `AverageCurveFactor(mode)`(static helper) | `t01 ∈ [0,1]` 区间上的速度均值,用于反推 `moveDuration`,让 `t01` 在 `Constant/FastToSlow/SlowToFast` 下都按"真实耗时"归一化 |
 
 ---
 

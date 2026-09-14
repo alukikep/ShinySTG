@@ -168,6 +168,32 @@ public class BulletPool : MonoBehaviour
         // 详见 Assets/Scripts/Bullet/FireExtension/FireSound.cs 顶部注释。
         pattern.PlayFireSounds(pos, ownerHitbox);
 
+        // ─── 本批 BaseOffset 共享抽样(由 AngleOffset 内部字段 BatchSample 驱动) ───
+        // 遍历本批 extraModifiers(BulletModifier[])里的 FirePatternBulletModifier 子类,
+        // 看它们的 Extra 字段是不是 AngleOffsetFirePatternBulletExtra 且 BatchSample = Synchronized,
+        // 如果是,调 AngleOffset.OnBatchFire() 提前抽样一次,本批所有母弹的 AngleOffset
+        // (通过 MemberwiseClone 继承 _sampledBaseOffset + _baseOffsetSampled + _batchSampleActivated 状态)
+        // 共用该值。
+        //
+        // Independent 模式(AngleOffset.BatchSample 默认值)→ OnBatchFire 直接 return,无副作用,
+        // 每颗母弹 AngleOffset 自己 Sample,行为与历史 100% 等价。
+        if (extraModifiers != null)
+        {
+            for (int i = 0; i < extraModifiers.Length; i++)
+            {
+                var fpbMod = extraModifiers[i] as FirePatternBulletModifier;
+                if (fpbMod != null)
+                {
+                    var ao = fpbMod.Extra as AngleOffsetFirePatternBulletExtra;
+                    if (ao != null)
+                    {
+                        ao.OnBatchFire();
+                        break; // 仅第一个挂 AngleOffset 的 modifier 参与本批共享
+                    }
+                }
+            }
+        }
+
         pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers);
         // Boss 系统钩子:每发一弹自动累计,供 ShotsFiredSignal 读取。
         // 没有挂 BossShotCounter 时(BossShotCounter.Instance == null)直接跳过,不影响普通敌人。

@@ -12,7 +12,7 @@
 - 🧭 **FireExtension 多态扩展**:`FireExtensions` 是 FirePattern 上的 **模块数组 + Pipeline 模型**——按数组顺序串成"角度管道"(Base → PlayerAim → Offset Angle → ...),拼装出"基础方向 + 瞄准玩家 + 再叠 N°"等复杂逻辑(例:`[PlayerAim, Offset Angle(+180°)]` = 瞄向玩家但飞向玩家背后的"绕后弹")。Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
 - 🔊 **FireSound 开火音多态扩展**:`FireSounds` 是 FirePattern 上的**并行触发器数组**——与 FireExtension 的"角度管道"对仗,FireSound 是"每个模块独立播音"(可叠多 cue / 按状态发声 / 自定义行为)。走 SfxCue 体系(限流/Pipeline/Bus 全继承)。BulletPool.FireGroup 入口自动调一次,Composite 子 pattern 不重复触发。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.2 + [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) §6.5
 - 🌫️ **SpawnFog 出生雾化多态扩展**:`SpawnFog` 是 FirePattern 上的**多态下拉字段**(不是数组)——`[SerializeReference, SR]` 选 None(不使用) / Default(染色+缩放+缓动) / 未来的中雾化方法,决定子弹出生瞬间是否雾化(不动 / 不参与碰撞 / modifier 时间窗口不累计 / 视觉走 STG/BulletTintFog shader)。新增雾化方法 = 加一个 .cs + `[SRName("Spawn Fog/<名字>")]`,自动出现在所有 FirePattern 资产下拉。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.3
-- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / **分裂+任意 FirePattern** / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC;**分裂用 `FireOnEnter` / `FireOnDuration` modifier**—— 让子弹在飞行途中按一份完整 FirePattern(角度管道 / 子 modifier / SpawnFog / 开火音 全生效)再开火,阵营可继承母弹。**所有 modifier 自动支持 `Delay` / `Duration` 时间窗口 + `OneShot` 一次性触发**(详见 ARCHITECTURE §2.6)
+- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / **分裂+任意 FirePattern** / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC;**分裂用 `FireOnEnter` / `FireOnDuration` modifier**—— 让子弹在飞行途中按一份完整 FirePattern(角度管道 / 子 modifier / SpawnFog / 开火音 全生效)再开火,阵营可继承母弹;**母弹 → 分裂弹的角度偏移**走 `Extra/Angle Offset` 多态(本批次偏移 `BaseOffset` + 累加 `StepOffset`),`BaseOffset` 自身也是 SR 多态(精确值 `Base Offset/Fixed` / 区间随机 `Base Offset/Random Range`)。**所有 modifier 自动支持 `Delay` / `Duration` 时间窗口 + `OneShot` 一次性触发**(详见 ARCHITECTURE §2.6);**本批 BaseOffset 共享**:`AngleOffsetFirePatternBulletExtra.BatchSample` 字段切 `Synchronized` → 一次 FireGroup 发射的所有母弹(环形 / 扇形 / Composite 子 pattern 等)共用同一个 BaseOffset 抽样值,实现「精准扇形 / 节拍同步」。默认 `Independent` = 每颗母弹独立抽样(模糊抖动)。字段放在 AngleOffset 内部而非 FirePattern,用户只需配一层;旧 .asset 自动走此默认值,行为 100% 兼容
 - 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
 - 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
 - 🔊 **音频音乐系统**:`AudioMix` 静态门面 + `AudioSystem` 场景单例 + `SfxCue` / `BgmTrack` / `BgmPlaylist` / `AudioBus` SO 资产;SFX 多态规则 `SfxRule` 走 `[SerializeReference, SR]` 下拉(随机抽 clip / pitch 抖动 / cooldown);BGM 交叉淡化 + 顺序/随机播放;嵌入到 `PlayerHealth` / `BossHealth` / `EnemyHealth` / `PlayerShooting` 仅增加 `[SerializeField] SfxCue` 字段,其他模块 0 改动。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §11,配置方法见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)
@@ -80,7 +80,7 @@ Assets/Scripts/
 │   │   ├── BehaviorFlow.cs                   # 行为流 SO 资产
 │   │   ├── BehaviorFlowRuntime.cs            # 运行时驱动器
 │   │   ├── EnemyAction.cs / MoveBehaviour.cs
-│   │   ├── MoveBehaviours/LinearMove.cs
+│   │   ├── MoveBehaviours/                    # 9 个内置移动方式(Linear/Accelerate/Bezier/Circular/Homing/Patrol/Ease/Sine/RandomWalkInRegion)
 │   │   └── Actions/                          # Fire/Move/Wait/SelfDestruct/Parallel/Sequence
 │   └── Boss/                                 # Boss 多阶段系统(对齐 Enemy 子树风格)
 │       ├── Boss.cs                            # 总控(对齐 Enemy.cs)+ [RequireComponent] 自动挂

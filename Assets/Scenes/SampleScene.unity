@@ -483,7 +483,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 951eb26e900c6724a92025c7336f18ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Size: {x: 0.4, y: 0.4}
+  Size: {x: 0.2, y: 0.2}
   Color: {r: 0, g: 1, b: 0.3, a: 0.9}
   SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
   AlwaysDraw: 1

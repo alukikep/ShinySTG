@@ -15,6 +15,7 @@ MonoBehaviour:
   BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
   ModifierPrefabs:
   - rid: 6177227073745846278
+  - rid: 6177227074437120007
   FireExtensions: []
   FireSounds: []
   Speed: 0
@@ -37,8 +38,23 @@ MonoBehaviour:
     - rid: 6177227073745846278
       type: {class: AccelerateModifier, ns: , asm: Assembly-CSharp}
       data:
-        Delay: 1
+        Delay: 2
         Duration: 2
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        Acceleration: 3
+        Acceleration: 1
+    - rid: 6177227074437120007
+      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 0
+        Color: {r: 1, g: 0, b: 0, a: 1}
+        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
+        FadeStart: 0.5
+        ReferenceLifetime: 1.5
+        FlashFrequency: 5
+        FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1

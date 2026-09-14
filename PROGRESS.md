@@ -24,7 +24,7 @@
 ### 敌人 AI
 1. `BehaviorFlow` SO 资产化
 2. 6 个内置 `EnemyAction`(Fire / Move / Wait / SelfDestruct / Parallel / Sequence)
-3. 8 个内置 `MoveBehaviour`(Linear / Accelerate / Bezier / Circular / Homing / Patrol / Ease / Sine)
+3. 9 个内置 `MoveBehaviour`(Linear / Accelerate / Bezier / Circular / Homing / Patrol / Ease / Sine / **RandomWalkInRegion**)
 4. `Parallel` / `Sequence` 容器无限嵌套
 
 ### Boss

@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Actions:
   - rid: 6177227073745846276
-  - rid: 6177227073745846279
-  - rid: 6177227073745846283
-  - rid: 6177227073745846286
+  - rid: 6177227074437120004
   Loop: 1
   StartDelay: 0
   references:
@@ -30,35 +28,23 @@ MonoBehaviour:
         FireRate: 0.5
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
-    - rid: 6177227073745846279
+    - rid: 6177227074437120004
       type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         Duration: 2
         Move:
-          rid: 6177227073745846280
-    - rid: 6177227073745846280
-      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+          rid: 6177227074437120006
+    - rid: 6177227074437120006
+      type: {class: RandomWalkInRegionMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Direction: 0
-        CustomAngleDeg: 270
-        Speed: 3
-    - rid: 6177227073745846283
-      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
-      data:
-        Duration: 1
-        Pattern: {fileID: 11400000, guid: bbbdf8b2a216ea44599ad25858c30561, type: 2}
-        FireRate: 1
-        AimOffsetDeg: 0
-        ExtraModifierPrefabs: []
-    - rid: 6177227073745846286
-      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
-      data:
-        Duration: 1
-        Move:
-          rid: 6177227073745846287
-    - rid: 6177227073745846287
-      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
-      data:
-        Direction: 3
-        CustomAngleDeg: 270
-        Speed: 3
+        RegionCenter: {x: 0, y: 4}
+        RegionSize: {x: 6, y: 2}
+        MaxStepDistance: 4
+        DirectionCenterDeg: 0
+        DirectionSpreadDeg: 360
+        IntervalMin: 3
+        IntervalMax: 3
+        Mode: 1
+        PeakSpeed: 3
+        ArrivedThreshold: 0.05
+        RandomSeedOffset: 0
