@@ -62,18 +62,28 @@ public abstract class FirePattern : ScriptableObject
 
     [Header("Spawn Fog (子弹出生后短暂雾化期)")]
     [Tooltip("出生后短暂雾化:子弹生成后这段时间内不动、不参与碰撞、modifier 时间窗口不累计。\n" +
+             "走 [SerializeReference, SR] 多态下拉,可选择:\n" +
+             "  - (字段为 null)              → 不雾化(默认,与历史行为 100% 等价)\n" +
+             "  - Spawn Fog/None             → 显式'不使用雾化'占位选项\n" +
+             "  - Spawn Fog/Default          → 默认基础雾化:染色 + 缩放 + 缓动\n" +
+             "  - Spawn Fog/<中雾化>       → 后续扩展:每个新子类自动出现在下拉\n" +
+             "\n" +
              "视觉走 STG/BulletTintFog shader(通过 MaterialPropertyBlock 写 _FogAmount / _FogColor)。\n" +
-             "Duration=0 或留空 = 不雾化(默认,与历史行为 100% 等价)。\n" +
+             "子类的 Duration=0 → 不雾化,与 null 等价。\n" +
              "★ 设计动机 ★\n" +
              "  - 玩家弹短雾化:给玩家视觉反馈刚出生还在'凝聚'(典型 0.08~0.15s)\n" +
              "  - Boss 警示弹:出生 0.3~0.5s 内不撞人(玩家有时间反应)\n" +
-             "  - 不雾化:留空(Duration=0),行为 100% 等价历史\n" +
+             "  - 不雾化:选 NoneSpawnFog 或拖空字段(行为等价)\n" +
+             "\n" +
+             "扩展方法:新建 SpawnFogConfig 子类 + 加 [SRName(\"Spawn Fog/<名字>\")] —— 自动出现在所有 FirePattern 资产的 SpawnFog 下拉菜单。\n" +
              "CompositeFirePattern 的子 pattern 各自带自己的 SpawnFog,互不影响。\n" +
              "★ 雾化期 modifier 行为 ★\n" +
              "  - 雾化期内 modifier.Modify() 不被调用 → _elapsed 不增\n" +
              "  - 雾化结束那一帧 → modifier 时间窗口从 0 开始\n" +
-             "  - 所以 'BulletSpawnFog + ModifierDelay=0.5' = '弹飞 0.5s 后才开始 modifier'(直觉一致)")]
-    public SpawnFogConfig SpawnFog;  // null-safe:null 视为"不雾化"
+             "  - 所以 'BulletSpawnFog + ModifierDelay=0.5' = '弹飞 0.5s 后才开始 modifier'(直觉一致)\n" +
+             "详见 Assets/Scripts/Bullet/FirePattern/SpawnFog/SpawnFogConfig.cs 顶部注释。")]
+    [SerializeReference, SR]
+    public SpawnFogConfig SpawnFog;
 
     [Header("Combat")]
     [Tooltip("子弹命中敌人时的伤害值。\n" +

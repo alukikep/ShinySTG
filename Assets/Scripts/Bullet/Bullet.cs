@@ -169,6 +169,9 @@ public class Bullet : MonoBehaviour
         //   视觉缩放走 transform.localScale 乘法:_baseLocalScale(从 prefab 实例读一次,典型 0.28) × fogScale
         //   → 雾化期 0.28 × fogScale,清晰后 0.28 × 1 = 0.28(prefab 基准)。
         //   prefab 自带美术缩放始终保留,绝不被破坏。
+        //   ★ 多态架构:FogCfg 是 SpawnFogConfig 基类引用,具体视觉由子类 ApplyVisual 决定。
+        //     默认 DefaultSpawnFog 走 STG/BulletTintFog shader 的 _FogAmount/_FogColor + localScale 乘法。
+        //     未来扩展:新建 SpawnFogConfig 子类 override ApplyVisual 即可,无需改本类。
         FogElapsed  = 0f;
         FogCfg      = spawnFog;
         FogDuration = (spawnFog != null) ? Mathf.Max(0f, spawnFog.Duration) : 0f;
@@ -178,8 +181,9 @@ public class Bullet : MonoBehaviour
         // 兜底:以防 prefab 美术缩放本身不是 (0.28, 0.28, 0.28),统一用 prefab 实际值。
         // Init 时刻 transform.localScale 来自 prefab 实例,完全反映 prefab 美术基准。
         if (Hitbox != null) Hitbox.IsFogged = FogDuration > 0f;
-        if (Renderer != null && FogDuration > 0f) ApplyFogVisual();  // 立刻设 _FogAmount=1 + localScale *= fogScale
-        else if (Renderer != null) ClearFogVisual();                  // 立刻清 _FogAmount=0 + localScale = _baseLocalScale(兜底)
+        if (Renderer != null && FogDuration > 0f) ApplyFogVisual();  // 立刻调子类 ApplyVisual(t=0):_FogAmount=1 + localScale *= fogScale
+        else if (Renderer != null && FogCfg != null) FogCfg.ClearVisual(this, _baseLocalScale);  // FogCfg 在但 Duration=0 时也走一次复位(兜底)
+        else if (Renderer != null) ClearFogVisual();                  // 兜底:FogCfg 为 null,直接清 _FogAmount=0 + localScale = _baseLocalScale
 
         // 自动透传阵营:玩家弹 → Team=Player;敌人弹 → Team=Enemy;owner 为 null 时保持默认(Neutral)
         if (Hitbox != null) Hitbox.Team = ownerTeam;
@@ -244,73 +248,56 @@ public class Bullet : MonoBehaviour
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 出生雾化视觉方法
+    // 出生雾化视觉方法(多态架构:FogCfg 子类 override ApplyVisual/ClearVisual 决定具体行为)
     // ═══════════════════════════════════════════════════════════
 
     /// <summary>
-    /// 在雾化期内每帧调用:把 _FogAmount / _FogColor 写到 Renderer 上,并按 fogScale 修改 transform.localScale。
-    ///   - _FogAmount = 1 - EasedT(雾化→清晰)
-    ///   - transform.localScale = _baseLocalScale × Lerp(FogStartScale, 1, EasedT)
-    ///   - _FogColor = FogCfg.FogColor
-    /// ★ 设计要点 ★:走 transform.localScale 乘法缩放(prefab 美术基准 _baseLocalScale 始终保留),FogStartScale 语义直观:
-    ///   FogStartScale=1.4 表示"出生瞬间大小是正常的 1.4 倍"。
-    ///   shader vertex 完全不动 → 不产生位置偏移,不会出现 vertex 缩放路径的"快速移动"bug。
+    /// 在雾化期内每帧调用(以及 Init 那一刻):转发给 FogCfg.ApplyVisual,子类决定具体视觉。
+    /// 进度 t = FogElapsed / FogDuration ∈ [0,1],t=0 出生瞬间(全雾),t=1 雾化结束(清晰)。
+    /// ★ 设计要点 ★:走 transform.localScale 乘法缩放(prefab 美术基准 _baseLocalScale 始终保留),
+    ///   子类若做缩放,务必走 baseLocalScale × fogScale 而不是直接覆盖 localScale。
     /// ★ Hitbox 影响:雾化期 Hitbox.IsFogged=true → CollisionService 各 Tick 跳过,不参与碰撞/擦弹。
     ///   雾化结束 ClearFogVisual 把 localScale 恢复为 _baseLocalScale,Hitbox 判定盒大小恢复正常。
     /// 与 BulletColorModifier 的协作:
-    ///   - 两者都走 MPB;这里用 per-instance _fogMpb,先 GetPropertyBlock(保留 ColorModifier 已写的 _TintColor),
-    ///     再覆盖 _FogAmount / _FogColor,SetPropertyBlock(合并应用)。
+    ///   - 两者都走 MPB;DefaultSpawnFog 通过本类的 ApplyFogMaterialParams helper 写 _FogAmount / _FogColor,
+    ///     先 GetPropertyBlock(保留 ColorModifier 已写的 _TintColor),再覆盖,SetPropertyBlock(合并应用)。
     /// </summary>
     void ApplyFogVisual()
     {
         if (FogCfg == null || Renderer == null) return;
         float t = Mathf.Clamp01(FogElapsed / Mathf.Max(FogDuration, 0.0001f));
-        float eased = ApplyEasing(t, FogCfg.Easing);
-        float fogAmount = 1f - eased;                              // 1(全雾)→ 0(清晰)
-        float fogScale  = Mathf.Lerp(Mathf.Max(FogCfg.FogStartScale, 0.01f), 1f, eased);
-
-        // ★ 视觉缩放:transform.localScale 乘法叠加在 prefab 美术基准上。
-        //   _baseLocalScale = 0.28(典型),fogScale=1.4 → 最终 0.392(显示大小 1.4× 正常)。
-        //   fogScale=1 → 0.28(正常,等价历史)。
-        //   不会破坏 prefab 美术缩放,Hitbox 在雾化期不参与碰撞所以 lossyScale 变化无副作用。
-        transform.localScale = _baseLocalScale * fogScale;
-
-        if (_fogMpb == null) _fogMpb = new MaterialPropertyBlock();
-        Renderer.GetPropertyBlock(_fogMpb);                          // 保留 BulletColorModifier 的 _TintColor
-        _fogMpb.SetFloat("_FogAmount", fogAmount);
-        _fogMpb.SetColor("_FogColor", FogCfg.FogColor);
-        Renderer.SetPropertyBlock(_fogMpb);
+        FogCfg.ApplyVisual(this, t, _baseLocalScale);
     }
 
     /// <summary>
-    /// 雾化结束后调用一次:把 _FogAmount=0 + transform.localScale=_baseLocalScale,让 BulletColorModifier / 普通 tint 完全接管渲染。
-    /// 不复位 _FogColor(下次再用时 ApplyFogVisual 会重写)。
+    /// 雾化结束后调用一次:转发给 FogCfg.ClearVisual,让子类复位所有视觉修改,
+    /// 让 BulletColorModifier / 普通 tint 完全接管渲染。
     /// </summary>
     void ClearFogVisual()
     {
-        if (Renderer == null) return;
-        // ★ 视觉缩放复位:回到 prefab 美术基准,Hitbox 判定盒大小恢复正常。
-        transform.localScale = _baseLocalScale;
-        if (_fogMpb == null) _fogMpb = new MaterialPropertyBlock();
-        Renderer.GetPropertyBlock(_fogMpb);
-        _fogMpb.SetFloat("_FogAmount", 0f);
-        Renderer.SetPropertyBlock(_fogMpb);
+        if (FogCfg != null && Renderer != null) FogCfg.ClearVisual(this, _baseLocalScale);
+        else if (Renderer != null)
+        {
+            // 兜底:FogCfg 为 null 时(本就不该有雾化),直接恢复 localScale + 清 _FogAmount=0。
+            transform.localScale = _baseLocalScale;
+            ApplyFogMaterialParams(0f, Color.white);
+        }
     }
 
     /// <summary>
-    /// 雾化期 _FogAmount 的缓动函数(影响'凝聚'节奏,与视觉是否切换的逻辑完全无关)。
-    /// 默认 None = 线性;用户可选 EaseOut / EaseIn / EaseInOut 给雾化期不同节奏感。
+    /// 共享 MPB helper:把 _FogAmount / _FogColor 写到 Renderer(走 _fogMpb 懒分配 MPB)。
+    /// 由 DefaultSpawnFog.ApplyVisual/ClearVisual 调用;其它子类若需要走 STG/BulletTintFog shader 的
+    /// _FogAmount / _FogColor 参数,也可复用此 helper。
+    /// 设计动机:让 Bullet 控制 _fogMpb 的生命周期(懒分配 + 与 BulletColorModifier 不冲突),
+    /// 子类不需要直接访问 Bullet._fogMpb 私有字段。
     /// </summary>
-    static float ApplyEasing(float t, FogEasing e)
+    public void ApplyFogMaterialParams(float fogAmount, Color fogColor)
     {
-        switch (e)
-        {
-            case FogEasing.None:     return t;
-            case FogEasing.EaseOut:  return 1f - (1f - t) * (1f - t);                // 前期快,后期慢
-            case FogEasing.EaseIn:   return t * t;                                    // 前期慢,后期快
-            case FogEasing.EaseInOut:
-                return t < 0.5f ? 2f * t * t : 1f - 2f * (1f - t) * (1f - t);       // 两头慢,中间快
-            default:                return t;
-        }
+        if (Renderer == null) return;
+        if (_fogMpb == null) _fogMpb = new MaterialPropertyBlock();
+        Renderer.GetPropertyBlock(_fogMpb);                          // 保留 BulletColorModifier 的 _TintColor
+        _fogMpb.SetFloat("_FogAmount", fogAmount);
+        _fogMpb.SetColor("_FogColor", fogColor);
+        Renderer.SetPropertyBlock(_fogMpb);
     }
 }

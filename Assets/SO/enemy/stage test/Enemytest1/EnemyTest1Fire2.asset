@@ -22,10 +22,7 @@ MonoBehaviour:
   Speed: 3
   AngularSpeed: 0
   SpawnFog:
-    Duration: 0.1
-    FogColor: {r: 0.7, g: 0.85, b: 1, a: 1}
-    FogStartScale: 2
-    Easing: 0
+    rid: 6177227070528028675
   Damage: 1
   Count: 1
   DeltaSpeed: 1
@@ -54,3 +51,10 @@ MonoBehaviour:
         FlashFrequency: 5
         FlashMinAlpha: 0.3
         AutoSetDrawMode: 1
+    - rid: 6177227070528028675
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 0.7, g: 0.85, b: 1, a: 1}
+        FogStartScale: 1.4
+        Easing: 0
