@@ -12,26 +12,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6fea1136b335f1e429973dab1d865f75, type: 3}
   m_Name: RingBigCircle
   m_EditorClassIdentifier: 
-  BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
+  BulletPrefab: {fileID: 3564932432827143573, guid: 363f0d16d4c4ab142a130baf42d6ebf9, type: 3}
   ModifierPrefabs:
   - rid: 6177227073745846272
-  FireExtensions: []
-  FireSounds: []
+  - rid: 6177227078274121730
+  FireExtensions:
+  - rid: 6177227095170613249
+  FireSounds:
+  - rid: 6177227096770215947
   Speed: 4
   AngularSpeed: 0
   SpawnFog:
     rid: 6177227073745846275
   Damage: 1
-  Count: 12
+  Count: 10
   Radius: 0
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 6177227073745846272
       type: {class: FireOnDurationBulletModifier, ns: , asm: Assembly-CSharp}
       data:
         Delay: 0
-        Duration: 0
+        StartTrigger:
+          rid: -2
+        Duration: 4
         AutoSkipOutsideWindow: 1
         OneShot: 0
         Pattern: {fileID: 11400000, guid: f3205c7c405284c4181d334774ba21b4, type: 2}
@@ -39,7 +46,7 @@ MonoBehaviour:
         ExtraModifiers: []
         Extra:
           rid: 6177227074437120000
-        Interval: 0.2
+        Interval: 0.3
         MaxShots: -1
     - rid: 6177227073745846275
       type: {class: NoSpawnFog, ns: , asm: Assembly-CSharp}
@@ -57,3 +64,33 @@ MonoBehaviour:
       data:
         Min: 0
         Max: 90
+    - rid: 6177227078274121730
+      type: {class: BounceBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        MaxBounces: 1
+        Walls: 3
+        Restitution: 1
+    - rid: 6177227095170613249
+      type: {class: AccumulatingOffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseOffset:
+          rid: 6177227095170613274
+        StepOffset: 0
+        OffsetPerBullet: 0
+    - rid: 6177227095170613274
+      type: {class: RandomRangeBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
+      data:
+        Min: -60
+        Max: 60
+    - rid: 6177227096770215947
+      type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
+        VolumeMul: 1
+        Pitch: 1

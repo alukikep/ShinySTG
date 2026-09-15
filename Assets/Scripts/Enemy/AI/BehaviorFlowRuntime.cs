@@ -60,7 +60,10 @@ namespace ShinySTG.EnemyAI
             _elapsedInCurrent += dt;
 
             // 2. 到时间,切下一条
-            if (_elapsedInCurrent >= current.Duration)
+            // ★ vX 起 Duration 走 ActionDurationConfig 多态策略(可 Fixed / Random Range)——
+            //   抽样结果已缓存在 current.CurrentDuration(Tick 进入前由 AdvanceTo 写入),
+            //   本 Tick 直接读缓存,不再重复抽样。
+            if (_elapsedInCurrent >= current.CurrentDuration)
             {
                 current.OnExit(owner);
                 AdvanceTo(_index + 1, owner);
@@ -92,7 +95,16 @@ namespace ShinySTG.EnemyAI
 
             _index = next;
             _elapsedInCurrent = 0f;
-            if (actions[_index] != null) actions[_index].OnEnter(owner);
+
+            // ★ vX 起 Duration 多态:每次切到新 Action 时抽样一次 Duration,
+            //   写入 action.SetCurrentDuration(本条 Action 期间固定不变)。
+            //   - Fixed:返回精确值,与旧 float Duration 100% 等价
+            //   - Random Range:每次进入抽一次(Loop 时每次循环都重新抽 → 节奏抖动)
+            if (actions[_index] != null)
+            {
+                actions[_index].SetCurrentDuration(actions[_index].ResolveDuration());
+                actions[_index].OnEnter(owner);
+            }
         }
     }
 }

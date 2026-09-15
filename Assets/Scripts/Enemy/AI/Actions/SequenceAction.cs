@@ -42,7 +42,8 @@ namespace ShinySTG.EnemyAI
             current.OnTick(enemy, dt);
             _elapsedInCurrent += dt;
 
-            if (_elapsedInCurrent >= current.Duration)
+            // ★ vX 起:读 CurrentDuration(已由 Advance 时抽样缓存),不再是基类 float Duration 字段
+            if (_elapsedInCurrent >= current.CurrentDuration)
             {
                 current.OnExit(enemy);
                 Advance(_idx + 1, enemy);
@@ -58,7 +59,18 @@ namespace ShinySTG.EnemyAI
             }
             _idx = next;
             _elapsedInCurrent = 0f;
-            if (Children[_idx] != null) Children[_idx].OnEnter(enemy);
+
+            // ★ vX 起 Duration 多态:Sequence 自己负责子 child 的 Duration 抽样
+            //   (外层 BehaviorFlowRuntime.AdvanceTo 只抽样 SequenceAction 自身,
+            //    子 child 的 CurrentDuration 仍然需要容器主动调用)。
+            //   - Fixed:等价旧 float Duration(老 .asset 通过 _legacyDuration 兜底)
+            //   - Random Range:每次 Sequence 切到下一条 child 时独立抽样 → 节奏抖动
+            var child = Children[_idx];
+            if (child != null)
+            {
+                child.SetCurrentDuration(child.ResolveDuration());
+                child.OnEnter(enemy);
+            }
         }
     }
 }

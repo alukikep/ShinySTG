@@ -13,33 +13,46 @@ MonoBehaviour:
   m_Name: RedMagic
   m_EditorClassIdentifier: 
   Actions:
-  - rid: 6177227073745846276
-  - rid: 6177227074437120004
+  - rid: 6177227096770215937
+  - rid: 6177227096770215939
+  - rid: 6177227096770215945
   Loop: 1
   StartDelay: 0
   references:
     version: 2
     RefIds:
-    - rid: 6177227073745846276
+    - rid: 6177227096770215937
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Duration: 1
+        DurationConfig:
+          rid: 6177227096770215938
+        _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: bbbdf8b2a216ea44599ad25858c30561, type: 2}
-        FireRate: 0.5
+        FireRate: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
-    - rid: 6177227074437120004
+    - rid: 6177227096770215938
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227096770215939
       type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Duration: 2
+        DurationConfig:
+          rid: 6177227096770215943
+        _legacyDuration: 1
         Move:
-          rid: 6177227074437120006
-    - rid: 6177227074437120006
+          rid: 6177227096770215944
+    - rid: 6177227096770215943
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 3
+    - rid: 6177227096770215944
       type: {class: RandomWalkInRegionMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        RegionCenter: {x: 0, y: 4}
-        RegionSize: {x: 6, y: 2}
-        MaxStepDistance: 4
+        RegionCenter: {x: -0.5, y: 7}
+        RegionSize: {x: 12, y: 4}
+        MaxStepDistance: 10
         DirectionCenterDeg: 0
         DirectionSpreadDeg: 360
         IntervalMin: 3
@@ -48,3 +61,18 @@ MonoBehaviour:
         PeakSpeed: 3
         ArrivedThreshold: 0.05
         RandomSeedOffset: 0
+    - rid: 6177227096770215945
+      type: {class: EmitSignalAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227096770215946
+        _legacyDuration: 1
+        SignalName: BulletMove
+        Mode: 0
+        EmitInterval: 0.5
+        OriginLocalOffset: {x: 0, y: 0}
+        DebugLog: 0
+    - rid: 6177227096770215946
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.5

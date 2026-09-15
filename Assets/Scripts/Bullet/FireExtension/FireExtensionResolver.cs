@@ -32,17 +32,71 @@ public static class FireExtensionResolver
     /// <param name="extensions">扩展点数组(可为 null 或空)</param>
     /// <param name="from">发射点位置(值参,不会被修改)</param>
     /// <param name="rotationRad">外部传入的整体方向增量(也是管道的起点)</param>
-    public static float ResolvePipeline(FireExtension[] extensions, Vector2 from, float rotationRad)
+    /// <param name="fireCount">本批 FireGroup 的累加序号(1 起)。由 BulletPool.FireGroup 入口按
+    /// (pattern ref + extension ref) 维护,确保多敌人共用同一份 SO 资产时累加互不污染。
+    /// 0 表示旧调用方不传 → 不调 OnFireGroupTriggered,旧行为 100% 兼容。</param>
+    public static float ResolvePipeline(FireExtension[] extensions, Vector2 from, float rotationRad, int fireCount = 0)
     {
         // 空 / null → 兜底
         if (extensions == null || extensions.Length == 0)
             return FallbackDeg * Mathf.Deg2Rad + rotationRad;
+
+        // fireCount > 0 → 先调 OnFireGroupTriggered(fireCount) 给本批所有非 null 模块更新累加状态
+        if (fireCount > 0)
+        {
+            for (int i = 0; i < extensions.Length; i++)
+            {
+                if (extensions[i] != null)
+                    extensions[i].OnFireGroupTriggered(fireCount);
+            }
+        }
 
         float current = rotationRad; // 起点
         for (int i = 0; i < extensions.Length; i++)
         {
             var ext = extensions[i];
             if (ext == null) continue; // 数组里有 null 元素 → 跳过(等价"该模块不参与")
+            current = ext.ProcessAngle(from, rotationRad, current);
+        }
+        return current;
+    }
+
+    /// <summary>
+    /// Pipeline 调度(per-FireExtension fireCount 版):按数组里每个元素的累加序号分别调 OnFireGroupTriggered。
+    ///
+    /// ★ 与单值 fireCount 版本区别 ★
+    ///   累加型 FireExtension 跨多批开火共享一个计数,而不是整个数组所有元素共用同一个值。
+    ///   适用场景:同一份 FirePattern 上挂多个累加型模块,各自累加各自的 StepOffset。
+    ///
+    /// ★ 字典来源 ★
+    ///   由 BulletPool.FireGroup 入口维护并通过 BulletPool.GetFireExtensionFireCounts() 暴露;
+    ///   FirePattern 子类(Ring/Line/Arc)拿到字典后传给本方法。
+    ///   null = 旧调用方不传 → 不调 OnFireGroupTriggered,行为 100% 兼容。
+    /// </summary>
+    /// <param name="fireCountMap">key = FireExtension 元素 ref,value = 该元素的 fireCount(1 起)。null/不存在的 key 都跳过 OnFireGroupTriggered。</param>
+    public static float ResolvePipeline(FireExtension[] extensions, Vector2 from, float rotationRad,
+                                        System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> fireCountMap)
+    {
+        if (extensions == null || extensions.Length == 0)
+            return FallbackDeg * Mathf.Deg2Rad + rotationRad;
+
+        // per-element 累加钩子
+        if (fireCountMap != null)
+        {
+            for (int i = 0; i < extensions.Length; i++)
+            {
+                var ext = extensions[i];
+                if (ext == null) continue;
+                if (fireCountMap.TryGetValue(ext, out int fc) && fc > 0)
+                    ext.OnFireGroupTriggered(fc);
+            }
+        }
+
+        float current = rotationRad;
+        for (int i = 0; i < extensions.Length; i++)
+        {
+            var ext = extensions[i];
+            if (ext == null) continue;
             current = ext.ProcessAngle(from, rotationRad, current);
         }
         return current;
@@ -64,7 +118,7 @@ public static class FireExtensionResolver
     /// 调用方一般把 Fire 方法的 position 形参转成本地变量再传 ref,这样不会污染 FirePattern 调用栈。
     /// </param>
     /// <param name="rotationRad">外部传入的整体方向增量(也是管道的起点)</param>
-    public static float ResolvePipelineWithOffset(FireExtension[] extensions, ref Vector2 from, float rotationRad)
+    public static float ResolvePipelineWithOffset(FireExtension[] extensions, ref Vector2 from, float rotationRad, int fireCount = 0)
     {
         // 空 / null → 兜底,不修 from
         if (extensions == null || extensions.Length == 0)
@@ -75,7 +129,17 @@ public static class FireExtensionResolver
         if (extensions[0] is BaseAngleFireExtension base0)
             from += base0.PositionOffset;
 
-        // Step 2:串角度 pipeline
+        // Step 2:累加型钩子(同 ResolvePipeline 语义,fireCount=0 表示旧调用方不传)
+        if (fireCount > 0)
+        {
+            for (int i = 0; i < extensions.Length; i++)
+            {
+                if (extensions[i] != null)
+                    extensions[i].OnFireGroupTriggered(fireCount);
+            }
+        }
+
+        // Step 3:串角度 pipeline
         float current = rotationRad; // 起点
         for (int i = 0; i < extensions.Length; i++)
         {
@@ -87,15 +151,67 @@ public static class FireExtensionResolver
     }
 
     /// <summary>
+    /// Pipeline 调度 + 位置偏移(per-FireExtension fireCount 版)。
+    ///
+    /// 与单值 fireCount 版本区别:按数组里每个元素的累加序号分别调 OnFireGroupTriggered。
+    /// 字典由 BulletPool.FireGroup 入口维护并通过 BulletPool.GetFireExtensionFireCounts() 暴露。
+    /// </summary>
+    public static float ResolvePipelineWithOffset(FireExtension[] extensions, ref Vector2 from, float rotationRad,
+                                                  System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> fireCountMap)
+    {
+        if (extensions == null || extensions.Length == 0)
+            return FallbackDeg * Mathf.Deg2Rad + rotationRad;
+
+        // Step 1:位置偏移
+        if (extensions[0] is BaseAngleFireExtension base0)
+            from += base0.PositionOffset;
+
+        // Step 2:per-element 累加钩子
+        if (fireCountMap != null)
+        {
+            for (int i = 0; i < extensions.Length; i++)
+            {
+                var ext = extensions[i];
+                if (ext == null) continue;
+                if (fireCountMap.TryGetValue(ext, out int fc) && fc > 0)
+                    ext.OnFireGroupTriggered(fc);
+            }
+        }
+
+        // Step 3:pipeline
+        float current = rotationRad;
+        for (int i = 0; i < extensions.Length; i++)
+        {
+            var ext = extensions[i];
+            if (ext == null) continue;
+            current = ext.ProcessAngle(from, rotationRad, current);
+        }
+        return current;
+    }
+
+    /// <summary>
     /// Pipeline 每发独立方向版:把 extensions 数组串成角度管道,产出第 bulletIndex 颗子弹的方向(弧度)。
     /// null-safe:extensions == null 或空 → fallback 到 270° + rotationRad。
     /// 默认行为:ProcessAngleForBullet 默认实现走 ProcessAngle → 等价"中线 + 等分"语义。
     /// </summary>
     public static float ResolveBulletPipeline(FireExtension[] extensions, Vector2 from,
-                                              int bulletIndex, int totalCount, float rotationRad)
+                                              int bulletIndex, int totalCount, float rotationRad,
+                                              int fireCount = 0)
     {
         if (extensions == null || extensions.Length == 0)
             return FallbackDeg * Mathf.Deg2Rad + rotationRad;
+
+        // fireCount > 0 → 先调 OnFireGroupTriggered 给本批模块更新累加状态
+        // 注意:整个 FireGroup(可能 8 颗 Ring 子弹)共用同一个 fireCount,所以 ProcessAngleForBullet
+        // 看到的 fireCount 在所有 8 次循环里都一样,累加公式按"第 N 批开火"算,不是"第 N 颗子弹"
+        if (fireCount > 0)
+        {
+            for (int i = 0; i < extensions.Length; i++)
+            {
+                if (extensions[i] != null)
+                    extensions[i].OnFireGroupTriggered(fireCount);
+            }
+        }
 
         float current = rotationRad;
         for (int i = 0; i < extensions.Length; i++)

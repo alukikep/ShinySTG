@@ -15,7 +15,10 @@ public class LineFirePattern : FirePattern
         // position 转本地变量再传 ref,让 Base.PositionOffset 在 Resolver 入口处叠加。
         Vector2 from = position;
         // 中线方向由 FireExtensions pipeline 解析(空数组 → fallback 270° + rotationRad,等价旧版 normal)
-        float rad = FireExtensionResolver.ResolvePipelineWithOffset(FireExtensions, ref from, rotationRad);
+        // 取 BulletPool 维护的 per-FireExtension fireCount 字典 → 让累加型模块拿到本批开火序号
+        // (累加型 OffsetAngle / 未来其他累加型模块)。
+        var fireCountMap = pool?.GetFireExtensionFireCounts();
+        float rad = FireExtensionResolver.ResolvePipelineWithOffset(FireExtensions, ref from, rotationRad, fireCountMap);
         float speed = Speed; // 起点使用基类 Speed
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)

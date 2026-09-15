@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b4d2674020be4e1458e666068af6d165, type: 3}
-  m_Name: Damage
+  m_Name: EenmyShot1
   m_EditorClassIdentifier: 
   Clips:
-  - {fileID: 8300000, guid: 4517a1a08cab16347a2ec4bff9b8ae89, type: 3}
-  DefaultVolume: 0.1
+  - {fileID: 8300000, guid: 46046eb81ceebef4f9deda31fc775ba3, type: 3}
+  DefaultVolume: 0.5
   DefaultPitch: 1
   Loop: 0
   Bus: {fileID: 0}

@@ -28,6 +28,8 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 6177227073745846274
       type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
       data:
@@ -38,8 +40,10 @@ MonoBehaviour:
     - rid: 6177227073745846278
       type: {class: AccelerateModifier, ns: , asm: Assembly-CSharp}
       data:
-        Delay: 2
-        Duration: 2
+        Delay: 0
+        StartTrigger:
+          rid: 6177227078274121732
+        Duration: 1.5
         AutoSkipOutsideWindow: 1
         OneShot: 0
         Acceleration: 1
@@ -47,6 +51,8 @@ MonoBehaviour:
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:
         Delay: 0
+        StartTrigger:
+          rid: -2
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
@@ -58,3 +64,10 @@ MonoBehaviour:
         FlashFrequency: 5
         FlashMinAlpha: 0.3
         AutoSetDrawMode: 1
+    - rid: 6177227078274121732
+      type: {class: OnSignalStartTrigger, ns: , asm: Assembly-CSharp}
+      data:
+        SignalName: BulletMove
+        MaxWait: 20
+        RequireInRange: 0
+        MaxDistanceFromOrigin: 8

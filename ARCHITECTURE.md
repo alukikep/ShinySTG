@@ -9,6 +9,7 @@
 
 1. [整体架构一览](#1-整体架构一览)
 2. [子弹系统](#2-子弹系统)
+   - 2.8 [BulletModifier 信号触发机制](#28-bulletmodifier-信号触发机制替代纯-delay)
 3. [射击模式系统(FirePattern)](#3-射击模式系统firepattern)
    - 3.1 [FireExtension 扩展点(基础发射逻辑的多态扩展)](#31-fireextension-扩展点基础发射逻辑的多态扩展)
 4. [敌人 AI(BehaviorFlow + EnemyAction)](#4-敌人-aibehaviorflow--enemyaction)
@@ -19,6 +20,7 @@
 9. [关卡系统(LevelDefinition + LevelController)](#9-关卡系统leveldefinition--levelcontroller)
 10. [关卡编辑器子系统](#10-关卡编辑器子系统)
 11. [音频音乐系统(AudioSystem)](#11-音频音乐系统audiosystem)
+12. [舞台边界系统(BoundsService)](#12-舞台边界系统boundsservice)
 
 ---
 
@@ -189,6 +191,7 @@ FireAction.OnTick
 | `FireOnEnterBulletModifier` | `Modifier/Fire Pattern On Delay` | **OneShot 分裂**:子弹飞 `Delay` 秒后,在自身位置按 `Pattern` 再开一次火(走 `BulletPool.FireGroup` 完整链路:FireExtensions / ModifierPrefabs / SpawnFog / FireSounds 全生效),然后本 modifier 结束。分裂弹阵营可继承母弹(默认)或设为中性。 | `Pattern`(FirePattern 资产)/ `InheritOwnerTeam` / `ExtraModifiers` |
 | `FireOnDurationBulletModifier` | `Modifier/Fire Pattern While Active` | **持续型分裂**:窗口期内(Delay 之后 Duration 秒内)每 `Interval` 秒在自身位置按 `Pattern` 开一次火,最多 `MaxShots` 次。典型用法:弹尾粒子、激光拼接、Boss 散弹母弹持续生子弹。 | `Pattern` / `Interval` / `MaxShots` / `InheritOwnerTeam` / `ExtraModifiers` |
 | `AngleOffsetFirePatternBulletExtra` | `Extra/Angle Offset` | **FirePatternBulletExtra 子类**:挂在上面两个分裂 modifier 的 `Extra` 字段上,让母弹每次 FireOnce 时按「本批次偏移 + 累加偏移」调整 rotationRad。第 N 次偏移 = `BaseOffset.Sample() + (N-1) * StepOffset`(度)。`BaseOffset` 本身是 SR 多态(可下拉选 `Base Offset/Fixed` 精确值 / `Base Offset/Random Range` 区间随机),抽样时机 = 每颗母弹第一次 FireOnce 时抽一次,窗口期内保持。典型用法:旋转喷射、扇形铺开、抖动扩散。 | `BaseOffset`(SR 多态)/ `StepOffset` |
+| `BounceBulletModifier` | `Modifier/Bounce` | **反弹 modifier**:子弹飞出 `BoundsService.CullingArea`(无 BoundsService 时 fallback ±10/±20,与 Bullet 越界回收共用同一判定)时按物理规律翻转方向 + Clamp 位置 + 扣次数。遵守 §2.6 的 Delay/Duration/OneShot 时间窗口。可配「可反弹边集合」(HorizontalOnly / VerticalOnly / All / **ExceptBottom** 枚举 —— 4 边独立判断,可表达「撞顶/撞墙弹,撞地不弹」的常见玩法)+ 反弹次数(0=立刻回收 / 正数=N 次 / 负数=无限)+ 恢复系数 Restitution(0=完全非弹性贴墙滑行 / 1=完全弹性速率不变 / >1=反弹后加速反物理但 STG 偶尔需要)。**不打断 AngularSpeed**——反弹后继续按原旋转状态飞,真要切直线的子类自己改 `b.AngularSpeed = 0`。**反射数学只翻 SteerAngle**(SteerAngle' = π - α 或 -α,与 `Bullet.Update` 第 2-3 步自然衔接)。详见 §2.7。 | `MaxBounces` / `Walls` / `Restitution` + §2.6 时间窗口字段 |
 
 **§2.4 辅助类:`BaseOffsetStrategy` SR 多态**(挂在 `AngleOffsetFirePatternBulletExtra.BaseOffset` 上):
 
@@ -271,17 +274,41 @@ FireAction.OnTick
 | `AutoSkipOutsideWindow` | `true` | 窗口外是否直接 return。`false` 时仍每帧调 `ModifyCore`,子类通过 `IsActive` 自行判断。 |
 | `OneShot` | `false` | 一次性触发:进入窗口瞬间调一次 `OnWindowEnter`,然后立刻退出(`ModifyCore` 不再被调用)。 |
 
-#### 时序图
+#### 时序图(双时钟模型,自 vX 起)
 
 ```
-时间轴  0 ──────── Delay ──────────── Delay+Duration ──────── ∞
-        │           │                  │              │
-        ├──窗外─────┤────窗口内────────┤────窗外──────┤
-        │ 不调 ModifyCore            │ 不调 ModifyCore
-        │ (除非 AutoSkip=false)       │
-        │                            │
-        └────  OneShot=true 时:进窗口瞬间调 OnWindowEnter 一次,立刻调 OnWindowExit 退出
+两个独立时钟:
+  - 时钟 A = _elapsed(子弹出生至今,一直累加) ── 供 StartTrigger.ShouldActivate 判断
+  - 时钟 B = _windowElapsed(窗口内累计)  ── 与 Duration 直接比较,触发 OnWindowEnter/Exit
+
+时间轴  0 ──────────────────── triggerReady ────────── triggerReady+Duration ────── ∞
+        │                       │                       │                       │
+        │   ┌─ 时钟 A 视角 ─────┼───────┬───────────────┼───────┐               │
+        │   │ 出生至今          │       │               │       │               │
+        │   │                   │ triggerReady         │       │               │
+        │   ├─ 时钟 B 视角 ─────┼───────┼───────────────┼───────┤               │
+        │   │ 窗口内累计        │ 进入窗口(_windowElapsed=0 重置,开始累加) │  超期退出 │
+        │                       │                       │                       │
+        ├──────── 窗外 ────────┴──── 窗口内 ───────────┴──────── 窗外 ───────────┤
+        │ 不调 ModifyCore                    │  不调 ModifyCore
+        │ (除非 AutoSkip=false)              │
+                                          (或者 OneShot=true: 进入瞬间调 OnWindowEnter 一次,
+                                           立刻调 OnWindowExit, _windowExhausted=true 锁死)
+
+★ 关键不变量:
+  - triggerReady = true 那一刻,_windowElapsed 立刻从 0 开始累加,Duration 从此刻起算。
+  - 信号型 trigger(Trigger/On Signal):收到信号即 triggerReady → 窗口立刻激活,持续 Duration。
+  - triggerReady 之前,信号没到也无所谓 —— 窗口不在内,_windowElapsed 不增。
 ```
+
+#### 为什么不把 Delay 和 Duration 放在同一个时间轴上?
+
+旧实现(2026-09 之前):窗口判定用「出生后 [Delay, Delay+Duration)」这一个区间,trigger 信号型也用 `_elapsed < Delay+Duration` 做预算。这有两个严重问题:
+
+1. **信号型 + Duration>0 时,信号若在 Delay+Duration 之后到达 → 永远进不了窗口**(策划期望「信号到即激活 + 持续 N 秒」完全失效)。
+2. **基类 Delay 与 trigger 内部 Delay 字段重复**,ResetWindow 同步时会用基类 Delay(默认 0)覆盖 trigger 配置值。
+
+修复:把「**何时进入窗口**」(trigger 决定)和「**进入后持续多久**」(Duration 决定)解耦为两个独立维度 + 两个独立时钟。trigger 决定的是时钟 A 上的一个时刻,Duration 决定的是从那一刻起时钟 B 上能跑多远。两者各自有独立的边界判定,互不干扰。
 
 #### 默认行为与历史兼容性
 
@@ -393,6 +420,148 @@ public class PlaySoundOnceModifier : BulletModifier {
 - ❌ 在 runtime 创建 .mat 资产(`new Material(...)` 内存泄漏,改用 `Shader.Find` + MPB)
 - ❌ 给 visual modifier 加 `[RequireComponent]`(modifier 是纯 C#,不是 MonoBehaviour)
 
+### 2.8 BulletModifier 信号触发机制(替代纯 Delay)
+
+**职责:** 把 modifier「何时进入时间窗口」从**单一时间维度**扩展为**时间 + 信号两个维度**,让 BehaviorFlow 的 AI 节奏能直接驱动子弹 modifier 激活。详见 [`Assets/Scripts/Bullet/BulletSignalBus.cs`](../../Assets/Scripts/Bullet/BulletSignalBus.cs) + [`Assets/Scripts/Bullet/ModifierStartTrigger.cs`](../../Assets/Scripts/Bullet/ModifierStartTrigger.cs) + [`Assets/Scripts/Enemy/AI/Actions/EmitSignalAction.cs`](../../Assets/Scripts/Enemy/AI/Actions/EmitSignalAction.cs)。
+
+#### 2.8.1 为什么需要
+
+旧实现(`§2.6` 时间窗口):modifier 激活时机 = `Delay` 秒后,与敌人 AI 节奏完全脱节 —— Boss 喊话、阶段切换、Parallel 容器内某条 Action 完成 等场景下,策划只能「凑 Delay 时间」做对位,既不准又难维护。
+
+新实现:modifier 激活时机 = `ModifierStartTrigger.ShouldActivate(...)`,抽象成 SR 多态字段,可下拉选:
+- `Trigger/Delay`(默认,与历史 100% 等价,老 .asset 兜底)
+- `Trigger/On Signal`(订阅 `BulletSignalBus`,收到即激活)
+- `Trigger/Delay Or Signal`(Delay 与信号二选一)
+
+#### 2.8.2 三件套关系图
+
+```
+                    ┌──────────────────────────┐
+                    │ BehaviorFlow.Asset       │
+                    │   Actions:               │
+                    │   [Fire, Move, …,        │
+                    │    EmitSignal("fire!")]  │ ◄── 新增 Action
+                    └──────────┬───────────────┘
+                               │ OnEnter/OnTick
+                               ▼
+                    ┌──────────────────────────┐
+                    │  BulletSignalBus.Emit()  │ ◄── 静态门面
+                    │  "fire!", origin         │
+                    └──────────┬───────────────┘
+                               │  派发给所有订阅者(全局广播)
+                               ▼
+                ┌────────────────────────────────┐
+                │ Bullet (active)                │
+                │  _modifiers:                   │
+                │   [Modifier A:StartTrigger=Delay]      ◄── 老路径,行为不变
+                │   [Modifier B:StartTrigger=OnSignal]  ◄── 新路径
+                └────────────────────────────────┘
+```
+
+#### 2.8.3 `BulletSignalBus`(静态门面)
+
+位置:`Assets/Scripts/Bullet/BulletSignalBus.cs`,namespace `ShinySTG.BulletCore`。
+
+```csharp
+public static class BulletSignalBus
+{
+    public static void Subscribe(string signalName, Action<Vector2> handler);
+    public static void Unsubscribe(string signalName, Action<Vector2> handler);
+    public static void Emit(string signalName, Vector2 origin);
+    public static void ClearAll();  // PlayMode 切换时自动调
+}
+```
+
+**关键设计**(与项目其他基础设施对齐):
+- **静态门面**:与 `AudioMix.cs` 同套路,无需 MonoBehaviour 单例,场景里没挂任何东西也能用
+- **字典派发**:`Dictionary<string, List<Action<Vector2>>>`,O(1) Emit,O(订阅者数) 派发
+- **全局广播**:Emit 不区分发射源 / 阵营(典型 STG 「Boss 喊话全场响应」语义);隔离需求未来可通过 `string SourceTag` 扩展,不破坏现有 API
+- **无名 / null 静默**:信号名为 null / 空 / 全空白时直接 return,不会因为策划拼错信号名而崩溃(对照 BoundsService 无单例时的硬编码 fallback 风格)
+- **无引用泄漏**:modifier 退订统一走 `Unsubscribe`,由 `Bullet.DetachSignalTriggers` 在 BulletPool.Return 与 `Bullet.OnDestroy` 兜底触发
+- **场景切换清空**:`[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]` 在启动清空字典,避免 PlayMode 重启后残留
+
+**为什么不用 Unity 的 Timeline SignalReceiver**:那套走反射 + 序列化资产枚举(必须在 timeline 资产里登记信号),对 STG 「策划自由命名、运行时即时订阅」太重。本类用 string 名 + 静态字典,零反射、零资产登记。
+
+#### 2.8.4 `ModifierStartTrigger`(SR 多态字段)
+
+位置:`Assets/Scripts/Bullet/ModifierStartTrigger.cs`,与 `BaseOffsetStrategy` / `FirePatternBulletExtra` 同套路。
+
+```csharp
+[SerializeReference, SR]
+public ModifierStartTrigger StartTrigger;  // BulletModifier 上的新字段
+```
+
+**三个内置子类**:
+
+| SRName | 用途 | 关键字段 |
+|---|---|---|
+| `Trigger/Delay`(默认) | `elapsed >= Delay` 激活,与历史 100% 等价 | `Delay` |
+| `Trigger/On Signal` | 订阅具名信号,收到即激活 | `SignalName` / `MaxWait`(兜底)/ `RequireInRange` + `MaxDistanceFromOrigin` |
+| `Trigger/Delay Or Signal` | Delay 与信号任一先到即激活 | `Delay` / `SignalName` |
+
+**生命周期契约**:
+1. `OnAttach(Bullet)`:modifier 挂到子弹时调一次(`BulletPool.AttachModifiers` → `bullet.AttachSignalTriggers()`),订阅型 trigger 在这里调 `BulletSignalBus.Subscribe`
+2. `ShouldActivate(Bullet, elapsed)`:每帧由 `BulletModifier.Modify` 调一次,返回 true 表示进入窗口
+3. `OnDetach(Bullet)`:子弹回收或销毁时调一次,订阅型 trigger 在这里调 `BulletSignalBus.Unsubscribe` —— **不调 = 内存泄漏**
+
+#### 2.8.5 `EmitSignalAction`(BehaviorFlow Action)
+
+位置:`Assets/Scripts/Enemy/AI/Actions/EmitSignalAction.cs`,与 `FireAction` / `MoveAction` 同套路(SRName 下拉)。
+
+```csharp
+[Serializable, SRName("Action/Emit Signal")]
+public class EmitSignalAction : EnemyAction
+{
+    public string SignalName;
+    public EmitMode Mode;        // OnEnterOnly / EveryTick / OnInterval
+    public float EmitInterval;
+    public Vector2 OriginLocalOffset;
+    public bool DebugLog;
+}
+```
+
+**典型用法**:
+- Boss 蓄力 Action 的 OnEnter 触发 `"boss_charge_finished"` → 子弹分裂 modifier 立即开火(替代「凑 Delay 时间」对位)
+- 残血阶段切换时:`EmitSignalAction.Emit("boss_enrage")` → 全场追踪弹切直线 + 染色红
+- 与 `FireAction` 协作:`Parallel` 容器内同帧 `Fire + EmitSignal`,所有「那批新生成的弹」立刻激活
+- `EveryTick` 模式:持剑敌人挥剑动作期间每帧触发 `"swinging"` → 弹幕随剑势摆动(慎用,信号风暴)
+
+#### 2.8.6 集成点(谁在哪儿调谁)
+
+| 调用点 | 文件 | 行为 |
+|---|---|---|
+| 子弹从池取出 | `BulletPool.AttachModifiers` 末尾 | `bullet.AttachSignalTriggers()` → 触发 `StartTrigger.OnAttach` → 订阅型 trigger 订阅 BulletSignalBus |
+| 子弹回池 | `BulletPool.Return` 开头(在 `ClearModifiers` **之前**) | `bullet.DetachSignalTriggers()` → 触发 `StartTrigger.OnDetach` → 订阅型 trigger 退订 |
+| 子弹被 Destroy | `Bullet.OnDestroy` | 兜底调 `DetachSignalTriggers`,防走 BulletPool.Return 之外的销毁路径漏退订 |
+| 每帧 modify | `BulletModifier.Modify` 改造后 | 调 `StartTrigger?.ShouldActivate(this, _elapsed)` 判断进入窗口(同时保留原 `Delay` 字段向后兼容路径) |
+| 子弹 ResetWindow | `BulletModifier.ResetWindow` | `StartTrigger == null` → 兜底 `new DelayStartTrigger { Delay = this.Delay }`,保证老 .asset 行为 100% 等价 |
+| BulletPool Get 收尾 | 同上 | ★ **vX 起已不再做同步**。基类 `Delay` 字段仅在「StartTrigger=null 兜底分支」生效(把值拷过去给新建的 DelayStartTrigger)。trigger 非 null 时 trigger 内部 Delay 自己说了算,不会被基类 Delay 静默覆盖。 |
+| BulletPool Return 顺序 | 同上 | **先 Detach 再 Clear**,Detach 需要遍历 `_modifiers`,Clear 后列表空就遍历不到 |
+
+#### 2.8.7 向后兼容
+
+| 存量资产 | 行为 |
+|---|---|
+| 老 `.asset`(`StartTrigger == null`)|`ResetWindow()` 兜底 → `DelayStartTrigger { Delay = 原 Delay 值 }` → 100% 等价 |
+| 老代码 `bullet.Delay = X` 直接赋值 | 字段保留;**vX 起 `ResetWindow` 仅在 StartTrigger=null 时才把基类 Delay 拷给新建的 DelayStartTrigger**。trigger 非 null 时 trigger 内部 Delay 字段独立,基类 Delay 不再覆盖它 |
+| 不订阅 `BulletSignalBus` 的场景 | `Emit` 空分派,无副作用 |
+
+★ **破坏性变更警告**(vX 起):
+  旧实现 ResetWindow 会把基类 Delay 强制同步进 trigger 内部 Delay 字段。这在以下场景下会导致策划配置被静默篡改:
+  ```csharp
+  // Inspector 配置: DelayOrSignalStartTrigger.Delay = 2.0(基类 Delay 默认 0)
+  // 旧行为:ResetWindow 后 trigger.Delay 被改成 0 → 立即激活
+  // 新行为:trigger.Delay 保持 2.0,基类 Delay 仅在 StartTrigger=null 兜底分支生效
+  ```
+  修复方式:把 trigger 内部 Delay 字段视为权威,策划配 trigger.Delay 时直接配 trigger,不依赖基类 Delay。
+
+#### 2.8.8 扩展指南
+
+- **新 trigger 类型**(例如「子弹收到 N 次碰撞后激活」):新建 `ModifierStartTrigger` 子类 + 加 `[SRName("Trigger/<名字>")]`,在 `OnAttach` / `OnDetach` / `ShouldActivate` 里实现自定义激活条件
+- **新发射时机**(例如「同伴死亡时激活」):建新 `EnemyAction` 子类调 `BulletSignalBus.Emit` 即可,无需改 BulletModifier
+- **同源过滤**(例如「只激活由本 Boss 发射的弹」):后续可给 `BulletSignalBus.Emit` 加可选 `int SourceInstanceID` 参数 + `OnSignalStartTrigger` 加 `int RequiredSourceId` 字段(默认 -1 = 任意源),向下兼容老调用方
+- **完全本地**(场景级隔离):用 `Dictionary<Collider, List<Action>>` 替换全局字典;但这会牺牲「Boss 喊话全场响应」语义,按需使用
+
 ---
 
 ## 3. 射击模式系统(FirePattern)
@@ -421,6 +590,91 @@ public class PlaySoundOnceModifier : BulletModifier {
 - 子类在生成子弹时**必须**用基类的 `protected Bullet SpawnBullet(...)` helper,**不要直接调** `pool.Get`,否则 modifier 不会挂上。
 
 详见 `Assets/Scripts/Bullet/FirePattern*`。
+### 2.7 反弹钩子(TryBounceOnOutOfBounds)
+
+**问题:** Bullet.Update 第 5 步越界回收是「判定 → 立即回收」,中间没有「想反弹」的环节。如果硬把反弹逻辑写在 BounceBulletModifier 的 `ModifyCore` 里,要等下一帧才生效,中间会有一帧「飞出屏幕外但未回收」的诡异视觉。
+
+**方案:** 在 `BulletModifier` 基类加一个**独立于时间窗口调度**的虚拟钩子 `TryBounceOnOutOfBounds(Bullet)`,由 `Bullet.Update` 第 5 步越界时显式调一次:
+
+```csharp
+// BulletModifier.cs(基类,默认空实现 —— 99% modifier 不关心反弹)
+public virtual bool TryBounceOnOutOfBounds(Bullet bullet) => false;
+```
+
+```csharp
+// Bullet.cs 第 5 步(改造后)
+if (outOfBounds)
+{
+    if (!TryBounceModifiers())  // ← 新增:问每个 modifier「要不要反弹」
+    {
+        BulletPool.Instance.Return(this);  // ← 没人反弹才走原回收
+    }
+}
+```
+
+**协作契约:**
+
+| 行为 | 谁负责 |
+|---|---|
+| 判定「越界与否」(读 BoundsService.CullingArea 或 fallback ±10/±20) | `Bullet.Update`(与原越界回收共用同一判定,**绝不重复**判) |
+| 决定「翻转哪条边 / 翻哪个分量 / 扣几次 / 改不改 Speed」 | BounceBulletModifier 自己 |
+| 实际位置 Clamp 回区内 | BounceBulletModifier 自己写 `bullet.transform.position`(modifier 唯一允许改 `transform.position` 的场景) |
+| 多个 modifier 同时挂、都返回 true | Bullet 第一个 return true 的 modifier 胜出,后续跳过(防互相覆盖 SteerAngle) |
+| 反弹成功 → 不回收 | Bullet.Update 收到 true,跳过 `Return` |
+| 没 modifier / modifier 不处理 | Bullet 走原 `BulletPool.Return` 回收 |
+
+**反射数学(经典物理公式):**
+
+```
+法线 n(墙内法向,指向区内):
+  右墙 n = (-1, 0), 左墙 n = (1, 0), 上墙 n = (0, -1), 下墙 n = (0, 1)
+反射公式(恢复系数 e ∈ [0, 1]):
+  v' = v - (1 + e) * (v · n) * n
+完全弹性(e = 1,默认):v' = v - 2 * (v · n) * n  ← 入射角 = 反射角
+实现等价(直接改 SteerAngle):
+  水平翻转(R / L):SteerAngle' = π - SteerAngle  →  v = (cos α, sin α) → (-cos α, sin α)
+  垂直翻转(T / B):SteerAngle' = -SteerAngle      →  v = (cos α, sin α) → (cos α, -sin α)
+  角上碰两边(任意顺序):两次翻转 = SteerAngle' = α - π  →  v → -v(完全反向)
+速率(标量):
+  Speed' = max(0, Speed × e)  ← e=1 速率不变(完全弹性),e<1 损失能量,e>1 加速(STG 偶尔需要)
+```
+
+**§2.7.1 可反弹边集合(BounceWalls 枚举,4 边独立判断):**
+
+| 枚举值 | L | R | T | B | 典型场景 |
+|---|:-:|:-:|:-:|:-:|---|
+| `HorizontalOnly` | ✅ | ✅ | ❌ | ❌ | 子弹只能在左右擂台间来回弹(水平弹幕) |
+| `VerticalOnly` | ❌ | ❌ | ✅ | ✅ | 子弹只能在上下两侧间来回弹(垂直弹幕) |
+| `All`(默认) | ✅ | ✅ | ✅ | ✅ | 经典 STG 反弹弹,四边都弹 |
+| `ExceptBottom` | ✅ | ✅ | ✅ | ❌ | **玩家朝下打的反弹弹**:撞顶/撞墙弹回,撞地直接回收 —— 避免「从屏幕下方反复弹回来烦人」的体验 |
+
+**实现说明:** 判断从「2 个全局 bool(canHorizontal/canVertical)」升级到「4 个 per-edge bool(canBounceLeft/Right/Top/Bottom)」,switch 一次映射到位。未来加 `ExceptTop` / `ExceptLeft` / `ExceptRight` 时只需在 switch 加 case,主判断逻辑(2 个 if)不动。
+
+**碰撞分支:**
+
+```
+撞左/右 → 看 canBounceLeft / canBounceRight  ← 任意一边允许 + 越界在该边 → 水平翻(SteerAngle' = π - α)
+撞上/下 → 看 canBounceTop / canBounceBottom  ← 任意一边允许 + 越界在该边 → 垂直翻(SteerAngle' = -α)
+两边都越界(角上)→ 两个 if 各判各的,可能都翻 → 两次翻转 = 完全反向
+```
+
+**§2.6 时间窗口与反弹的交互:**
+
+- `Delay > 0`:子弹出生后先飞 N 秒直线,才允许反弹(`IsActive == false` 时 `TryBounceOnOutOfBounds` 返回 false,走原回收)。
+- `Duration > 0`:窗口期外(到达上限后)不再反弹 —— 子弹飞够了,该回收了。
+- `OneShot = true`:进入窗口瞬间调 `OnWindowEnter`,基类立刻 `OnWindowExit`,`IsActive` 回到 false —— 反弹 modifier 的 OneShot 用法是「自杀弹」:进入窗口第一次碰边反弹一次即销毁。
+- 窗口进入时 `OnWindowEnter` 重置 `_remaining = MaxBounces`,窗口退出时 `OnWindowExitCleanup` 清 `_initialized`,子弹复用 + Delay>0 时能再次激活。
+
+**协作边界:**
+
+- BounceBulletModifier **不读 / 不写其他 modifier 的状态** —— 只改 `bullet.SteerAngle` / `bullet.Speed` / `bullet.transform.position`,与现有 modifier(改 Speed/AngularSpeed/SteerAngle/加分裂弹)正交不冲突。
+- `bullet.AngularSpeed` **反弹时不动**(设计确认)—— 反弹不打断 modifier 状态。子类想要「反弹后切直线」可在自己扩展里改 `bullet.AngularSpeed = 0`。
+- 反弹触发的越界判定与 `Bullet.Update` 第 5 步**共用同一 `BoundsService.CullingArea` + 同一 fallback**(无 BoundsService 时 ±10/±20),绝不重复判 —— 一个反射判定,一份边界源。
+- 与 §2.6 时间窗口无缝衔接 —— `Delay` / `Duration` / `OneShot` / `AutoSkipOutsideWindow` 全部由基类统一管理,BounceBulletModifier 只关心「窗口内要不要反弹 + 反弹几次 + 怎么反」三件事。
+
+详见 `Assets/Scripts/Bullet/BounceBulletModifier.cs`(实现)+ `Assets/Scripts/Bullet/BulletModifier.cs` 第 185 行附近的 `TryBounceOnOutOfBounds` 钩子 + `Assets/Scripts/Bullet/Bullet.cs` 第 245-275 行附近的反弹调用。
+
+
 
 ### 3.1 FireExtension 扩展点(模块数组 + Pipeline 模型)
 
@@ -587,6 +841,48 @@ FirePattern 还有第二个多态模块数组 `FireSounds[]`,**与 FireExtension
 - 新增"行为流"(符卡 / 小怪模式):右键 → Create → STG → Behavior Flow,创建 SO 资产并配置 Actions。
 
 详见 `Assets/Scripts/Enemy/`。
+
+### 4.0.5 ActionDurationConfig 多态 Duration 策略(vX 起)
+
+**位置:** `Assets/Scripts/Enemy/AI/ActionDurationConfig.cs`
+
+**职责:** 把「一条 Action 持续多久」从基类的写死 `float Duration` 字段,抽成 SR 多态下拉字段(对照项目既有的 `BaseOffsetStrategy` / `ModifierStartTrigger` 套路),支持精确值 / 区间随机两种策略,策划可在 Inspector 里直接切,无需改代码。
+
+**字段位置:** `EnemyAction.DurationConfig`(基类持有,所有 Action 子类自动获得能力,无需自己写)
+
+**内置子类:**
+
+| 类 | SRName | 用途 |
+|---|---|---|
+| `FixedActionDuration` | `Duration/Fixed` | 精确值(默认,等价旧 `float Duration`)。字段 `Value`(秒,默认 1f) |
+| `RandomRangeActionDuration` | `Duration/Random Range` | 区间随机,每次进入行为时抽一次,本条 Action 期间固定。字段 `Min` / `Max`(秒) |
+
+**抽样时机(由 `BehaviorFlowRuntime.AdvanceTo` 触发):**
+
+- 每次切到一条 Action 时,调一次 `DurationConfig.Sample()`,结果写入 `action.CurrentDuration`(per-instance 缓存)
+- 本条 Action 期间 `CurrentDuration` 固定不变,`Tick` 用它跟 `_elapsedInCurrent` 比
+- Sequence / Loop 切到下一条 → 重新抽样(若新策略是区间随机 → 节奏抖动)
+- Parallel 内每个子 Action 独立抽样、互不影响(子 Action 各自记自己的 CurrentDuration)
+
+**典型用法:**
+
+- Boss 节奏混乱:`FireAction` DurationConfig = Random Range(2, 4) → 每波开火时长随机
+- 玩家反应窗口抖动:`WaitAction` DurationConfig = Random Range(0.5, 1.5) → 间隔不固定
+- 弹性巡逻:`MoveAction` DurationConfig = Random Range(3, 5) → 每段巡逻时长不固定
+- 伪随机弹幕间隔:`FireAction` DurationConfig = Random Range(0.8, 1.2) → 节奏自然
+- 精确节拍:`FireAction` DurationConfig = Fixed(2) → 与旧 float 完全等价
+
+**老 .asset 兼容:**
+
+- 旧 `EnemyAction.Duration: X`(float)通过 `[FormerlySerializedAs("Duration")]` 迁移到隐藏字段 `_legacyDuration`
+- Runtime: `DurationConfig != null ? DurationConfig.Sample() : Mathf.Max(0f, _legacyDuration)`,SR 字段为 null 时自动用老值
+- 用户视角:Inspector 里看不到 float Duration 字段了,只有 SR 多态下拉;老 .asset 行为 100% 等价
+
+**扩展指南:**
+
+新 Duration 策略 = 新建 `ActionDurationConfig` 子类 + `[Serializable, SRName("Duration/<名字>")]` + override `Sample()`,参考 `RandomRangeActionDuration` 实现(内置容错:Min==Max / Min>Max / 负数钳位)。新策略自动出现在所有 `EnemyAction` 子类的 `DurationConfig` 下拉里(适用于 FireAction / MoveAction / WaitAction / ParallelAction / SequenceAction / EmitSignalAction 等所有内置 Action,以及未来新加的 Action)。
+
+---
 
 #### 4.1 内置 MoveBehaviour 速查表
 
@@ -925,5 +1221,78 @@ Phase 3 (暴走)
 - 向后兼容:若 `Definition.AudioBinding == null`,回退到 `AudioSystem.LevelBindings[]` 全局查表模式(老用法仍工作)。
 - 关卡间切换:ReloadLevel / 切下一关时调 `TryBind` 是幂等的,自动解订旧订阅 + 订阅新 LevelController。
 - 无 AudioSystem 时静默跳过(`AudioSystem.Instance == null` → TryBind 不跑,关卡正常运行不受影响)。
+
+
+
+---
+
+## 12. 舞台边界系统(BoundsService)
+
+> 把"玩家活动边界" + "子弹自动回收边界"**集中到一个场景单例**,不再散落在 PlayerMovement 和 Bullet 的代码里。Inspector 改数值 + Scene 视图实时可视化,设计意图与代码同步。
+
+### 12.1 为什么需要
+
+旧实现两套边界各自为政,各自有 magic number:
+
+| 系统 | 旧位置 | 旧值 | 问题 |
+|---|---|---|---|
+| 玩家活动区 | `PlayerMovement.MinX/MaxX/MinY/MaxY` 4 个 float | ±3.5 / ±4.5 | 美术想改得打开 Player prefab;且无 Scene 可视化 |
+| 子弹回收区 | `Bullet.cs:243` 硬编码 | `Mathf.Abs(x)>10 \|\| Abs(y)>20` | 注释直接写"先实现,后续再优化";无配置入口、无可视化 |
+
+两个值也没有任何关联 —— 玩家能到的区域(±3.5/±4.5)比子弹回收区(±10/±20)小,但这是巧合不是设计。
+
+### 12.2 职责分工
+
+- **`BoundsService`(场景单例,`MonoBehaviour`)** ——
+  - 暴露两块独立的世界坐标 `Rect`:
+    - `PlayableArea`:玩家活动区(矩形 clamp)。
+    - `CullingArea`:子弹回收区(飞出即 `BulletPool.Return`)。
+  - 提供便捷只读接口:`PlayableMin/Max`、`CullingMin/Max`、`ContainsPlayable(p)`、`ContainsCulling(p)`、`ClampToPlayable(p)`。
+  - `OnDrawGizmos` 画两块彩色 WireCube(Green = Playable,Orange = Culling),无需选中也能看到。
+  - 默认值(`PlayableArea=(-3.5,-4.5,7,9)` / `CullingArea=(-10,-10,20,20)`)与旧值 100% 等价。
+
+- **`BoundsServiceHandles`(Editor-only,`[InitializeOnLoad]`)** ——
+  - 订阅 `SceneView.duringSceneGui`(与 `LevelSceneGizmos` 同套路)。
+  - 在 Scene 视图里画 4 边的 `PositionHandle`(顶/底/左/右各一个),拖动改 `Rect`。
+  - 拖动期间 `Undo.RecordObject` + `EditorGUI.BeginChangeCheck`,松开自动 MarkDirty。
+
+- **`BoundsServiceSceneBootstrap`(Editor-only,`[InitializeOnLoad]`)** ——
+  - 订阅 `EditorSceneManager.sceneOpened`,场景打开时检查是否有 `BoundsService` 组件,**没有则自动挂一个到根 GameObject(`BoundsService`)**。
+  - **不强制场景手改** —— 美术什么都不用做,打开 SampleScene 即可看到 BoundsService 组件;菜单 `STG → Stage → Ensure BoundsService in Active Scene` 可手动触发。
+
+### 12.3 协作边界
+
+- **`PlayerMovement`** ——
+  - 删除 4 个 float 字段(MinX/MaxX/MinY/MaxY)。
+  - `Update` 里优先读 `BoundsService.Instance.ClampToPlayable(...)`;**无单例时 fallback 到内置 `±3.5/±4.5`(与旧值一致)**。
+  - 加 `using ShinySTG.Stage;` —— 是 PlayerMovement 对 BoundsService 唯一的耦合点。
+
+- **`Bullet`** ——
+  - `Update` 里把硬编码的 `Mathf.Abs(x)>10 || Abs(y)>20` 改成读 `BoundsService.Instance.ContainsCulling(pos)`。
+  - **无单例时 fallback 到原硬编码值**(保留历史行为)。
+  - 不 `using ShinySTG.Stage;`,用全限定名 `ShinySTG.Stage.BoundsService.Instance`(对齐 `CollisionService.cs:5-7` 的 namespace-同名陷阱规避策略)。
+
+- **其他系统** ——
+  - 任何未来需要"边界语义"的系统(例如 Boss 演出区、擦弹半径、关卡编辑器选区)都通过 `BoundsService.Instance` 读,不再各自硬编码。
+  - 本组件不读 / 不写 Player / Bullet 的位置字段,只暴露 Rect + 便捷函数,**纯读侧基础设施**。
+
+### 12.4 与既有层的关系
+
+| 既有层 | 怎么用 BoundsService | 是否修改它 |
+|---|---|---|
+| `PlayerMovement` | `ClampToPlayable(p)` 替代旧的 4 float | ✅ 改动但只删字段 + 加 using,行为 fallback 兼容 |
+| `Bullet` | `ContainsCulling(p)` 替代硬编码 | ✅ 改动但只改 1 段判断 + 加全限定名引用,fallback 兼容 |
+| `HitboxComponent` | 0 改动(Gizmo 与本组件无关) | ❌ 完全不动 |
+| `CollisionService` / 网格 | 0 改动(本组件不参与碰撞查询) | ❌ 完全不动 |
+| 关卡编辑器 | 0 改动 | ❌ 完全不动 |
+
+### 12.5 扩展指南
+
+- **新加边界类型**(例如 Boss 战区域、擦弹检测区):在 BoundsService 加 `Rect` 字段 + 对应的 `ContainsXxx` / `ClampToXxx` 接口 + 在 `OnDrawGizmos` / `DrawResizableRect` 各加一行;无需新建组件(集中管理是设计意图)。
+- **改默认值**:直接改 `BoundsService.cs` 字段初始值;旧 `.unity` 场景不会受影响(新挂载的 BoundsService 用新默认值)。
+- **完全关闭可视化**:BoundsService 组件 Inspector 的 `AlwaysDraw = false`,或在玩家性能吃紧时通过 `BoundsService.Enabled = false` 整体禁用。
+- **自定义美术边界**(例如剧情演出时的"屏幕震动墙"):在对应关卡的 BoundsService 上手动调 Rect 即可,代码 0 改动。
+
+详见 `Assets/Scripts/Stage/BoundsService.cs` + `Assets/Scripts/Stage/Editor/BoundsServiceHandles.cs` + `Assets/Scripts/Stage/Editor/BoundsServiceSceneBootstrap.cs`。
 
 详见 `Assets/Scripts/Audio/README.md`(配置说明) + [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md#音频集成自动切歌--时间点-sfx)(关卡编辑器使用)。

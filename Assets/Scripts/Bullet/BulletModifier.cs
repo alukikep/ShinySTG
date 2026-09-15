@@ -35,6 +35,17 @@ public abstract class BulletModifier
              "典型用例:0.5s 后才激活追踪,前 0.5s 直线飞行的'假动作';或 1s 后才生成分裂弹(配合 OneShot)。")]
     [Min(0f)] public float Delay = 0f;
 
+    [Tooltip("Modifier 启动触发器 —— 决定何时进入时间窗口。\n" +
+             "默认 DelayStartTrigger(Delay=0,与历史 100% 等价)。\n" +
+             "其他触发器(下拉选):\n" +
+             "  - Trigger/Delay          : 等 Delay 秒(等价旧 Delay 字段)\n" +
+             "  - Trigger/On Signal      : 订阅 BulletSignalBus 信号,收到即激活(可配 MaxWait / 距离判定)\n" +
+             "  - Trigger/Delay Or Signal: Delay 与信号任一先到即激活\n" +
+             "★ null = 用 DelayStartTrigger{Delay=this.Delay} 兜底,旧 .asset 无脑兼容。\n" +
+             "详见 Assets/Scripts/Bullet/ModifierStartTrigger.cs + ARCHITECTURE.md §2.8。")]
+    [SerializeReference, SR]
+    public ModifierStartTrigger StartTrigger;
+
     [Tooltip("生效后持续多少秒。<b>&lt;=0 表示一直生效</b>(默认,与历史行为一致)。\n" +
              "典型用例:追踪 2 秒后切直线(燃料耗尽)、闪烁 1.5s 后熄灭、OneShot 触发后立刻结束。")]
     public float Duration = 0f;
@@ -52,14 +63,33 @@ public abstract class BulletModifier
     // per-instance 计时器(每颗子弹 Clone 时独立)
     // ★ 故意不复用 b.Lifetime:某些 modifier 会修改 b.Lifetime(ARCHITECTURE §2.5),
     //   会造成"自我修改自己计时器"的鸡生蛋问题。
-    [NonSerialized] float _elapsed;
-    [NonSerialized] bool  _isActive;
+    //
+    // ★ 双时钟设计(自 vX 修复 Duration 语义后):
+    //   - _elapsed          时钟 A:子弹出生至今。供 StartTrigger.ShouldActivate 用,始终累加。
+    //   - _windowElapsed    时钟 B:窗口内累计时间。只在 _isActive=true 时累加,直接对接 Duration。
+    //   - _windowStarted    ★ 粘性位:窗口是否「已触发过」。
+    //                      用于:
+    //                      1) OneShot 触发后由 _windowExhausted 锁死(见下),防止后续 frame 再触发 OnWindowEnter;
+    //                      2) 信号型 trigger 即使信号持续到,也不会让 _windowElapsed 重置;
+    //                      3) ResetWindow 时清零,让子弹回池复用时 OneShot 能再次触发。
+    //   - _windowExhausted  ★ OneShot 专用锁死位:触发过一次 OnWindowEnter 后置 true,
+    //                      后续 _windowStarted=true 但 nowActive=false,不再触发任何 enter/exit 钩子。
+    [NonSerialized] float _elapsed;          // 时钟 A:出生至今
+    [NonSerialized] float _windowElapsed;    // 时钟 B:窗口内累计(对接 Duration)
+    [NonSerialized] bool  _isActive;         // 当前是否在窗口内
+    [NonSerialized] bool  _windowStarted;    // ★ 窗口是否已触发过(粘性位)
+    [NonSerialized] bool  _windowExhausted;  // ★ OneShot 已触发过 → 彻底结束,不再触发任何 enter/exit
 
     /// <summary>当前是否在时间窗口内。只读,供子类 / 外部查询。</summary>
     public bool IsActive => _isActive;
 
-    /// <summary>已累计的窗口时间(秒)。可用于"窗口内已运行多久"等内部判断。</summary>
-    public float ElapsedInWindow => Mathf.Max(0f, _elapsed - Delay);
+    /// <summary>
+    /// 窗口内累计时间(秒)。从窗口首次激活那一刻起算,Duration 内的每一帧累加。
+    /// ★ 与 Duration 直接对接:ElapsedInWindow >= Duration 时窗口到期退出。
+    /// ★ 与原"出生后多久"的旧实现不同 —— 旧实现是 _elapsed - Delay,语义混乱;
+    ///   新实现保证「Duration=进入窗口后持续 N 秒」语义在所有 trigger 下都成立。
+    /// </summary>
+    public float ElapsedInWindow => _windowElapsed;
 
     /// <summary>
     /// 子弹生成时由 Bullet.Init 调用,重置计时器与激活状态。
@@ -67,34 +97,115 @@ public abstract class BulletModifier
     /// </summary>
     public void ResetWindow()
     {
-        _elapsed = 0f;
-        _isActive = false;
+        // ★ 双时钟 + 两个粘性位一并清零 —— 必须四件套一起,否则:
+        //   - 只清 _elapsed 不清 _windowStarted → 窗口永远激活(粘性位锁死);
+        //   - 只清 _elapsed 不清 _windowElapsed → 复用时窗口一进就显示"快到期";
+        //   - 只清 _elapsed 不清 _windowExhausted → OneShot 永远哑火。
+        _elapsed          = 0f;
+        _windowElapsed    = 0f;
+        _isActive         = false;
+        _windowStarted    = false;
+        _windowExhausted  = false;
+
+        // ★ 兼容兜底:StartTrigger == null → 新建 DelayStartTrigger 与旧 Delay 字段行为一致
+        //   老 .asset 反序列化后 StartTrigger 字段是 null,必须在这里兜底,否则 Modify 第一帧 NRE。
+        //   让「老 .asset 字段值 Delay=X」在 ResetWindow 调用时同步进新建的 StartTrigger.Delay,
+        //   保证行为 100% 等价。
+        //
+        // ★ ★ ★ 关键修复(自 vX 起)★★★
+        //   旧实现还会在 StartTrigger 非 null 时,把「基类 Delay 字段」强制同步进 trigger.Delay 字段。
+        //   这是个隐藏 bug —— 策划在 Inspector 里给 DelayOrSignalStartTrigger.Delay 设了 2.0,
+        //   但基类 Delay 默认是 0,ResetWindow 后 trigger.Delay 被偷偷改成 0,trigger 永远立即激活。
+        //   现在:trigger 自己配的 Delay 字段是主,基类 Delay 仅在「StartTrigger=null」兜底分支
+        //         生效(把基类 Delay 拷过去给新建的 DelayStartTrigger)。StartTrigger 非 null 时
+        //         完全不动 trigger 内部字段 —— 让 trigger 自己管自己的 Delay。
+        if (StartTrigger == null)
+        {
+            StartTrigger = new DelayStartTrigger { Delay = this.Delay };
+            return;
+        }
+        // ★ 不再做「基类 Delay → trigger.Delay」同步 —— trigger 自己管自己的 Delay 字段。
     }
 
     /// <summary>
     /// 每帧由 Bullet.Update 调用。
     /// 基类统一管理时间窗口 + 边缘触发钩子,子类 override 的 ModifyCore() 只关心"在窗口内的行为"。
     /// ★ 此方法 sealed(不可 override),子类不可 override —— 强制所有 modifier 走基类窗口管理,避免漏改。
+    ///
+    /// <para>★ 时间窗口模型(自 vX 修复后):</para>
+    /// <para>
+    /// 「<b>何时进入窗口</b>」(由 StartTrigger 决定)和「<b>进入后持续多久</b>」(由 Duration 决定)
+    /// 是两个独立的维度 —— 它们不能被压扁成「出生后 [Delay, Delay+Duration)」这一个区间。
+    /// 否则信号型 trigger 在 Duration 预算外到达时永远进不了窗口,策划意图"信号到 → 持续 N 秒"失效。
+    /// </para>
+    /// <para>
+    /// 正确模型:StartTrigger 是「一次性粘性触发」—— 首次返回 true 时 _windowStarted=true,
+    /// 之后 _windowElapsed 从 0 累加,直到 _windowElapsed >= Duration 才退出。
+    /// 信号型 trigger 即使后续信号继续到达也不会重置 _windowElapsed。
+    /// </para>
     /// </summary>
     public void Modify(Bullet bullet, float deltaTime)
     {
-        _elapsed += deltaTime;
+        _elapsed += deltaTime;     // 时钟 A:出生至今,一直累加(供 trigger.ShouldActivate 用)
 
-        // 1. 计算窗口状态(Duration<=0 视为永久生效)
-        bool wasActive = _isActive;
-        bool nowActive = _elapsed >= Delay &&
-                         (Duration <= 0f || _elapsed < Delay + Duration);
+        // 1. 启动触发器判断(默认 DelayStartTrigger,与旧 Delay 字段行为一致)
+        //    ResetWindow 路径已经兜底;这里再兜一次,防外部直接 new BulletModifier().Modify 的边缘场景。
+        if (StartTrigger == null)
+        {
+            StartTrigger = new DelayStartTrigger { Delay = this.Delay };
+        }
 
-        // 2. 边缘触发钩子
+        // 2. 计算窗口状态(Duration<=0 视为永久生效)
+        bool wasActive     = _isActive;
+        bool triggerReady  = StartTrigger.ShouldActivate(bullet, _elapsed);
+        // ★ 核心修复:Duration 是「窗口内持续时长」,从 _windowElapsed 读,不再是「出生后总预算」。
+        bool durationExpired = Duration > 0f && _windowElapsed >= Duration;
+        bool nowActive;
+
+        if (!_windowStarted)
+        {
+            // 阶段 1:窗口从未触发过 —— triggerReady + Duration 未超期 → 触发并打粘性位
+            //   (此时 _windowElapsed=0,只要 Duration>0 就永远不会超期,保证「信号到即激活」对所有 Duration 生效)
+            //   Duration<=0 的永久型 modifier:SignalReady → 永久激活。
+            nowActive = triggerReady && !durationExpired;
+            if (nowActive)
+            {
+                _windowStarted = true;
+                _windowElapsed = 0f;       // 进入窗口瞬间重置窗口时钟,Duration 从此刻起算
+            }
+        }
+        else if (_windowExhausted)
+        {
+            // ★ 阶段 2-OneShot:OneShot 已触发过 → 彻底结束,不再激活、不再触发任何 enter/exit。
+            //   旧实现只把 _windowStarted=true(粘性位),但下一帧 phase 2 仍走「!durationExpired」
+            //   → nowActive=true → edge detected again → OnWindowEnter 反复触发 20 次。
+            //   _windowExhausted=true 后本分支直接锁死,后续所有帧 nowActive=false。
+            nowActive = false;
+        }
+        else
+        {
+            // 阶段 2-持续:窗口已触发过 —— 一直 active 直到 Duration 到期(信号型 trigger 后续
+            //   重复激活也不会重置 _windowElapsed)
+            nowActive = !durationExpired;
+        }
+
+        // 3. 窗口内累加(必须在边缘判定之后,否则首次触发当帧 _windowElapsed 会被多算一帧)
+        //   ★ _windowExhausted 时不累加(已经退出窗口)。
+        if (nowActive) _windowElapsed += deltaTime;
+
+        // 4. 边缘触发钩子
         if (nowActive && !wasActive)
         {
             _isActive = true;
             OnWindowEnter(bullet);
 
             // OneShot:触发一次后立刻退出窗口(子类不会再被 ModifyCore)
+            // ★ _windowExhausted=true 锁死,下一帧 _windowStarted=true 但 phase 2-OneShot 分支
+            //   强制 nowActive=false → 不会再触发 OnWindowEnter 也不会再触发 OnWindowExit。
             if (OneShot)
             {
                 _isActive = false;
+                _windowExhausted = true;
                 OnWindowExit(bullet);
                 return;
             }
@@ -105,7 +216,7 @@ public abstract class BulletModifier
             OnWindowExit(bullet);
         }
 
-        // 3. 调度策略
+        // 5. 调度策略
         if (!nowActive && AutoSkipOutsideWindow) return;
         ModifyCore(bullet, deltaTime);
     }
@@ -160,12 +271,44 @@ public abstract class BulletModifier
     public abstract void ModifyCore(Bullet bullet, float deltaTime);
 
     /// <summary>
+    /// 越界反弹钩子。Bullet.Update 在越界回收判定之前调用每个 modifier 的本方法。
+    /// 子类(典型如 <see cref="BounceBulletModifier"/>)override 这里实现"碰边翻转方向 + Clamp 位置 + 扣次数"。
+    ///
+    /// <para>返回值语义:</para>
+    /// <list type="bullet">
+    ///   <item><c>true</c> = 本 modifier 已处理本次越界(包括:翻转 SteerAngle、按需改 Speed、
+    ///         Clamp 位置写入 <paramref name="bullet"/>.transform.position、扣内部计数)。
+    ///         Bullet.Update 收到 true 就跳过本次越界回收,继续走下一帧。</item>
+    ///   <item><c>false</c> = 本 modifier 不处理本次越界。Bullet.Update 走原越界回收逻辑(回收子弹)。</item>
+    /// </list>
+    ///
+    /// <para>★ 设计要点:</para>
+    /// <list type="bullet">
+    ///   <item>modifier 自行决定翻转哪条边 / 翻哪个分量 / 扣几次 —— Bullet 只调一次位置 Clamp,
+    ///         不抢位置写入权。</item>
+    ///   <item>基类默认返回 false —— 99% 的现有 modifier(加速 / 转向 / 追踪 / 染色 / 分裂)无需关心反弹。</item>
+    ///   <item>BounceBulletModifier 会遵守 <see cref="IsActive"/> —— 窗口外不反弹(可叠加在时间窗口外禁止反弹)。</item>
+    ///   <item>多个 modifier 都 override 并都返回 true 时,Bullet 只认第一个,后续跳过(防互相覆盖 SteerAngle)。</item>
+    /// </list>
+    /// </summary>
+    /// <param name="bullet">当前子弹(供读 SteerAngle / Speed / 写 transform.position)。</param>
+    /// <returns>true = 已处理越界,Bullet 跳过本次回收;false = 不处理,Bullet 走原越界回收。</returns>
+    public virtual bool TryBounceOnOutOfBounds(Bullet bullet) => false;
+
+    /// <summary>
     /// 深拷贝。子类若持有引用类型字段(List/数组/自定义类),必须 override 本方法手动深拷。
     /// 默认实现 MemberwiseClone 对值类型字段足够 —— STG modifier 通常只有 float/int/Vector2,
     /// 性能开销约 10~30ns/次,STG 高弹量场景(< 1000 颗/秒)完全可忽略。
     /// ★ 计时器字段标了 [NonSerialized],Clone 出来自然为 0/false,符合预期(每颗子弹重新计时)。
     /// </summary>
-    public virtual BulletModifier Clone() => (BulletModifier)MemberwiseClone();
+    public virtual BulletModifier Clone()
+    {
+        var copy = (BulletModifier)MemberwiseClone();
+        // ★ 深拷 StartTrigger:订阅型 trigger(订阅了 BulletSignalBus)的 handler 引用
+        //   必须重新 Clone,否则多颗子弹共享同一 trigger 实例,会重复订阅 / 状态污染。
+        if (StartTrigger != null) copy.StartTrigger = StartTrigger.Clone();
+        return copy;
+    }
 }
 
 /// 示例：加速

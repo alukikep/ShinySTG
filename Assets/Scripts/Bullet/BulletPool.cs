@@ -117,18 +117,30 @@ public class BulletPool : MonoBehaviour
             if (mod == null) continue;
             // Clone 出独立实例(默认 MemberwiseClone,纯值类型字段无开销),
             // 避免多颗子弹共享同一 modifier 模板导致状态污染。
+            // ★ Clone 内部已深拷 StartTrigger(见 BulletModifier.Clone 注释),
+            //   所以每颗子弹的 StartTrigger 都是独立实例,订阅不会互相覆盖。
             bullet.AddModifier(mod.Clone());
         }
         // ★ 挂在 _modifiers 之后才调 ResetWindow(此前 _modifiers 已由 Bullet.Init 的 ClearModifiers 清空过)。
         // 这里没暴露 ResetAllModifierWindows,因为它需要遍历 _modifiers(私有列表),
         // 由 Bullet 自己暴露一个 public ResetAllModifierWindows() 调用更干净。
         bullet.ResetAllModifierWindows();
+        // ★ 订阅型 StartTrigger(订阅 BulletSignalBus)在这里激活订阅。
+        //   必须在 ResetWindow 之后调 —— OnAttach 内部 reset 自己的 per-instance 状态
+        //   (如 _signalReceived=false),然后 Subscribe 进 BulletSignalBus。
+        bullet.AttachSignalTriggers();
     }
 
     /// 回收一颗。
     public void Return(Bullet bullet)
     {
         if (bullet == null) return;
+        // ★ 先摘 BulletSignalBus 订阅(必须在 ClearModifiers 之前,因为 DetachSignalTriggers
+        //   需要遍历 _modifiers 列表)。顺序:
+        //     1) DetachSignalTriggers → 摘订阅(订阅型 StartTrigger.OnDetach 调 Unsubscribe)
+        //     2) ClearModifiers       → 清空 _modifiers 列表
+        //   防「弹已回池但 StartTrigger 还在 _subs 字典里挂着 handler」导致下次 Emit 时 NRE。
+        bullet.DetachSignalTriggers();
         bullet.ClearModifiers();
         bullet.gameObject.SetActive(false);
         _active.Remove(bullet);
@@ -194,9 +206,54 @@ public class BulletPool : MonoBehaviour
             }
         }
 
+        // ─── 本批 FireExtension 累加计数 ───
+        // 遍历 pattern.FireExtensions 数组,对每个非 null 元素在 _fireCounts 字典里 ++,
+        // 得到的 fireCount(从 1 起)会在 pattern.Fire 内部被 Resolver 入口调 OnFireGroupTriggered。
+        //
+        // ★ per-instance 隔离 ★
+        //   key = FireExtensions 数组里的具体元素引用(不是 SO 资产本身)。
+        //   - 同一份 FirePattern SO 被敌人 A / B 共用 → 它们 FireExtensions 数组里的元素是同一引用,
+        //     字典累加会跨敌人 —— 这是项目想要的行为("Boss 散弹母弹开火 60 次旋转 300°" 跨多次开火累加)。
+        //   - 用户复制一份 FirePattern 资产(Ctrl+D)→ 新资产的 FireExtensions 数组是新元素,字典独立累加。
+        //   - 用户手动给同一资产在多处挂不同 FireExtension 子类实例 → 字典按 ref 区分,各自累加。
+        //
+        // ★ 字典清理 ★
+        //   累加计数随 pattern 资产整个生命周期保留(场景切换时 BulletPool.OnDestroy 清 Instance,
+        //   字典随之释放,无泄漏风险)。若未来要支持"关卡重置后累加清零",加一个 ResetFireCounts() 公共方法。
+        //
+        // ★ 空数组 / null → 不累加,行为 100% 等价历史。
+        if (pattern.FireExtensions != null)
+        {
+            for (int i = 0; i < pattern.FireExtensions.Length; i++)
+            {
+                var ext = pattern.FireExtensions[i];
+                if (ext == null) continue;
+                _fireCounts.TryGetValue(ext, out int prev);
+                _fireCounts[ext] = prev + 1;
+            }
+        }
+
         pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers);
         // Boss 系统钩子:每发一弹自动累计,供 ShotsFiredSignal 读取。
         // 没有挂 BossShotCounter 时(BossShotCounter.Instance == null)直接跳过,不影响普通敌人。
         ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(pattern);
     }
+
+    /// <summary>
+    /// 返回 pattern.FireExtensions 数组里每个非 null 元素当前的 fireCount(1 起)。
+    /// 由 FirePattern.Fire 内部调 Resolver 时传入。
+    ///
+    /// 返回 Dictionary(FireExtension → int),让 pattern 子类(Ring/Arc/Line/Composite)按自己的
+    /// 数组顺序查表;环形 8 颗子弹共用同一组 fireCount(本批开火序号)。
+    ///
+    /// 不存在 key → 不返回该元素(Resolver 走默认值 0,不调 OnFireGroupTriggered)。
+    /// </summary>
+    public System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> GetFireExtensionFireCounts()
+        => _fireCounts;
+
+    /// <summary>
+    /// per-FireExtension 累加计数(由 FireGroup 入口维护,key = pattern.FireExtensions 数组里的具体元素 ref)。
+    /// 详见 FireGroup 内注释。
+    /// </summary>
+    readonly Dictionary<FireExtension, int> _fireCounts = new();
 }

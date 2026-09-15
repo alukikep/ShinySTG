@@ -29,7 +29,17 @@ namespace ShinySTG.EnemyAI
             _childFinished = new bool[n];
             for (int i = 0; i < n; i++)
             {
-                if (Children[i] != null) Children[i].OnEnter(enemy);
+                var c = Children[i];
+                if (c != null)
+                {
+                    // ★ vX 起 Duration 多态:Parallel 自己负责子 child 的 Duration 抽样
+                    //   (外层 BehaviorFlowRuntime.AdvanceTo 只抽样 ParallelAction 自身,
+                    //    子 child 的 CurrentDuration 仍然需要容器主动调用)。
+                    //   - Fixed:等价旧 float Duration(老 .asset 通过 _legacyDuration 兜底)
+                    //   - Random Range:每次 Parallel 进入时各 child 独立抽样 → 节奏抖动
+                    c.SetCurrentDuration(c.ResolveDuration());
+                    c.OnEnter(enemy);
+                }
             }
         }
 
@@ -44,7 +54,8 @@ namespace ShinySTG.EnemyAI
                 _childElapsed[i] += dt;
 
                 // 该 child 自然到期 → 走 OnExit,后续帧不再 tick
-                if (_childElapsed[i] >= Children[i].Duration)
+                // ★ vX 起:读 CurrentDuration(已由 OnEnter 时抽样缓存),不再是基类 float Duration 字段
+                if (_childElapsed[i] >= Children[i].CurrentDuration)
                 {
                     Children[i].OnExit(enemy);
                     _childFinished[i] = true;

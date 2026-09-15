@@ -83,3 +83,49 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($False)
   print("Chinese visible:", "中文" in content)  # 字符级验证
   ```
 - **不要**:看到 PowerShell 终端显示乱码就以为文件错了 —— 用 Python UTF-8 读 + 字节双重校验
+
+---
+
+## 5. 工具链效率经验(BulletModifier 信号方案实施后总结)
+
+### 5.1 字符预算:任何 `editor` 调用 > 5000 字符直接拆
+
+- **原因**:实测 `editor` 工具 `new_text` 上限约 6000 字符,撞到就整次失败回退,白白浪费一次工具调用 + 一个回合。
+- **规则**:
+  - **< 3000 字符**:`editor` 一次提交 ok
+  - **3000 ~ 5000 字符**:谨慎,可能撞墙,优先拆
+  - **> 5000 字符**:**先拆再提交**,不要试一次"看看会不会过"
+- **拆分策略**:写骨架 + `insert_line` 追加;或用 Python 整文件切片回写(§4.2)
+
+### 5.2 锚点匹配失败 1 次,立刻换 Python `replace`,不要再用 `editor`
+
+- **原因**:本机 PowerShell 5.1 中文 Windows 终端默认 GBK,即使源文件是 UTF-8 中文,
+  `read_files` / `cat` 显示成乱码,导致 `editor` 的 `old_text` 永远匹配不上。
+  这是**字符级不匹配**,不是 anchor 选错。
+- **判断标准**:
+  - 看到 PowerShell 终端显示 `涓存椂` / `鎿嶄綔` 这类字形 → 文件其实是 UTF-8 中文对的
+  - 看到 `read_files` 输出有 `�` 或方块字 → 同上
+  - **不要**反复微调 `old_text`,**直接**走 Python `Path.read_text(encoding='utf-8').replace(...)` 一把梭
+- **复现路径**:`BulletSignalBus.cs` 创建时 `new_text=7333` 撞墙一次 → `new_text=6000+` 又撞 → 才想起拆
+  **【应该第一次撞就拆】**
+
+### 5.3 编译验证目标:「我新写的代码」+「关键 API 互相调用」两层就够
+
+- **背景**:没 UnityEngine.dll 时想做 syntax check,要写一堆 stub(SpriteRenderer / Time.deltaTime /
+  Shader.Find / Mathf.Abs / gameObject ...),越补越没完。Unity 项目真实编译时这些类型齐全。
+- **正确定位**:stub 检查的目标是 **「我自己新写的代码块里没有语法/语义错误」**,**不是「编译出能跑的 dll」**。
+- **两层验证足够**:
+  1. **语法层**:Roslyn 编译,只剩 stub 缺失类报错(类型名出现在错误信息里)→ 我新代码 0 错
+  2. **API 互调用层**:Python `assert 'X' in file` 检查我新代码用的关键 API 在另一个新文件里的签名存在
+- **不要**:为了 1 个 stub 错误去补 30 个 stub,得不偿失。
+
+### 5.4 单回合只做一件独立决策
+
+- **反例**(本次踩坑):一个回合里同时改 3 个文件 + 创建 3 个新文件 + 写 stub + 跑 dotnet build + 排错。
+  任何一个步骤失败都不知道是哪条路径的锅,反复横跳浪费回合。
+- **正例**:
+  - 回合 1:创建 `BulletSignalBus.cs` → 单独验证(BOM + 中文关键字)
+  - 回合 2:创建 `ModifierStartTrigger.cs` → 单独验证
+  - 回合 3:改 `BulletModifier.cs` → 单独跑 patch 脚本验证
+  - ...每个文件一个回合,失败立刻定位。
+- **例外**:创建 3 个无依赖的独立新文件可以合并(都是写入 + 验证),但**改动现有文件 + 新建 + 编译**这种异质步骤必须拆。

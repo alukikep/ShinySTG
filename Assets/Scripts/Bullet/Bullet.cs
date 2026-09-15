@@ -119,6 +119,39 @@ public class Bullet : MonoBehaviour
     public void ClearModifiers() => _modifiers.Clear();
 
     /// <summary>
+    /// 把所有 modifier 的 <see cref="ModifierStartTrigger"/> 调到 OnAttach 阶段。
+    /// 由 <see cref="BulletPool.AttachModifiers"/> 在挂完 modifier 后统一调一次。
+    ///
+    /// ★ 为什么分开调而非 AttachModifiers 内部直接调:
+    ///   集中入口便于:1) 调试时插桩;2) 未来若需要「先 Attach 再 Init」之类顺序调整时只改一个点;
+    ///   3) 子弹回收(BulletPool.Return)走 Detach 路径,这条路径也只调 DetachSignalTriggers,
+    ///      两边解耦。
+    /// </summary>
+    public void AttachSignalTriggers()
+    {
+        for (int i = 0; i < _modifiers.Count; i++)
+        {
+            var st = _modifiers[i].StartTrigger;
+            if (st != null) st.OnAttach(this);
+        }
+    }
+
+    /// <summary>
+    /// 把所有 modifier 的 <see cref="ModifierStartTrigger"/> 调到 OnDetach 阶段。
+    /// 由 <see cref="BulletPool.Return"/>(路径 1)与 <c>OnDestroy</c>(路径 2,兜底)调一次。
+    /// ★ 订阅型 trigger 在 OnDetach 里 BulletSignalBus.Unsubscribe,杜绝内存泄漏。
+    /// ★ 重复调用安全 —— 订阅型 trigger 内部有 _subscribedThisAttach 标志位防重复。
+    /// </summary>
+    public void DetachSignalTriggers()
+    {
+        for (int i = 0; i < _modifiers.Count; i++)
+        {
+            var st = _modifiers[i].StartTrigger;
+            if (st != null) st.OnDetach(this);
+        }
+    }
+
+    /// <summary>
     /// 重置所有 modifier 的时间窗口计时器(由 BulletPool.AttachModifiers 调用)。
     /// 配合基类的 Delay / Duration / OneShot:
     ///   - 每颗子弹从池里取出时,_elapsed=0,IsActive=false
@@ -131,6 +164,18 @@ public class Bullet : MonoBehaviour
     public void ResetAllModifierWindows()
     {
         for (int i = 0; i < _modifiers.Count; i++) _modifiers[i].ResetWindow();
+    }
+
+    /// <summary>
+    /// 兜底:子弹被 Destroy(场景切换 / 主动销毁 / 任何不走 BulletPool.Return 的路径)时,
+    /// 也要把 StartTrigger 订阅摘掉,否则订阅了 BulletSignalBus 的 trigger 会一直挂在 _subs 字典里。
+    ///
+    /// ★ 正常路径由 <see cref="BulletPool.Return"/> 调 <see cref="DetachSignalTriggers"/>;
+    ///   本方法是「最后一道防线」,不能依赖 —— 必须独立可用。
+    /// </summary>
+    void OnDestroy()
+    {
+        DetachSignalTriggers();
     }
 
     /// <summary>
@@ -239,12 +284,41 @@ public class Bullet : MonoBehaviour
         //    与 Init() 同源:贴图尖头朝 +Y,所以需要 -90° 的视觉补偿偏移。
         transform.rotation = Quaternion.Euler(0, 0, SteerAngle * Mathf.Rad2Deg - 90f);
 
-        // 5. 简单越界回收（先实现，后续再优化）
-        if (Mathf.Abs(transform.position.x) > 10f ||
-            Mathf.Abs(transform.position.y) > 20f)
+        // 5. 越界反弹 / 越界回收 —— 优先读 BoundsService.Instance.CullingArea;无则兜底硬编码 ±10/±20(历史行为)。
+        //    反弹 modifier(如 BounceBulletModifier)若挂在 _modifiers 上,会在此机会把子弹方向翻转 + 位置 Clamp 回区内;
+        //    反弹成功 → 本帧不回收,继续下一帧。反弹失败(无 modifier / modifier 不处理)→ 走原越界回收。
+        var bs = ShinySTG.Stage.BoundsService.Instance;
+        Vector3 bp = transform.position;
+        bool outOfBounds = bs != null
+            ? !bs.ContainsCulling((Vector2)bp)
+            : (Mathf.Abs(bp.x) > 10f || Mathf.Abs(bp.y) > 20f);
+        if (outOfBounds)
         {
-            BulletPool.Instance.Return(this);
+            if (!TryBounceModifiers())
+            {
+                BulletPool.Instance.Return(this);
+            }
         }
+    }
+
+    /// <summary>
+    /// 遍历当前 _modifiers,逐个问它们「这个越界要不要反弹」。第一个返回 true 的 modifier 胜出(已翻转方向 + Clamp 位置 + 扣次数),
+    /// 后续 modifier 跳过 —— 防止多个反弹 modifier 互相覆盖 SteerAngle。
+    ///
+    /// ★ 返回 true = 已处理越界(Bullet 不要走回收);false = 没人处理(Bullet 走原回收)。
+    /// ★ 性能:99% 的弹没挂 BounceBulletModifier,这里只在「越界时才被调用」,且遇到 true 就 break,
+    ///   高弹量场景(< 1000 颗/秒)开销可忽略。
+    /// </summary>
+    bool TryBounceModifiers()
+    {
+        for (int i = 0; i < _modifiers.Count; i++)
+        {
+            if (_modifiers[i].TryBounceOnOutOfBounds(this))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ═══════════════════════════════════════════════════════════

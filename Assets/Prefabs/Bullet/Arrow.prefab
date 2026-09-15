@@ -29,7 +29,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.28, y: 0.28, z: 0.28}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -130,11 +130,7 @@ MonoBehaviour:
   SourcePrefab: {fileID: 0}
   FogElapsed: 0
   FogDuration: 0
-  FogCfg:
-    Duration: 0
-    FogColor: {r: 0.7, g: 0.85, b: 1, a: 1}
-    FogStartScale: 1.4
-    Easing: 0
+  _baseLocalScale: {x: 0, y: 0, z: 0}
   Damage: 1
   Hitbox: {fileID: 8137505758224310029}
   Renderer: {fileID: 0}

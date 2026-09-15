@@ -78,6 +78,23 @@ public abstract class FireExtension
     [Obsolete("走 ProcessAngleForBullet 参与 pipeline。")]
     public virtual float ComputeAngleRadForBullet(Vector2 from, int bulletIndex, int totalCount, float rotationRad)
         => ProcessAngleForBullet(from, bulletIndex, totalCount, rotationRad, rotationRad);
+
+    /// <summary>
+    /// 本批 FireGroup 钩子:由 <see cref="BulletPool.FireGroup"/> 在每次"开火组"入口处对本数组里
+    /// 每一个 FireExtension 元素调一次(在 ProcessAngle 之前)。
+    ///
+    /// ★ 用途 ★
+    ///   让累加型 FireExtension(例:AccumulatingOffsetAngleFireExtension)能在每次开火时更新自己的
+    ///   per-FireGroup 累加状态,实现"每次发射后累加一个偏移角"。
+    ///
+    /// ★ per-instance 隔离 ★
+    ///   <paramref name="fireCount"/> 由 BulletPool 按 (pattern 资产 ref + FireExtensions 数组里
+    ///   的具体元素 ref) 维护,确保同一份 FirePattern SO 资产被多敌人共用时累加计数互不污染。
+    ///   第 1 次调用 fireCount = 1,第 2 次 = 2,以此类推。
+    ///
+    /// 默认空实现 —— 不关心"开火批次累加"的子类(覆盖型 / 透传型 / 中线+等分累加型等)无需 override。
+    /// </summary>
+    public virtual void OnFireGroupTriggered(int fireCount) { }
 }
 
 /// <summary>
