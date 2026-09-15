@@ -15,6 +15,21 @@
 3. `BulletModifier` 多态(加速 / 转向 / 追踪 / 染色 ...)+ 时间窗口(Delay / Duration / OneShot)
 4. 染色 modifier 走 MaterialPropertyBlock(不破坏 batching)
 
+### 激光系统(东方风格直线 / 曲线,PR1)
+1. `LaserEntity` 主控(五段式状态机 `Warning → Expanding → Active → Shrinking → Dead`)+ 直线 / 曲线模式 + Velocity / AngularVelocity 运动
+2. `LaserGeometry` 纯函数数学(点到线段距离平方 `DistanceSqPointToSegment` + 曲线分段 `CheckCurvedHit` / `CheckCurvedGraze`)
+3. `LaserData` SO 资产(VisualWidth / CollisionWidth 视觉判定分离 + 四段时间 + 碰撞策略 + 贴图)
+4. `LaserPool` 对象池(对齐 BulletPool:按 Data 分桶 / 懒扩容 / SourceData 路由回池 / `FireGroup` 中心化入口)
+5. `LaserService` 中心化碰撞(独立于 CollisionService,阵营过滤 + 出界回收 + 擦弹事件)
+6. `LaserPattern` SO 基类 + `StraightLaserPattern` 内置实现(SR 多态 modifier + FireSounds 复用)
+7. `LaserRendererBase` 视觉抽象 + `SpriteStretchLaserRenderer` 默认实现(Body 拉伸 + Head + Warning 预警线)
+8. `LaserModifier` 修饰器抽象基类(PR1 最小钩子,完整 Delay/Duration 体系留 PR3)
+9. `FireLaserAction` `[SRName("Action/Fire Laser")]` 接入 BehaviorFlow,与 `FireAction` 完全对仗
+10. 视觉宽度 / 判定宽度分离(参考材料 §6,屏幕 0.8 / 实际 0.15)+ 距离平方碰撞 + 阵营透传复用 CollisionTeam
+11. 出界判定复用 `BoundsService.ContainsCulling`,无敌判定复用 `PlayerHealth.IsInvincible`
+12. 全部 12 个新文件 / ~1100 行,UTF-8 无 BOM,通过文件层 + API 互调用层两层验证
+13. PR1 修复 1 轮 + 修复 2 轮的根因 / 修复细节 / 自检清单已迁移到 [`CONTRIBUTING.md`](./CONTRIBUTING.md) §4.9(对象池复用 + transform 字段残留污染)
+
 ### 射击模式
 1. 4 个内置 FirePattern(Ring / Line / Arc / Composite)
 2. `FireExtension` 角度管道(基础方向 / 瞄准玩家 / 叠角度 / ...)
@@ -95,42 +110,13 @@
 ## 待办(勾选式)
 
 ### 子弹系统
-- [ 
-    modifier信号触发系统还有问题，duration职责非常怪异，记得排查
-]
+- [ ] modifier信号触发系统(`ModifierStartTrigger` SR 多态 + `BulletSignalBus` + `EmitSignalAction`)的 Duration 职责仍有怪异之处,记得排查
+  - 历史决策、已实现的多态字段见 [ARCHITECTURE.md](./ARCHITECTURE.md) §2.6 / §2.8
 
-### 射击模式
-- [ ]
+### 激光系统
+- [ ] PR2: 完整状态机视觉(预警线显隐 + alpha 渐变 + 头尾发光)
+- [ ] PR3: `CurvedLaserPattern` 曲线激光 + 完整 `LaserModifier` Delay/Duration 体系 + `LaserRotateModifier` 等实例
+- [ ] PR4: 多 Renderer 后端(`LineRendererLaserRenderer` / `MeshLaserRenderer`)+ 激光性能优化(独立稀疏网格)+ 关卡事件集成
+- [ ] (可选) 激光 modifier 接入 `BulletSignalBus`(`StartTrigger` SR 多态,照 BulletModifier 套路)
 
-### 敌人 AI
-- [ ]
-
-### Boss
-- [ ]
-
-### 玩家
-- [ ]
-
-### Hitbox / 碰撞
-- [ ]
-
-### 关卡系统
-- [ ]
-
-### 关卡可视化编辑器
-- [ ]
-
-### 音效系统
-- [ ]
-
-### 内容资产
-- [ ]
-
-### UI / 主菜单 / 暂停 / 计分
-- [ ]
-
-### 存档 / 排行榜 / 设置菜单
-- [ ]
-
-### 测试 / CI
-- [ ]
+> 其余子系统(射击模式 / 敌人 AI / Boss / 玩家 / Hitbox / 关卡 / 关卡编辑器 / 音效 / 内容资产 / UI / 存档 / 测试 CI)目前无明确进行中任务;新增任务时按本节模板补条目即可。

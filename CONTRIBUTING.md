@@ -47,7 +47,7 @@
 
 ## 2. 架构扩展入口
 
-> 完整决策树见 [ARCHITECTURE.md §6](./ARCHITECTURE.md#6-扩展指南)。这里只给"文件放哪"。
+> 完整决策树见 [ARCHITECTURE.md](./ARCHITECTURE.md) §3 板块间关系 + [extension-guide 板块](./docs/architecture/arch-extension-guide.md)。这里只给"文件放哪"。
 
 | 想加什么 | 在哪个文件夹新建 | 备注 |
 |---|---|---|
@@ -238,3 +238,27 @@
 - **新 `EaseMove`(子弹式「角度方向 + 时长」重构,2026-09 改)**:`t` 改为**剩余时间比例**(`1 - _elapsed/Duration`),不是距离比例 —— 概念一样(1=起步全速,0=到时停下),但来源不同:`EaseMove` 与敌人入场位置完全解耦,只关心方向与时长,资产跨场景可复用(详见 `Assets/Scripts/Enemy/AI/MoveBehaviours/EaseMove.cs` 注释)。
 - **配套字段**:`EaseMove` / `PatrolMove` 必须有 `MinSpeedFactor` 字段,InOutSine / OutBack 曲线在 `tRemain=0`(收尾)时 `Ease(...) = 0`,需要 `MinSpeedFactor > 0` 才能在收尾段继续动(默认 0,Tooltip 提示用户调)。
 - **预防**:写"距离/时间 → 速度因子"的代码时,先画一个数轴:t=1(起步)对应"全速"还是"零速"?**全速对应 t=1** 才符合"起步 = 快"的直觉。
+
+### 4.9 对象池复用 + transform 字段残留污染(激光系统 PR1 修复 2 轮踩坑)
+
+**踩坑来源**: 激光系统 PR1 修复 2 轮(`PROGRESS.md` 激光系统第 13 条)。现象 =「Body 每次发射越来越短但 Warning 不缩短」,根因 = 对象池复用同一实例 + 代码里读 `transform.localScale.x` 当基准。
+
+**陷阱模式**(必须避免):
+
+- ❌ `OnLaserInit`(任何 Init 时机)`cache = transform.localScale.x` + `OnTick` 写 `transform.localScale.x = length * cache`
+  - **为什么错**: `transform.localScale.x` 已被前一次发射的 Tick 改写(Shrinking 末期 ≈ 0),池复用时 Init 读到的是被污染的值,新一次 Active 期长度越用越短/越长/或消失
+- ❌ 同理「读 `transform.position.x` 当基准」「读 `transform.rotation.z` 当基准」**任何 transform 字段都有这个风险**
+- ❌ 任意对象的 [SerializeReference] 状态字段(如 `currentHp`、`_phase`)在池复用时也必须由 Init 显式重置,不能依赖"对象首次实例化 = 默认值"
+
+**正确做法**:
+
+- ✅ **直接用世界长度公式**: `transform.localScale.x = worldLength`(不乘任何 `BaseLocalX` 系数)
+- ✅ **用 `sprite.bounds.size`(或 renderer.bounds)** 当基准 —— **不受 transform 影响**,池复用也安全
+- ✅ **Init 必须显式重置所有 per-instance 状态**(包括 `Timer = 0`、`_hasGrazed = false`、`Velocity = Vector2.zero` 等),不能"碰运气假设残留无害"
+- ✅ **修改 transform 字段前考虑**: 「下一次这个对象被复用时,这个字段的当前值会不会污染新一次状态?」如果是,改用不依赖 transform 的基准
+
+**自检清单**(给 AI 代理 + 人类作者): 写 Init/Tick/Pool 代码时过一遍 ↓
+1. 这个对象会被池复用吗?
+2. Init 是否重置了所有 per-instance 字段?
+3. Tick 是否每帧改 transform 且 Init 读 transform?
+4. 如果都是,改用 sprite.bounds / world 长度公式 / 显式变量缓存,不读 transform 字段。

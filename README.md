@@ -4,24 +4,28 @@
 
 ## ✨ 核心特性
 
-- 🎯 **行为流资产化**:`BehaviorFlow` SO 把一段完整的敌人行为封装成可复用资产,多个敌人/boss 共享
-- 🤖 **Boss 多阶段系统**:`BossController` + `BossPhase` + `BossSignal`,Inspector 自由组合符卡/非符/残血
-- 💉 **多管血**:`BossHealth` 内置多管血机制,TakeDamage 自动切管
-- 🧩 **可组合 Action**:`Parallel` / `Sequence` 容器支持无限嵌套,边移动边射击等复杂行为直接配置
-- 🎨 **数据驱动**:`FirePattern` SO 系统(Ring/Line/Arc/Composite 等),改一个资产 = 改全场景
-- 🧭 **FireExtension 多态扩展**:`FireExtensions` 是 FirePattern 上的 **模块数组 + Pipeline 模型**——按数组顺序串成"角度管道"(Base → PlayerAim → Offset Angle → ...),拼装出"基础方向 + 瞄准玩家 + 再叠 N°"等复杂逻辑(例:`[PlayerAim, Offset Angle(+180°)]` = 瞄向玩家但飞向玩家背后的"绕后弹")。Inspector 下拉选,新增 = 加一个 .cs,无需改任何现有 FirePattern 子类
-- 🔊 **FireSound 开火音多态扩展**:`FireSounds` 是 FirePattern 上的**并行触发器数组**——与 FireExtension 的"角度管道"对仗,FireSound 是"每个模块独立播音"(可叠多 cue / 按状态发声 / 自定义行为)。走 SfxCue 体系(限流/Pipeline/Bus 全继承)。BulletPool.FireGroup 入口自动调一次,Composite 子 pattern 不重复触发。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.2 + [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) §6.5
-- 🌫️ **SpawnFog 出生雾化多态扩展**:`SpawnFog` 是 FirePattern 上的**多态下拉字段**(不是数组)——`[SerializeReference, SR]` 选 None(不使用) / Default(染色+缩放+缓动) / 未来的中雾化方法,决定子弹出生瞬间是否雾化(不动 / 不参与碰撞 / modifier 时间窗口不累计 / 视觉走 STG/BulletTintFog shader)。新增雾化方法 = 加一个 .cs + `[SRName("Spawn Fog/<名字>")]`,自动出现在所有 FirePattern 资产下拉。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §3.3
-- 🌀 **BulletModifier 多态修饰**:子弹行为(加速 / 转向 / 减速 / 追踪 / **分裂+任意 FirePattern** / **染色**)走 `[SerializeReference, SR]` 下拉配置,无需新建 prefab,纯 C# 类零 GC;**分裂用 `FireOnEnter` / `FireOnDuration` modifier**—— 让子弹在飞行途中按一份完整 FirePattern(角度管道 / 子 modifier / SpawnFog / 开火音 全生效)再开火,阵营可继承母弹;**母弹 → 分裂弹的角度偏移**走 `Extra/Angle Offset` 多态(本批次偏移 `BaseOffset` + 累加 `StepOffset`),`BaseOffset` 自身也是 SR 多态(精确值 `Base Offset/Fixed` / 区间随机 `Base Offset/Random Range`)。**所有 modifier 自动支持 `Delay` / `Duration` 时间窗口 + `OneShot` 一次性触发**(详见 ARCHITECTURE §2.6);**本批 BaseOffset 共享**:`AngleOffsetFirePatternBulletExtra.BatchSample` 字段切 `Synchronized` → 一次 FireGroup 发射的所有母弹(环形 / 扇形 / Composite 子 pattern 等)共用同一个 BaseOffset 抽样值,实现「精准扇形 / 节拍同步」。默认 `Independent` = 每颗母弹独立抽样(模糊抖动)。字段放在 AngleOffset 内部而非 FirePattern,用户只需配一层;旧 .asset 自动走此默认值,行为 100% 兼容
-- 🏀 **反弹 modifier**:子弹飞出 `BoundsService.CullingArea` 时按**经典物理反射公式** `v' = v - (1+e)·(v·n)·n` 翻转方向 + Clamp 回区内 + 扣次数(0=立刻回收 / 正数=N 次 / 负数=无限),可配可反弹边集合(`HorizontalOnly` / `VerticalOnly` / `All` / `ExceptBottom` —— **4 边独立判断**(`ExceptBottom` = 上+左+右都弹,撞地不弹))+ 恢复系数 `Restitution`(`[Range(0,2)]`,0=贴墙滑行 / 1=完全弹性速率不变 / >1=反弹加速);时间窗口自动支持(`Delay` / `Duration` / `OneShot` 全部由基类统一管理,详见 ARCHITECTURE §2.6),典型用法:Boss 弹墙弹(`Delay=0.3, Duration=2, MaxBounces=4, Restitution=0.95`)、左右擂台反弹弹(`Walls=HorizontalOnly, MaxBounces=-1`)、玩家朝下反弹弹撞地即回收(`Walls=ExceptBottom`)、一次性自杀反弹(`OneShot=true, MaxBounces=1`)。反射数学验证:水平翻转 `cos(π-α)=-cos α`、`sin(π-α)=sin α` ✓;垂直翻转 `cos(-α)=cos α`、`sin(-α)=-sin α` ✓;角上碰两边 = 完全反向 ✓。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §2.4 + §2.7 + §2.7.1
-- 📡 **BulletSignalBus 信号触发 + BehaviorFlow 发信号**:`BulletSignalBus`(静态信号总线 + 字典派发)把敌人 AI 节奏(Boss 喊话 / 阶段切换 / Parallel 容器内某 Action 完成)和子弹 modifier 激活时机打通 —— 不再只能靠 Delay 凑时间。`BulletModifier.StartTrigger` 走 `[SerializeReference, SR]` 多态下拉(对照 `BaseOffsetStrategy` 套路):`Trigger/Delay`(默认,与历史 100% 等价)/ `Trigger/On Signal`(订阅 `BulletSignalBus` 信号,收到即激活,支持 MaxWait 兜底 + 距离判定;★ vX 起 Duration 与 trigger 激活时机解耦(信号到 → 立即激活 → 持续 Duration 秒))/ `Trigger/Delay Or Signal`(二选一)。`BehaviorFlow` 新增 `Action/Emit Signal`(EmitSignalAction),在 AI 时间轴上某个点发具名信号,把「策划自由命名的事件」对位到 modifier 激活。典型用法:Boss 蓄力 Action.OnEnter → 触发 `"boss_charge_finished"` → 全场分裂 modifier 立即开火;残血阶段切换 → 触发 `"boss_enrage"` → 全场追踪弹切直线 + 染色红。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §2.8
-- ⏱️ **Action Duration 多态拓展**:每条 `EnemyAction` 的持续时长从基类写死 `float Duration` 字段抽成 `[SerializeReference, SR]` 多态下拉 `DurationConfig`(对照 `BaseOffsetStrategy` 套路):`Duration/Fixed`(精确值,默认,与旧 float 100% 等价)/ `Duration/Random Range`(区间随机,Min/Max 秒,每次进入行为抽一次,期间固定)。由 `BehaviorFlowRuntime.AdvanceTo` 在切到 Action 时自动调一次 Sample,结果缓存到 `EnemyAction.CurrentDuration`。所有 6 个内置 Action(Fire / Move / Wait / Parallel / Sequence / Emit Signal)+ 未来新加的 Action 自动获得能力,零侵入。典型用法:Boss 节奏混乱(`FireAction` = Random Range(2, 4))、玩家反应窗口抖动(`WaitAction` = Random Range(0.5, 1.5))、弹性巡逻(`MoveAction` = Random Range(3, 5))。老 .asset 兼容:旧 `Duration: X`(float)走 `[FormerlySerializedAs("Duration")]` 迁移到隐藏 `_legacyDuration`,SR 字段为 null 时 Runtime 兜底用 legacy 值,行为 100% 等价。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §4.0.5 + [`Assets/Scripts/Enemy/AI/ActionDurationConfig.cs`](./Assets/Scripts/Enemy/AI/ActionDurationConfig.cs)
+> 一行摘要 + 跳转。所有"为什么这样做 / 字段在哪 / 怎么扩展"的细节在 [`ARCHITECTURE.md`](./ARCHITECTURE.md),不在 README 重复。
 
-- 🔌 **多态下拉**:`SerializeReference` + 项目自带 SREditor,所有扩展点在 Inspector 里下拉选
-- 🛩️ **玩家系统**:`Player` 主控 + 八方向 + Focus 低速 + 残机/复活无敌 + **活力阈值解锁的子机**,子机位置形态用 `OptionPositionForm` 多态下拉,主炮/子机开火同源同步
-- 📐 **舞台边界统一管理**:`BoundsService` 场景单例统一配置 `PlayableArea`(玩家活动矩形)+ `CullingArea`(子弹回收矩形),Scene 视图实时彩色 Gizmo 可视化,Editor 下 Scene 视图有 4 边拖拽手柄;**玩家活动边界** 和 **子弹自动回收边界** 不再各自硬编码,`PlayerMovement` / `Bullet` 都从这里读。没挂 `BoundsService` 时两边 fallback 到旧默认值(±3.5/±4.5 与 ±10/±20),行为 100% 兼容。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §12
-- 🔊 **音频音乐系统**:`AudioMix` 静态门面 + `AudioSystem` 场景单例 + `SfxCue` / `BgmTrack` / `BgmPlaylist` / `AudioBus` SO 资产;SFX 多态规则 `SfxRule` 走 `[SerializeReference, SR]` 下拉(随机抽 clip / pitch 抖动 / cooldown);BGM 交叉淡化 + 顺序/随机播放;嵌入到 `PlayerHealth` / `BossHealth` / `EnemyHealth` / `PlayerShooting` 仅增加 `[SerializeField] SfxCue` 字段,其他模块 0 改动。详见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §11,配置方法见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)
-- 📘 **关卡可视化编辑器**(菜单 `STG → Level Editor`):时间轴 + 列表 + 详情面板 + Preview + Scene Gizmo,支持增/删/复制/撤销(`Ctrl+Z`)+ 快捷键,详见 [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md);架构见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §10
+| 特性 | 摘要 | 详情 |
+|---|---|---|
+| 🎯 行为流资产化 | `BehaviorFlow` SO 复用敌人行为 | [enemy-ai](./docs/architecture/arch-enemy-ai.md) |
+| 🤖 Boss 多阶段 | `BossController` + `Phase` + `Signal` Inspector 组合 | [boss](./docs/architecture/arch-boss.md) |
+| 💉 多管血 | `BossHealth` 内置多管 + 自动切管 | [boss](./docs/architecture/arch-boss.md) |
+| 🧩 可组合 Action | `Parallel` / `Sequence` 容器无限嵌套 | [enemy-ai](./docs/architecture/arch-enemy-ai.md) |
+| 🎨 数据驱动 FirePattern | Ring / Line / Arc / Composite 改资产即生效 | [fire-pattern](./docs/architecture/arch-fire-pattern.md) |
+| 🧭 FireExtension 多态扩展 | 角度管道(模块数组),`[SerializeReference]` 下拉 | [fire-pattern §3.1](./docs/architecture/arch-fire-pattern.md) |
+| 🔊 FireSound 多态扩展 | 开火音并行触发器数组 | [fire-pattern §3.2](./docs/architecture/arch-fire-pattern.md) + [Audio README §6.5](./Assets/Scripts/Audio/README.md) |
+| 🌫️ SpawnFog 多态扩展 | 出生雾化单字段多态下拉(None / Default / 自定义) | [fire-pattern §3.3](./docs/architecture/arch-fire-pattern.md) |
+| 🌀 BulletModifier | 加速 / 转向 / 追踪 / **分裂+任意 FirePattern** / 染色 | [bullet](./docs/architecture/arch-bullet.md) |
+| 🏀 反弹 modifier | 物理反射 + 4 边独立判断 + 恢复系数 | [bullet §2.4 / §2.7](./docs/architecture/arch-bullet.md) |
+| 📡 BulletSignalBus | AI 节奏信号驱动 modifier 激活 | [bullet §2.8](./docs/architecture/arch-bullet.md) |
+| ⏱️ ActionDurationConfig | Duration 抽成 SR 多态(Fixed / Random Range) | [enemy-ai §4.0.5](./docs/architecture/arch-enemy-ai.md) |
+| ⚡ 激光系统(直线 / 曲线) | `LaserEntity` + `LaserPool` + `LaserService` 五段状态机 | [laser](./docs/architecture/arch-laser.md) |
+| 🔌 多态下拉 | `SerializeReference` + SREditor,Inspector 下拉选 | [ARCHITECTURE §2 地图](./ARCHITECTURE.md#2-基础架构地图运行时流向) |
+| 🛩️ 玩家系统 | 主控 + 八方向 + Focus + 残机 / 子机 / OptionPositionForm | [player](./docs/architecture/arch-player.md) |
+| 📐 舞台边界 | `BoundsService` 单例统一 Playable + Culling Area | [bounds](./docs/architecture/arch-bounds.md) |
+| 🔊 音频音乐 | `AudioMix` 门面 + SfxCue / BgmTrack / BgmPlaylist / Bus | [audio](./docs/architecture/arch-audio.md) + [Audio README](./Assets/Scripts/Audio/README.md) |
+| 📘 关卡可视化编辑器 | `STG → Level Editor` 时间轴 / 列表 / Preview / Gizmo | [LEVEL_EDITOR.md](./LEVEL_EDITOR.md) + [level-editor](./docs/architecture/arch-level-editor.md) |
 
 ## 📐 架构说明
 
@@ -214,45 +218,12 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 <!-- AI_SECTION_ANCHOR -->
 ## 🤖 AI 协作约定
 
-> 📘 **本节是项目内置的速查版**;更完整的版本(任务粒度、代码 review 清单、工具链踩坑详解)见 [`CONTRIBUTING.md`](./CONTRIBUTING.md) §3 §4。
+> 本节是给 AI 编码代理看的**项目内速查**;完整版本(任务粒度、代码 review 清单、工具链踩坑详解、对象池复用 transform 残留污染案例)见 [`CONTRIBUTING.md`](./CONTRIBUTING.md) §3 §4。
 
-本仓库会与 AI 编码代理协作,为了避免代理在 shell 命令链路上踩坑,以下约定**作者与代理共同遵守**。
+**速记**:
 
-### 复杂命令请落盘脚本再执行
-
-`powershell -Command "..."` / `cmd /c "..."` 在 Windows 上经过两层转发后,中文路径、`$` 变量、嵌套引号、多行脚本极易被 cmd 误吃、编码错乱、变量替换,出现"命令找不到 / 输出乱码 / 中文 NRE"。**因此**:
-
-- ✅ **单行 ASCII 命令**(如 `dir`、`findstr`、`copy`):可以直接通过 shell 调用。
-- ❌ **多行 / 含中文 / 含 `$` 变量 / 含嵌套引号**:请把命令写进 `.py` 或 `.ps1` 文件,然后执行该文件。
-- ✅ **修改源码、文档**:用 IDE 编辑器直接改文件,不要试图用 sed/awk/PowerShell 在 shell 里就地修改——对齐宽度不可见字符会失真。
-
-### 推荐 IDE / 终端配置
-
-`.vscode/settings.json` 已预设:
-
-- VS Code 默认终端 = PowerShell 7(`pwsh`),UTF-8 输出,无中文乱码。
-- `PYTHONIOENCODING=utf-8`,确保 Python 脚本的中文 IO 不出错。
-- 旧版 Windows PowerShell 5.1 仍能用,但中文 + 变量 + 嵌套引号场景务必落盘脚本。
-
-### 为什么有这些约定
-
-实际踩过的坑汇总在 [`CONTRIBUTING.md`](./CONTRIBUTING.md) §4(工具链踩坑笔记)。**修通这些问题的成本 >> 绕过它们的成本**(落盘一个临时脚本即可)。代理看到中文 + 多行场景应当自觉落盘,不要硬塞。
-
-### 文件编辑策略
-
-对于 Markdown、JSON、YAML、TXT 等文档：
-
-- 优先使用编辑工具进行局部修改。
-- 禁止通过 shell 的 `python -c` 拼接超过 200 字符的文本内容。
-- 禁止把完整 Markdown 章节作为 shell 命令参数传递。
-- 禁止为了单次文本替换创建多个 debug*.py 文件。
-- 如果目标文本匹配失败：
-  1. 先读取目标附近的实际内容；
-  2. 找到稳定的唯一锚点；
-  3. 根据锚点进行局部编辑；
-  4. 不要不断扩大 old_text 的精确匹配范围。
-- 修改 Markdown 表格时，只匹配表头或章节标题等稳定锚点，不要匹配整张表。
-- Windows 环境下不要假设换行符为 LF。
-- Python 文件操作统一使用 pathlib。
-- 文件编码统一显式指定 UTF-8。
+- ✅ 单行 ASCII 命令可直接走 shell;❌ 多行 / 含中文 / `$` / 嵌套引号 → **落盘 `.py` / `.ps1` 再执行**
+- ✅ 改源码 / 文档 → 用 IDE 编辑器,不要用 sed/awk/PowerShell 在 shell 里就地改
+- `.vscode/settings.json` 已预设 PowerShell 7 + UTF-8 + `PYTHONIOENCODING=utf-8`
+- 文档编辑策略(局部编辑、UTF-8、pathlib、行号校验)见 [`CONTRIBUTING.md` §3.5](./CONTRIBUTING.md)
 

@@ -1,131 +1,71 @@
 # ShinySTG 项目 Cline 规则
 
 > 进入项目必读的精简提示。其他细节按需查阅:
-> - 项目概览 → `README.md`
-> - 架构 / 扩展套路 → `ARCHITECTURE.md`
+> - 项目概览 → `README.md`(特性表 + 跳转,**不复制架构细节**)
+> - 架构地图 / 板块索引 / 编写规范 → `ARCHITECTURE.md`(根,**薄**,只 100+ 行)
+> - 单子体系架构细节 → `docs/architecture/arch-<name>.md`(**架构的单一真相源**,每个子系统一块)
 > - 开发约定 / 编码规范 / 工具链踩坑 → `CONTRIBUTING.md`
+> - 关卡编辑器使用 → `LEVEL_EDITOR.md`
+> - 音频子系统(Inspector / SO 创建步骤)→ `Assets/Scripts/Audio/README.md`
 
-实现功能后记得同步到说明文件中
-
----
-
-## 1. Windows Shell 强制规则(★ 最高优先级)
-
-本项目运行环境为 **Windows PowerShell**。
-
-1. 禁止使用 Unix 风格的环境变量前缀:`VAR=value command`
-2. 设置环境变量必须使用:`$env:VAR='value'; command`
-3. 禁止将 `$variable` 放入可能被外层 shell 解析的双引号命令字符串。
-4. 复杂 PowerShell 命令必须写入 `.ps1` 文件后执行(`powershell -ExecutionPolicy Bypass -File ".\xxx.ps1"`)。
-5. 复杂 Python 操作必须写入 `.py` 文件后执行。
-6. 禁止 `python -c` 承载大段文本、Markdown 或多行逻辑。
-7. Markdown 内容不得通过 shell 参数传递。
-8. 中文文本验证不得依赖终端显示结果,应直接使用 UTF-8 字节或 Python UTF-8 文件读取验证。
-9. 文件编码检查必须使用明确指定的 UTF-8 编码。
-10. 修改完成后的验证必须基于文件实际内容,而不是命令执行成功。
+实现功能后,**仅更新对应 `docs/architecture/arch-<name>.md`**(单一真相源);`ARCHITECTURE.md` 仅在"加新板块"时改 §1/§3 一行摘要;`README.md` 特性表保持薄描述。
 
 ---
 
-## 2. 文件编码:UTF-8 无 BOM(配合 §1.9)
+# Unity Coding Rules
 
-所有文本文件(.cs / .md / .json / .asset / .flow / .prefab / .ps1)**必须 UTF-8 无 BOM**。
-BOM 会让 Unity 重新生成 .meta,触发"什么都没改但 git diff 一大片"。
+## Code Editing
 
-**PowerShell 写文件标准写法**(避免 BOM 和默认编码陷阱):
+* 修改 `.cs` 源代码时，优先使用 `editor` 或 `apply_patch`。
+* 不要使用 `bash`、`python`、`sed`、`awk`、`perl`、`cat >`、heredoc 等方式直接生成或修改 `.cs` 文件。
+* Terminal 主要用于执行命令、运行测试、Git 操作和构建验证，而不是作为代码编辑器。
 
-```powershell
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-$utf8NoBom = New-Object System.Text.UTF8Encoding($False)
-[System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
-```
+## Unity Validation
 
+完成代码修改后，不要自行创建或执行额外的静态代码检查脚本来模拟 Unity 编译。
 
+不要通过以下方式宣称代码已经编译通过：
 
----
+文件数量检查
+namespace 检查
+大括号检查
+正则表达式检查
+API 字符串检查
+文件存在性检查
+自己编写的“compile check”脚本
 
-## 3. 临时脚本归宿
+C# 代码的最终编译验证由 Unity Editor 完成。
 
-- PowerShell / Python 临时脚本 → 放 `Temp/<task_name>.ps1` 或 `Temp/<task_name>.py`,不要放项目根
-- `Temp/` 在 `.gitignore` 内,天然屏蔽
-- 任务结束前清理 `Temp/*.ps1` / `Temp/*.py`
+完成代码修改后：
 
----
+确保代码文件已经正确保存。
+不需要自行验证 Unity 编译结果。
+在最终总结中明确说明：
+"代码修改已完成，Unity 编译尚未验证，请在 Unity Editor 中触发编译并检查 Console。"
+不要声称“编译通过”“0 errors”或“PR 已完全验证”，除非实际获得了 Unity Editor 的编译结果。
 
-## 4. 改 .md 文件流程(实战踩坑后补充)
+如果用户之后提供 Unity Console 的错误信息，再根据真实的 compiler error 定位和修复代码。
+## Completion Criteria
 
-### 4.1 含中文的写入脚本优先用 Python,不要走 .ps1
+除非真实验证已经完成，不要使用：
 
-- **原因**:PowerShell 5.1 在中文 Windows 默认按 GBK 解析无 BOM 的 .ps1,即便脚本里写中文字面量,实际写入文件的可能是 GBK 字节
-- **正确做法**:
-  - 改写 / 追加 `.md` / `.cs` 文本 → 用 `.py` 脚本,Python 3 默认 UTF-8,无 BOM 陷阱
-  - 简单 PowerShell 验证(读字节 / 取行数)→ 走 `.ps1` 没问题(只输出 ASCII 数字)
-- **不要**:`editor` 工具里写含中文 + PowerShell 写文件的组合 —— 本次精简 .clinerules 时已踩坑
+* “已完成”
+* “落地完成”
+* “验证通过”
+* “0 errors”
+* “PR 完成”
 
-### 4.2 改 .md 大文档建议整文件回写,不走 editor 分段
+如果只完成了代码文件，应明确写：
 
-- **原因**:`editor` 工具 `new_text` 上限 ~6000 字符,长文档(> 6000 字符)分段改易残留半截旧内容
-- **正确做法**:
-  - 小改动(单段 < 6000 字符) → `editor` 工具 old_text/new_text 替换
-  - 整章重写 / 大段增删 → Python 脚本整文件切片回写(`content[:idx] + new_section + content[idx:]`),比 editor 分段更稳
-  - 务必先 `copy <file> <file>.bak` 备份,完工后 `git diff <file>.bak <file>` 对比
+> “代码层实现完成，Unity Editor 集成和运行验证尚未完成。”
 
-### 4.3 中文输出验证用 Python,不依赖 PowerShell 终端
+## Verification Report
 
-- **原因**:中文 Windows PowerShell 终端默认 GBK,即使脚本输出 UTF-8 中文也显示乱码(`涓存椂鑴氭湰褰掑牴` 这种),但**文件实际内容是正确的**
-- **正确做法**(对应 §1.8 + §1.10):
-  ```python
-  import os
-  with open(path, "rb") as f: first3 = f.read(3)
-  print("BOM:", first3 == b"\xef\xbb\xbf")  # 必须 False
-  with open(path, "r", encoding="utf-8") as f:
-      content = f.read()
-  print("Chinese visible:", "中文" in content)  # 字符级验证
-  ```
-- **不要**:看到 PowerShell 终端显示乱码就以为文件错了 —— 用 Python UTF-8 读 + 字节双重校验
+最终报告必须区分：
 
----
+* File-level validation
+* Compile validation
+* Runtime validation
+* Unity Editor integration
 
-## 5. 工具链效率经验(BulletModifier 信号方案实施后总结)
-
-### 5.1 字符预算:任何 `editor` 调用 > 5000 字符直接拆
-
-- **原因**:实测 `editor` 工具 `new_text` 上限约 6000 字符,撞到就整次失败回退,白白浪费一次工具调用 + 一个回合。
-- **规则**:
-  - **< 3000 字符**:`editor` 一次提交 ok
-  - **3000 ~ 5000 字符**:谨慎,可能撞墙,优先拆
-  - **> 5000 字符**:**先拆再提交**,不要试一次"看看会不会过"
-- **拆分策略**:写骨架 + `insert_line` 追加;或用 Python 整文件切片回写(§4.2)
-
-### 5.2 锚点匹配失败 1 次,立刻换 Python `replace`,不要再用 `editor`
-
-- **原因**:本机 PowerShell 5.1 中文 Windows 终端默认 GBK,即使源文件是 UTF-8 中文,
-  `read_files` / `cat` 显示成乱码,导致 `editor` 的 `old_text` 永远匹配不上。
-  这是**字符级不匹配**,不是 anchor 选错。
-- **判断标准**:
-  - 看到 PowerShell 终端显示 `涓存椂` / `鎿嶄綔` 这类字形 → 文件其实是 UTF-8 中文对的
-  - 看到 `read_files` 输出有 `�` 或方块字 → 同上
-  - **不要**反复微调 `old_text`,**直接**走 Python `Path.read_text(encoding='utf-8').replace(...)` 一把梭
-- **复现路径**:`BulletSignalBus.cs` 创建时 `new_text=7333` 撞墙一次 → `new_text=6000+` 又撞 → 才想起拆
-  **【应该第一次撞就拆】**
-
-### 5.3 编译验证目标:「我新写的代码」+「关键 API 互相调用」两层就够
-
-- **背景**:没 UnityEngine.dll 时想做 syntax check,要写一堆 stub(SpriteRenderer / Time.deltaTime /
-  Shader.Find / Mathf.Abs / gameObject ...),越补越没完。Unity 项目真实编译时这些类型齐全。
-- **正确定位**:stub 检查的目标是 **「我自己新写的代码块里没有语法/语义错误」**,**不是「编译出能跑的 dll」**。
-- **两层验证足够**:
-  1. **语法层**:Roslyn 编译,只剩 stub 缺失类报错(类型名出现在错误信息里)→ 我新代码 0 错
-  2. **API 互调用层**:Python `assert 'X' in file` 检查我新代码用的关键 API 在另一个新文件里的签名存在
-- **不要**:为了 1 个 stub 错误去补 30 个 stub,得不偿失。
-
-### 5.4 单回合只做一件独立决策
-
-- **反例**(本次踩坑):一个回合里同时改 3 个文件 + 创建 3 个新文件 + 写 stub + 跑 dotnet build + 排错。
-  任何一个步骤失败都不知道是哪条路径的锅,反复横跳浪费回合。
-- **正例**:
-  - 回合 1:创建 `BulletSignalBus.cs` → 单独验证(BOM + 中文关键字)
-  - 回合 2:创建 `ModifierStartTrigger.cs` → 单独验证
-  - 回合 3:改 `BulletModifier.cs` → 单独跑 patch 脚本验证
-  - ...每个文件一个回合,失败立刻定位。
-- **例外**:创建 3 个无依赖的独立新文件可以合并(都是写入 + 验证),但**改动现有文件 + 新建 + 编译**这种异质步骤必须拆。
+不得将文件层面的静态检查描述为编译或运行验证。
