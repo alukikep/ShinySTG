@@ -106,6 +106,13 @@ namespace ShinySTG.Laser
                     ls.x = Mathf.Max(0.0001f, length);
                     ls.y = visualWidth;
                     _body.transform.localScale = ls;
+                    // ★ 单向视觉修正:Body Sprite 的 pivot 默认 (0.5, 0.5) 居中,直接缩放会从中点向两边展开。
+                    //   把 localPosition.x 设到 length/2,pivot 视觉上落在激光起点端,
+                    //   配合根 transform 的 z 旋转(laser 方向),Body 看起来从起点沿 Angle 方向延伸。
+                    //   旋转由根 transform 负责,Body 自身不转(ls 也不动 z)。
+                    Vector3 lp = _body.transform.localPosition;
+                    lp.x = ls.x * 0.5f;
+                    _body.transform.localPosition = lp;
                     // 朝向:跟激光方向(根 transform 已 LateUpdate 设置过 z 旋转,本体不转)
                 }
             }
@@ -125,6 +132,10 @@ namespace ShinySTG.Laser
                     ls.x = Mathf.Max(0.0001f, warnLen);
                     ls.y = Mathf.Max(0.0001f, visualWidth * 0.4f); // 预警线更细
                     _warning.transform.localScale = ls;
+                    // ★ 同 Body:把 Warning pivot 视觉拉到左端,预警线从起点沿 Angle 方向延伸
+                    Vector3 lp = _warning.transform.localPosition;
+                    lp.x = ls.x * 0.5f;
+                    _warning.transform.localPosition = lp;
                 }
             }
         }

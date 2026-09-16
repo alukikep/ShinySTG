@@ -43,7 +43,7 @@ MonoBehaviour:
         Delay: 0
         StartTrigger:
           rid: 6177227078274121732
-        Duration: 1.5
+        Duration: 2
         AutoSkipOutsideWindow: 1
         OneShot: 0
         Acceleration: 1

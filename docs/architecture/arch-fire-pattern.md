@@ -168,6 +168,7 @@ return center
   - `BaseAngleFireExtension` `[SRName("FireExtension/Base")]` —— 覆盖型,角度 = `BaseAngle + baseRotationRad`(作为管道锚点)
   - `PlayerAimFireExtension` `[SRName("FireExtension/Player Aim")]` —— 覆盖型,瞄得到玩家 → 角度 = atan2(player - from);瞄不到 → **透传** currentAngleRad(兜底交给上游 Base)
   - `OffsetAngleFireExtension` `[SRName("FireExtension/Offset Angle")]` —— 累加型,角度 = currentAngleRad + OffsetAngle(逆时针为正);常配合 PlayerAim 实现"绕后弹"
+  - `AccumulatingOffsetAngleFireExtension` `[SRName("FireExtension/Offset Angle Accumulating")]` —— **批次累加型**,在 `OffsetAngle` 基础上增加"每次开火后累加偏移" + SR 多态基础偏移(详见下方 §3.1.1)
 - Helper:`FireExtensionResolver`(静态,Null-safe,`extensions == null` 或空数组时 fallback 到默认 270° + rotationRad)。
 
 **PlayerAim 的兜底语义变化(从单字段 → 数组)**
@@ -201,6 +202,56 @@ return center
 - "每发独立方向"场景(每发旋转 N° / 延迟扇形)override `ProcessAngleForBullet`。
 
 详见 `Assets/Scripts/Bullet/FireExtension/`(顶部有详细 pipeline 用法图示)。
+
+#### §3.1.1 批次累加型:`AccumulatingOffsetAngleFireExtension`
+
+在 `OffsetAngleFireExtension`(恒定偏移)基础上新增"每次开火后累加"能力,并把"本批次基础偏移"从 float 升级为 SR 多态字段(`BaseOffsetStrategy`,与现有 `AngleOffsetFirePatternBulletExtra.BaseOffset` 共用同一套子类)。
+
+**字段语义:**
+
+| 字段 | 类型 | 作用 |
+|---|---|---|
+| `BaseOffset` | `[SerializeReference, SR] BaseOffsetStrategy`(默认 `FixedBaseOffsetStrategy { Value = 0f }`) | 本批次第一次开火施加的恒定偏移,SR 多态下拉:`Base Offset/Fixed`(精确值)/ `Base Offset/Random Range`(区间随机) |
+| `StepOffset` | `float`(度,默认 0) | 每次 FireGroup 触发后,下一次再叠加的偏移量。`0` = 不累加,等价 `OffsetAngleFireExtension`;`5` = 每发顺时针转 5° |
+| `OffsetPerBullet` | `float`(度,默认 0) | **每发独立方向版累加**:`bulletIndex × OffsetPerBullet`,与 `StepOffset` 正交叠加。`0` = 关闭,所有子弹共用中线(Ring/Arc 等分仍由各自 FirePattern 子类决定);`22.5` = Ring 8 颗第 i 颗再偏 22.5°×i(配合 `StepOffset` 形成旋转螺旋环) |
+
+**累加公式(角度,度):**
+
+```
+第 N 次开火(每批 FireGroup 触发 1 次):
+  batchOffset = BaseOffset.Sample() + (N - 1) × StepOffset
+  perBulletOffset = bulletIndex × OffsetPerBullet      // 仅 ProcessAngleForBullet 路径
+  totalOffset = batchOffset + perBulletOffset          // 累加后转弧度参与角度管道
+```
+
+**触发时机:每批 FireGroup** —— 由 `BulletPool.FireGroup` 入口维护 per-FireExtension 字典 `_fireCounts`(`Dictionary<FireExtension, int>`),对每个非 null 元素 `++` 后调用 `FireExtension.OnFireGroupTriggered(fireCount)` 钩子(基类新增,默认空实现,对所有现有子类零侵入)。子类在钩子里写自己的累加状态:本类即在钩子中重抽 `BaseOffset.Sample()` 并把 `fireCount` 缓存到 `_currentFireCount`,后续 `ProcessAngle` / `ProcessAngleForBullet` 用这个值。
+
+**per-instance 隔离:字典 key = `pattern.FireExtensions` 数组里的具体元素 ref**(不是 SO 资产本身),确保:
+- 同一份 FirePattern SO 被敌人 A / B 共用 → 数组里同一元素引用,字典累加跨敌人累计 —— 项目想要的行为("Boss 散弹母弹开火 60 次旋转 300°" 跨多次开火累加)
+- 用户复制一份 FirePattern 资产(Ctrl+D) → 新资产的 FireExtensions 数组是新元素,字典独立累加
+- 同一份资产上挂多个累加型模块 → 字典按 ref 区分,各自累加(例:`[Base, Accumulating Offset(0, 5°), Accumulating Offset(0, 10°)]` 第 N 次开火偏 `(N-1) × 15°`)
+
+**典型用法:**
+
+| 配置 | 效果 |
+|---|---|
+| `[Base(270°), Accumulating Offset(Fixed(0), 5°)]` | Boss 散弹母弹旋转喷射(Duration=3s, Interval=0.05s → 60 次开火,旋转 300°) |
+| `[Base(270°), Accumulating Offset(Random Range(-15, 15), 0°)]` | 抖动扩散(每次开火基础偏移随机,无累加,等价旧版 `OffsetAngle` + 随机) |
+| `[Base(270°), Accumulating Offset(Fixed(0), 3°)]` + `OffsetPerBullet=22.5` | Ring 8 颗 × 22.5° 螺旋环,每次开火再转 3° → 旋转扩散 |
+
+**与 `AngleOffsetFirePatternBulletExtra`(母弹 → 分裂弹 Extra 路径)的区别:**
+
+- `AccumulatingOffsetAngleFireExtension` = FireExtension pipeline 模块,挂在 `FirePattern.FireExtensions[]` 数组上,影响本 FirePattern 每次开火的方向
+- `AngleOffsetFirePatternBulletExtra` = `FirePatternBulletExtra` 子类,挂在 `FirePatternBulletModifier.Extra` 上,只影响"母弹分裂那一刻传给分裂弹的 rotationRad"
+- 两者**完全独立**,可叠加使用:Boss 散弹母弹挂 `FirePatternBulletModifier`(`Modifier/Fire Pattern While Active`)→ 它的 `Extra` 可挂 `AngleOffsetFirePatternBulletExtra`(控制分裂弹方向),而分裂弹自身用的 FirePattern 资产也可挂 `AccumulatingOffsetAngleFireExtension`(控制分裂弹每次开火方向)
+- "本批次共享 BaseOffset 抽样值"语义:FireExtension 路径**不提供**(`Accumulating` 每次开火重抽);Extra 路径通过 `BatchSample = Synchronized` + `OnBatchFire()` 钩子提供,详见 [bullet §2.5](./arch-bullet.md#25-扩展点) 中 `本批 BaseOffset 共享` 段
+
+**协作边界:**
+- `FireExtension` 基类新增 `public virtual void OnFireGroupTriggered(int fireCount)`(默认空实现,对现有 `BaseAngle` / `PlayerAim` / `OffsetAngle` 子类零侵入)
+- `FireExtensionResolver` 新增字典重载(`ResolvePipeline` / `ResolvePipelineWithOffset` 各 +1,接收 `IReadOnlyDictionary<FireExtension, int>`),旧单值重载 `int fireCount = 0` 保留,旧调用方传 0 → 不调钩子 → 行为 100% 不变
+- `BulletPool` 公开 `GetFireExtensionFireCounts()` 给 Ring/Line/Arc 三个 FirePattern 子类的 `Fire()` 入口调用(它们改用字典重载),CompositeFirePattern 透传到 children → 各自走 children 的 FireExtension
+
+详见 `Assets/Scripts/Bullet/FireExtension/AccumulatingOffsetAngleFireExtension.cs` 顶部注释。
 
 ### 3.2 开火音多态扩展(FireSound)
 

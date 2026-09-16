@@ -493,7 +493,7 @@ public class EmitSignalAction : EnemyAction
 本板块与其他板块的依赖 / 协作关系(简单文字说明):
 
 - [hitbox](./arch-hitbox.md) — 复用 AABB + 阵营;每个 Bullet 自动挂 HitboxComponent
-- [fire-pattern](./arch-fire-pattern.md) — Bullet 由 FirePattern.SpawnBullet 创建,modifier 由 FirePattern.ModifierPrefabs 挂载
+- [fire-pattern](./arch-fire-pattern.md) — Bullet 由 FirePattern.SpawnBullet 创建,modifier 由 FirePattern.ModifierPrefabs 挂载;**BulletPool.FireGroup 入口维护 per-FireExtension 字典 `_fireCounts`**(供 `AccumulatingOffsetAngleFireExtension` 等批次累加型 FireExtension 读取本批开火序号),Ring/Line/Arc 三个 FirePattern 子类的 `Fire()` 入口从 `pool.GetFireExtensionFireCounts()` 取字典传给 Resolver(详见 [fire-pattern §3.1.1](./arch-fire-pattern.md#311-批次累加型accumulatingoffsetanglefireextension))
 - [bounds](./arch-bounds.md) — 出界回收 / 反弹判定都基于 BoundsService.CullingArea
 - [enemy-ai](./arch-enemy-ai.md) — BulletSignalBus 接收 EmitSignalAction 的信号,驱动 BulletModifier 激活
 - [audio](./arch-audio.md) — Hit 音效 / 染色 modifier 与 SfxCue 体系可联动(按需)

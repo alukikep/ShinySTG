@@ -13,10 +13,30 @@ MonoBehaviour:
   m_Name: New Straight Laser Pattern
   m_EditorClassIdentifier: 
   Data: {fileID: 11400000, guid: 23cf592570cbef14681354988cb71135, type: 2}
-  ModifierPrefabs: []
+  ModifierPrefabs:
+  - rid: 6177227112781971461
   FireSounds: []
+  FireExtensions:
+  - rid: 6177227112781971457
+  - rid: 6177227112781971458
   Damage: 1
   LengthMultiplier: 1
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 6177227112781971457
+      type: {class: BaseAngleLaserFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseAngle: 0
+        PositionOffset: {x: 0, y: -1}
+    - rid: 6177227112781971458
+      type: {class: OffsetAngleLaserFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        OffsetAngle: 270
+    - rid: 6177227112781971461
+      type: {class: LaserOrbitModifier, ns: ShinySTG.Laser, asm: Assembly-CSharp}
+      data:
+        Mode: 1
+        AngularSpeed: 90
+        PresetCenter: {x: NaN, y: NaN}
+        OffsetFromOwner: {x: 0, y: 0}

@@ -16,7 +16,7 @@ MonoBehaviour:
   - rid: 6177227096770215937
   - rid: 6177227096770215939
   - rid: 6177227096770215945
-  - rid: 6177227099856175106
+  - rid: 6177227112781971459
   Loop: 1
   StartDelay: 0
   references:
@@ -77,17 +77,17 @@ MonoBehaviour:
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         Value: 0.5
-    - rid: 6177227099856175106
+    - rid: 6177227112781971459
       type: {class: FireLaserAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227099856175107
+          rid: 6177227112781971460
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 7e0d873edfc1e854a9db0d320c967ad0, type: 2}
         FireRate: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
-    - rid: 6177227099856175107
+    - rid: 6177227112781971460
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 2
+        Value: 1

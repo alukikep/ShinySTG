@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   VisualWidth: 0.8
   CollisionWidth: 0.15
-  MaxLength: 24
+  MaxLength: 30
   WarningTime: 0.6
   ExpandTime: 0.3
   ActiveTime: 1.5
@@ -22,8 +22,8 @@ MonoBehaviour:
   CollideInWarning: 0
   CollideInExpanding: 0
   CollideInShrinking: 0
-  Sprite: {fileID: -1792994070, guid: 9d2b21db0dac756429380e21ab1f13d8, type: 3}
+  Sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
   BodyColor: {r: 1, g: 1, b: 1, a: 1}
-  HeadSprite: {fileID: -1792994070, guid: 9d2b21db0dac756429380e21ab1f13d8, type: 3}
+  HeadSprite: {fileID: 7482667652216324306, guid: db750325989564987a34393247d883b4, type: 3}
   WarningColor: {r: 1, g: 0.3, b: 0.3, a: 0.55}
   HeadColor: {r: 1, g: 1, b: 1, a: 1}

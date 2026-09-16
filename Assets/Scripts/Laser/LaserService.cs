@@ -57,6 +57,9 @@ namespace ShinySTG.Laser
         LaserPool _pool;
         // 临时回收列表:避免在 foreach 迭代 _pool.ActiveLasers 时修改集合
         readonly List<LaserEntity> _toReturn = new(4);
+        // ★ 本帧已对玩家扣血的激光集合(帧内去重,防止同一条激光在一帧内多次命中反复扣血)。
+        //   每帧 LateUpdate 开头 Clear。下帧重新累计 —— 玩家若持续站在激光上,每帧都掉 1 次血。
+        readonly HashSet<LaserEntity> _hitThisFrame = new(8);
 
         void Awake()
         {
@@ -96,6 +99,7 @@ namespace ShinySTG.Laser
             Vector2 pPos = PlayerHitbox.Position;
             bool invincible = player.IsInvincible;
             _toReturn.Clear();
+            _hitThisFrame.Clear(); // 每帧重置扣血记录,持续站激光 = 每帧扣 1 次
 
             var culling = BoundsService.Instance;
             float grazePad = GrazePadding;
@@ -120,17 +124,24 @@ namespace ShinySTG.Laser
                 {
                     if (!invincible)
                     {
-                        // 经典 STG:激光一律 1 击。ShinySTG 现有子弹也是 1 击(player.OnHit(1f))
-                        ShinySTG.Player.Player.Instance.OnHit(1f);
-                        OnPlayerHitByLaser?.Invoke(laser, player);
-                        _toReturn.Add(laser);
+                        // ★ 帧内去重:同一条激光一帧内只扣 1 次血(防止位置抖动 / 多次 LateUpdate 重复扣血)。
+                        //   玩家若持续站在激光上 → 下一帧 _hitThisFrame.Clear 后又可重新计入 → 每帧扣 1 次血。
+                        if (_hitThisFrame.Add(laser))
+                        {
+                            // 经典 STG:激光一律 1 击。ShinySTG 现有子弹也是 1 击(player.OnHit(1f))
+                            ShinySTG.Player.Player.Instance.OnHit(1f);
+                            OnPlayerHitByLaser?.Invoke(laser, player);
+                        }
+                        // ★ 激光撞到玩家不立刻回收(对齐东方正作:激光是持续判定,走完五段状态机自然消亡)。
+                        //   出界回收 / 状态机 Shrinking→Dead 回收 仍然正常生效。
                     }
                     else if (ConsumeLasersWhenInvincible)
                     {
-                        // 无敌期吞掉激光(后续可触发擦弹加分事件)
-                        _toReturn.Add(laser);
+                        // ★ 无敌期不再吞噬激光。ConsumeLasersWhenInvincible 字段保留以兼容旧资产,
+                        //   但当前实现下此分支 no-op —— 激光继续走完生命周期,与有无敌开关无关。
+                        //   玩家无敌期间不会扣血,激光也不会因"无敌碰撞"被提前回收。
                     }
-                    // 否则:无敌且不吞噬 → 激光继续飞行,下一帧自然移出玩家范围
+                    // 否则:无敌且不吞噬 → 激光继续飞行,与新行为一致
                     continue;
                 }
 

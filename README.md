@@ -13,14 +13,14 @@
 | 💉 多管血 | `BossHealth` 内置多管 + 自动切管 | [boss](./docs/architecture/arch-boss.md) |
 | 🧩 可组合 Action | `Parallel` / `Sequence` 容器无限嵌套 | [enemy-ai](./docs/architecture/arch-enemy-ai.md) |
 | 🎨 数据驱动 FirePattern | Ring / Line / Arc / Composite 改资产即生效 | [fire-pattern](./docs/architecture/arch-fire-pattern.md) |
-| 🧭 FireExtension 多态扩展 | 角度管道(模块数组),`[SerializeReference]` 下拉 | [fire-pattern §3.1](./docs/architecture/arch-fire-pattern.md) |
+| 🧭 FireExtension 多态扩展 | 角度管道(模块数组),`[SerializeReference]` 下拉,**含批次累加型 + 每发累加 + SR 多态 BaseOffset** | [fire-pattern §3.1 + §3.1.1](./docs/architecture/arch-fire-pattern.md) |
 | 🔊 FireSound 多态扩展 | 开火音并行触发器数组 | [fire-pattern §3.2](./docs/architecture/arch-fire-pattern.md) + [Audio README §6.5](./Assets/Scripts/Audio/README.md) |
 | 🌫️ SpawnFog 多态扩展 | 出生雾化单字段多态下拉(None / Default / 自定义) | [fire-pattern §3.3](./docs/architecture/arch-fire-pattern.md) |
 | 🌀 BulletModifier | 加速 / 转向 / 追踪 / **分裂+任意 FirePattern** / 染色 | [bullet](./docs/architecture/arch-bullet.md) |
 | 🏀 反弹 modifier | 物理反射 + 4 边独立判断 + 恢复系数 | [bullet §2.4 / §2.7](./docs/architecture/arch-bullet.md) |
 | 📡 BulletSignalBus | AI 节奏信号驱动 modifier 激活 | [bullet §2.8](./docs/architecture/arch-bullet.md) |
 | ⏱️ ActionDurationConfig | Duration 抽成 SR 多态(Fixed / Random Range) | [enemy-ai §4.0.5](./docs/architecture/arch-enemy-ai.md) |
-| ⚡ 激光系统(直线 / 曲线) | `LaserEntity` + `LaserPool` + `LaserService` 五段状态机 | [laser](./docs/architecture/arch-laser.md) |
+| ⚡ 激光系统(直线 / 双向 / 曲线) | `LaserEntity` + `LaserPool` + `LaserService` 五段状态机 + **视觉/几何/碰撞三向对齐** | [laser](./docs/architecture/arch-laser.md) |
 | 🔌 多态下拉 | `SerializeReference` + SREditor,Inspector 下拉选 | [ARCHITECTURE §2 地图](./ARCHITECTURE.md#2-基础架构地图运行时流向) |
 | 🛩️ 玩家系统 | 主控 + 八方向 + Focus + 残机 / 子机 / OptionPositionForm | [player](./docs/architecture/arch-player.md) |
 | 📐 舞台边界 | `BoundsService` 单例统一 Playable + Culling Area | [bounds](./docs/architecture/arch-bounds.md) |

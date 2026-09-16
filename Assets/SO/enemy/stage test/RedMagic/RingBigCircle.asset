@@ -17,7 +17,7 @@ MonoBehaviour:
   - rid: 6177227073745846272
   - rid: 6177227078274121730
   FireExtensions:
-  - rid: 6177227095170613249
+  - rid: 6177227099856175110
   FireSounds:
   - rid: 6177227096770215947
   Speed: 4
@@ -57,7 +57,7 @@ MonoBehaviour:
       data:
         BaseOffset:
           rid: 6177227074437120003
-        StepOffset: 10
+        StepOffset: 8
         BatchSample: 1
     - rid: 6177227074437120003
       type: {class: RandomRangeBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
@@ -76,21 +76,21 @@ MonoBehaviour:
         MaxBounces: 1
         Walls: 3
         Restitution: 1
-    - rid: 6177227095170613249
-      type: {class: AccumulatingOffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
-      data:
-        BaseOffset:
-          rid: 6177227095170613274
-        StepOffset: 0
-        OffsetPerBullet: 0
-    - rid: 6177227095170613274
-      type: {class: RandomRangeBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
-      data:
-        Min: -60
-        Max: 60
     - rid: 6177227096770215947
       type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
       data:
         Cue: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
         VolumeMul: 1
         Pitch: 1
+    - rid: 6177227099856175110
+      type: {class: AccumulatingOffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseOffset:
+          rid: 6177227099856175112
+        StepOffset: 0
+        OffsetPerBullet: 0
+    - rid: 6177227099856175112
+      type: {class: RandomRangeBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
+      data:
+        Min: -60
+        Max: 60

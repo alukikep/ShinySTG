@@ -20,9 +20,9 @@ using UnityEngine;
 ///
 ///   注意:本模块**不** override ProcessAngleForBullet。
 ///     默认实现 = 调 ProcessAngle(...) 拿 \"中线\",再叠加 OffsetAngle。
-///     Ring / Arc / Line 子类按 \"中线 + 等分\" 语义工作;若想 \"每发独立累加\",新建
-///     PerBulletOffsetAngleFireExtension 单独 override ProcessAngleForBullet 即可
-///     (不破坏当前接口,与 ARCHITECTURE §3.1 预留的 \"累加型\" 扩展点对齐)。
+///     Ring / Arc / Line 子类按 \"中线 + 等分\" 语义工作;若想 \"每发独立累加\" + \"批次累加\" + \"SR 多态基础偏移\",
+///     直接用已内置的 `AccumulatingOffsetAngleFireExtension`(覆盖了以下三维度:批次 BaseOffset SR 多态 +
+///     StepOffset 批次累加 + OffsetPerBullet 每发累加)。详见 fire-pattern §3.1.1 + AccumulatingOffsetAngleFireExtension.cs 顶部注释。
 ///
 /// ★ 命名空间说明 ★
 ///   本文件放在**全局命名空间**(与 FireExtension.cs / FireSound.cs / Bullet.cs 同款),

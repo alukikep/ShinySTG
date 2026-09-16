@@ -21,8 +21,12 @@ namespace ShinySTG.Laser
     public class LaserEntity : MonoBehaviour
     {
         // ─── 几何与运动(运行时只读,Init 写入) ───
-        public Vector2 Position { get; private set; }       // 起点(世界坐标)
-        public float   Angle    { get; private set; }       // 弧度
+        // ★ Position / Angle 的 set 从 private 改为 internal:set
+        //   动机:LaserModifier 子类(同 Assembly-CSharp)需要在 OnTick 里重算这两字段做圆周 / 螺旋 / 波形等运动;
+        //   LateUpdate 末尾会自动再同步一次 transform,所以 modifier 直接写 Position/Angle 是安全的(已被验证,见 arch-laser §13.5)。
+        //   不暴露成 public 是为了避免外部代码绕过 LateUpdate 流程乱写 —— 程序集内可见已足够所有 modifier 扩展位使用。
+        public Vector2 Position { get; internal set; }       // 起点(世界坐标)
+        public float   Angle    { get; internal set; }       // 弧度
         public float   TargetLength  { get; private set; }  // 最大长度
         public float   CurrentLength { get; private set; }  // 当前长度(随状态机变化)
         public Vector2 Velocity;                            // 位置速度(单位/秒)
@@ -40,6 +44,14 @@ namespace ShinySTG.Laser
 
         // ─── 阵营(由 ownerHitbox 在 Init 时透传,供 LaserService 过滤) ───
         public CollisionTeam Team = CollisionTeam.Neutral;
+
+        // ─── 发射者引用 ───
+        // ★ 自 §13.5 起新增:ownerHitbox 在 Init 时除了透传 Team,也保留 HitboxComponent 引用供 modifier 使用。
+        //   典型用法:绕发射者旋转 / 跟随发射者(LaserOrbitModifier.FollowOwner)。
+        //   注意:HitboxComponent 是 MonoBehaviour,modifier 必须用 `_owner as UnityEngine.Object == null` 检测"伪 null"
+        //   (GameObject 被 Destroy 后,C# 引用还在),否则下一次访问会抛 MissingReferenceException
+        //   —— 对齐子弹版 HomingEnemyModifier._target 的防御模式(见 Assets/Scripts/Bullet/*Homing*.cs)。
+        public HitboxComponent OwnerHitbox { get; private set; }
 
         // ─── 状态机 ───
         public LaserState State { get; private set; } = LaserState.Warning;
@@ -95,6 +107,9 @@ namespace ShinySTG.Laser
             ActiveTime      = data != null ? data.ActiveTime      : 1.5f;
             ShrinkTime      = data != null ? data.ShrinkTime      : 0.3f;
             Team = ownerHitbox != null ? ownerHitbox.Team : CollisionTeam.Neutral;
+            // ★ 新增:保留 ownerHitbox 引用(供 modifier 走「跟随发射者」类逻辑用,详见 §13.5)
+            //   ownerHitbox 为 null 时也保留 null 引用(modifier 自己判 null 即可,无需 fallback)
+            OwnerHitbox = ownerHitbox;
 
             State = LaserState.Warning;
             UpdateCollisionEnabled();
@@ -145,6 +160,12 @@ namespace ShinySTG.Laser
 
             // ── 2. 修饰器 Tick ──
             for (int i = 0; i < _modifiers.Count; i++) _modifiers[i].OnTick(this, dt);
+
+            // ★ 自 §13.5 起新增:modifier 可能在 OnTick 里重写 Position / Angle(典型:LaserOrbitModifier 圆周运动),
+            //   step 1 的 transform 同步是 step 1 末尾的(应用 Velocity/AngularVelocity 后),
+            //   这里再补一次同步,确保 Renderer 拿到的是 modifier 写完后的最新值,避免视觉延迟一帧。
+            transform.position = Position;
+            transform.rotation = Quaternion.Euler(0, 0, Angle * Mathf.Rad2Deg);
 
             // ── 3. 状态机推进 ──
             Timer += dt;

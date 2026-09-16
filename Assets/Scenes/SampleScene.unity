@@ -132,6 +132,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4210522}
   - component: {fileID: 4210523}
+  - component: {fileID: 4210524}
   m_Layer: 0
   m_Name: BulletPool
   m_TagString: Untagged
@@ -168,6 +169,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DefaultPrefab: {fileID: 0}
   InitialSize: 40
+--- !u!114 &4210524
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4210521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b294536783f99a428e0ae02befc9870, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DefaultPrefab: {fileID: 4259917053182958969, guid: d26618144c58e3c4fb7bea80cdd65197, type: 3}
+  InitialSize: 20
 --- !u!1 &44711675
 GameObject:
   m_ObjectHideFlags: 0
@@ -705,6 +720,7 @@ GameObject:
   - component: {fileID: 837713721}
   - component: {fileID: 837713722}
   - component: {fileID: 837713723}
+  - component: {fileID: 837713724}
   m_Layer: 0
   m_Name: manager
   m_TagString: Untagged
@@ -772,6 +788,24 @@ MonoBehaviour:
     height: 21.5
   CullingColor: {r: 1, g: 0.4, b: 0.2, a: 0.85}
   AlwaysDraw: 1
+--- !u!114 &837713724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 837713720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb335467bde7318449cbd725325d0d06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  PlayerHitbox: {fileID: 0}
+  PlayerRadius: 0.1
+  ConsumeLasersWhenInvincible: 0
+  GrazeEnabled: 1
+  GrazePadding: 0.4
+  CullOutOfBounds: 1
 --- !u!1 &883341885
 GameObject:
   m_ObjectHideFlags: 0

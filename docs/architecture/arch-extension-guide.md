@@ -24,7 +24,7 @@
 | 扩展点 | 基类 | 用途 |
 |---|---|---|
 | 弹幕形态 | `FirePattern` | 新增螺旋 / 樱花 / 自定义轨迹 |
-| 弹幕角度 / 瞄准扩展 | `FireExtension` | 基础发射逻辑的多态扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...),挂在 FirePattern 上,详见 §3.1 |
+| 弹幕角度 / 瞄准扩展 | `FireExtension` | 基础发射逻辑的多态扩展(BaseAngle / 瞄准玩家 / 瞄准 Boss / 每发旋转 / 振荡...),挂在 FirePattern 上,详见 §3.1(**累加型扩展**如 `AccumulatingOffsetAngleFireExtension` 详见 §3.1.1) |
 | 子弹行为 | `BulletModifier` | 加速 / 转向 / 追踪 / 分裂(追踪类用 `CollisionService.Grid` 查候选,见 §2.5) |
 | 敌人行为 | `EnemyAction` | 新增攻击 / 移动 / 自毁 / 容器 |
 | 移动方式 | `MoveBehaviour` | 贝塞尔 / 圆形 / 追踪 |

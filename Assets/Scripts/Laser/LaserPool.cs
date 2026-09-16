@@ -26,6 +26,12 @@ namespace ShinySTG.Laser
         /// <summary>供 LaserService 中心化碰撞时遍历活跃激光。</summary>
         public IReadOnlyCollection<LaserEntity> ActiveLasers => _active;
 
+        /// <summary>
+        /// per-LaserFireExtension 累加计数(由 FireGroup 入口维护,key = pattern.FireExtensions 数组里的具体元素 ref)。
+        /// 与 BulletPool._fireCounts 1:1 对齐,详见 FireGroup 内注释。
+        /// </summary>
+        readonly Dictionary<LaserFireExtension, int> _fireCounts = new();
+
         void Awake()
         {
             Instance = this;
@@ -113,16 +119,60 @@ namespace ShinySTG.Laser
 
         /// <summary>
         /// 供 FireLaserAction / LaserEmitter 调用。
-        /// pattern.Fire() 内部已经处理 modifier 挂载 / FireSounds 触发,
-        /// 本入口只负责把 LaserEntity 注册到活跃集合(由 Get 完成)。
+        /// 与 BulletPool.FireGroup 1:1 对齐,在调 pattern.Fire(...) 之前负责:
+        ///   1. 触发 FireSounds(中心化触发,与子弹 BulletPool.FireGroup 行为对齐)
+        ///   2. 维护 FireExtensions fireCounts 字典(per-LaserFireExtension 累加)
+        /// pattern.Fire() 内部通过 LaserFireExtensionResolver 读取字典 + 挂 modifier + 生成激光实体。
         /// </summary>
         public LaserEntity FireGroup(LaserPattern pattern, Vector2 pos, float angleRad,
                                      HitboxComponent ownerHitbox,
                                      LaserModifier[] extraModifiers = null)
         {
             if (pattern == null) return null;
+
+            // ─── 触发 LaserPattern 的开火音(FireSounds 数组) ───
+            // 在 pattern.Fire(...) 之前调 —— 每次"开火组"触发一次。
+            // 与 BulletPool.FireGroup.PlayFireSounds 调用点对齐(原 PR1 由 StraightLaserPattern.Fire 内部触发,
+            // 现统一上移到 Pool 入口,与子弹架构保持一致,便于未来 CompositeLaserPattern 递归时只在最外层触发一次)。
+            pattern.PlayFireSounds(pos, ownerHitbox);
+
+            // ─── 本批 LaserFireExtension 累加计数 ───
+            // 遍历 pattern.FireExtensions 数组,对每个非 null 元素在 _fireCounts 字典里 ++,
+            // 得到的 fireCount(从 1 起)会在 pattern.Fire 内部被 Resolver 入口调 OnFireGroupTriggered。
+            //
+            // ★ per-instance 隔离 ★
+            //   key = FireExtensions 数组里的具体元素引用(不是 SO 资产本身)。
+            //   - 同一份 LaserPattern SO 被敌人 A / B 共用 → 它们 FireExtensions 数组里的元素是同一引用,
+            //     字典累加会跨敌人 —— 这是项目想要的行为("Boss 旋转激光每 0.05s 开火转 5°" 跨多次开火累加)。
+            //   - 用户复制一份 LaserPattern 资产(Ctrl+D)→ 新资产的 FireExtensions 数组是新元素,字典独立累加。
+            //   - 用户手动给同一资产在多处挂不同 LaserFireExtension 子类实例 → 字典按 ref 区分,各自累加。
+            //
+            // ★ 字典清理 ★
+            //   累加计数随 pattern 资产整个生命周期保留(场景切换时 LaserPool.OnDestroy 清 Instance,
+            //   字典随之释放,无泄漏风险)。若未来要支持"关卡重置后累加清零",加一个 ResetFireCounts() 公共方法。
+            //
+            // ★ 空数组 / null → 不累加,行为 100% 等价历史。
+            if (pattern.FireExtensions != null)
+            {
+                for (int i = 0; i < pattern.FireExtensions.Length; i++)
+                {
+                    var ext = pattern.FireExtensions[i];
+                    if (ext == null) continue;
+                    _fireCounts.TryGetValue(ext, out int prev);
+                    _fireCounts[ext] = prev + 1;
+                }
+            }
+
             return pattern.Fire(pos, angleRad, this, ownerHitbox, extraModifiers);
         }
+
+        /// <summary>
+        /// 返回 pattern.FireExtensions 数组里每个非 null 元素当前的 fireCount(1 起)。
+        /// 由 LaserPattern.Fire 内部调 Resolver 时传入(对齐 BulletPool.GetFireExtensionFireCounts)。
+        ///
+        /// 不存在 key → 不返回该元素(Resolver 走默认值 0,不调 OnFireGroupTriggered)。
+        /// </summary>
+        public IReadOnlyDictionary<LaserFireExtension, int> GetFireExtensionFireCounts() => _fireCounts;
 
         // ═══════════════════════════════════════════════════════════
         // 调试入口:Inspector 右键 LaserPool → "Test Fire" 即可在 (0,0) 朝右生成一条 1 秒静态激光,
