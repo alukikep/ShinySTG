@@ -15,7 +15,8 @@ MonoBehaviour:
   Data: {fileID: 11400000, guid: 6b26c058f96702c4fba8883518d4b3b3, type: 2}
   ModifierPrefabs:
   - rid: 6177227118142816270
-  FireSounds: []
+  FireSounds:
+  - rid: 6177227119395078220
   FireExtensions: []
   Damage: 1
   Count: 3
@@ -32,10 +33,16 @@ MonoBehaviour:
         Delay: 0.5
         StartTrigger:
           rid: -2
-        Duration: 1
+        Duration: 0.5
         AutoSkipOutsideWindow: 1
         OneShot: 0
         Mode: 1
         AngularSpeed: -120
         PresetCenter: {x: NaN, y: NaN}
         OffsetFromOwner: {x: 0, y: 0}
+    - rid: 6177227119395078220
+      type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: eb4faee07b77d6349842b0c1e723fc30, type: 2}
+        VolumeMul: 1
+        Pitch: 1

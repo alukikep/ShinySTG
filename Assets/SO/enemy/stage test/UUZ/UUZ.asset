@@ -14,12 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Actions:
   - rid: 6177227118142816264
-  - rid: 6177227118142816271
+  - rid: 6177227119395078147
+  - rid: 6177227119395078182
+  - rid: 6177227119395078184
+  - rid: 6177227119395078224
   Loop: 1
   StartDelay: 0
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 6177227118142816264
       type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -61,13 +66,341 @@ MonoBehaviour:
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         Value: 1
-    - rid: 6177227118142816271
+    - rid: 6177227119395078147
+      type: {class: SequenceAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078148
+        _legacyDuration: 1
+        Children:
+        - rid: 6177227119395078166
+        - rid: 6177227119395078174
+        Loop: 1
+    - rid: 6177227119395078148
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078166
+      type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078167
+        _legacyDuration: 1
+        Children:
+        - rid: 6177227119395078168
+        - rid: 6177227119395078170
+        - rid: 6177227119395078172
+    - rid: 6177227119395078167
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.25
+    - rid: 6177227119395078168
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078169
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
+        FireRate: 4
+        AimOffsetDeg: 4.5
+        ExtraModifierPrefabs: []
+    - rid: 6177227119395078169
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078170
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078171
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
+        FireRate: 4
+        AimOffsetDeg: 4.5
+        ExtraModifierPrefabs: []
+    - rid: 6177227119395078171
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078172
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078173
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
+        FireRate: 4
+        AimOffsetDeg: 4.5
+        ExtraModifierPrefabs: []
+    - rid: 6177227119395078173
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078174
+      type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078175
+        _legacyDuration: 1
+        Children:
+        - rid: 6177227119395078176
+        - rid: 6177227119395078178
+        - rid: 6177227119395078180
+    - rid: 6177227119395078175
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.25
+    - rid: 6177227119395078176
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078177
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
+        FireRate: 4
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs: []
+    - rid: 6177227119395078177
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078178
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078179
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
+        FireRate: 4
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs: []
+    - rid: 6177227119395078179
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078180
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078181
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
+        FireRate: 4
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs: []
+    - rid: 6177227119395078181
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078182
       type: {class: WaitAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227118142816272
+          rid: 6177227119395078183
         _legacyDuration: 1
-    - rid: 6177227118142816272
+    - rid: 6177227119395078183
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 3
+    - rid: 6177227119395078184
+      type: {class: SequenceAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078185
+        _legacyDuration: 1
+        Children:
+        - rid: 6177227119395078197
+        - rid: 6177227119395078208
+        Loop: 1
+    - rid: 6177227119395078185
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 2
+    - rid: 6177227119395078197
+      type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078198
+        _legacyDuration: 1
+        Children:
+        - rid: 6177227119395078199
+        - rid: 6177227119395078201
+        - rid: 6177227119395078203
+    - rid: 6177227119395078198
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.5
+    - rid: 6177227119395078199
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078200
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 4.5
+        ExtraModifierPrefabs:
+        - rid: 6177227119395078205
+    - rid: 6177227119395078200
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078201
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078202
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 4.5
+        ExtraModifierPrefabs:
+        - rid: 6177227119395078206
+    - rid: 6177227119395078202
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078203
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078204
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 4.5
+        ExtraModifierPrefabs:
+        - rid: 6177227119395078207
+    - rid: 6177227119395078204
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078205
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        TurnRate: 8
+    - rid: 6177227119395078206
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        TurnRate: 8
+    - rid: 6177227119395078207
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        TurnRate: 8
+    - rid: 6177227119395078208
+      type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078209
+        _legacyDuration: 1
+        Children:
+        - rid: 6177227119395078210
+        - rid: 6177227119395078213
+        - rid: 6177227119395078216
+    - rid: 6177227119395078209
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.5
+    - rid: 6177227119395078210
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078211
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs:
+        - rid: 6177227119395078212
+    - rid: 6177227119395078211
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078212
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        TurnRate: -8
+    - rid: 6177227119395078213
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078214
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs:
+        - rid: 6177227119395078215
+    - rid: 6177227119395078214
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078215
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        TurnRate: -8
+    - rid: 6177227119395078216
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078217
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
+        FireRate: 2
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs:
+        - rid: 6177227119395078218
+    - rid: 6177227119395078217
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227119395078218
+      type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        TurnRate: -8
+    - rid: 6177227119395078224
+      type: {class: WaitAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227119395078225
+        _legacyDuration: 1
+    - rid: 6177227119395078225
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         Value: 3

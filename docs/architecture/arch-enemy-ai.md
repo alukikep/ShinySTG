@@ -72,6 +72,59 @@
 
 ---
 
+### 4.0.6 SequenceAction.Loop(自身 Duration 封顶 + 内部循环)
+
+**位置:** `Assets/Scripts/Enemy/AI/Actions/SequenceAction.cs`
+
+**职责:** 让 `SequenceAction` 支持"**children 跑完后从头再跑一轮,直到 Sequence 自身 Duration 耗尽**"的语义,等价于把 `BehaviorFlow` 顶层 `Loop` 能力下沉到 Sequence 容器层级。典型场景:Boss 阶段内"开火 2 秒 → 停顿 1 秒 → 开火 2 秒 → 停顿 1 秒" 这样的短循环节奏,不必再外置一个完整 Flow。
+
+**字段:**
+
+| 字段 | 类型 | 默认 | 含义 |
+|---|---|---|---|
+| `Loop` | `bool` | `false`(等价旧行为) | children 跑完后是否从头再跑一轮 |
+| `Children` | `EnemyAction[]` | — | 顺序执行的子行为(SR 字段) |
+| `DurationConfig` | `ActionDurationConfig` | `FixedActionDuration{Value=1f}` | Sequence 自身的 Duration,**仅 Loop=true 时生效**,语义与 `ParallelAction` 自身 Duration 一致(封顶时间) |
+
+**两段式 Duration 语义:**
+
+- **`Loop = false`(默认,等价旧行为)**:Sequence 自身 Duration 字段被忽略,沿用外层 `BehaviorFlowRuntime` 时间轴,children 跑完后 Sequence 空转等外层切走。这是 vX 之前的旧行为,**老 .asset 自动以 `Loop=false` 反序列化,无回归**。
+- **`Loop = true`**:Sequence 自身 Duration 字段变为**封顶时间**(与 `ParallelAction` 自身 Duration 同套路)。
+  - 进入 Sequence 时,拷贝 `CurrentDuration` 到 `_remainingSelfDuration`
+  - 每 Tick 递减 `_remainingSelfDuration -= dt`
+  - children 跑完一轮后(`_idx == -1`):若 `_remainingSelfDuration > 0` → 从 0 再跑一轮,直到封顶时间到点
+  - Sequence 自身 Duration 由外层 `BehaviorFlowRuntime.AdvanceTo` 抽样一次,Random Range 策略下整段 Loop 期间只抽一次(与顶层 `BehaviorFlow.Loop` 一致)
+
+**Loop 触发的 child 重新进入:**
+
+每次 `Advance` 切到 child(无论是首次还是 Loop 重新进入 child 0),都重新 `child.ResolveDuration()` 抽样:
+- Fixed → 等价旧行为
+- Random Range → 每次循环节奏抖动(每个 child 独立抽)
+
+**嵌套语义:**
+
+- **Sequence 套 Sequence(外 Loop,内不 Loop)**:外层 Loop 触发内层 Sequence 重新 `OnEnter`(经 `Advance` 调用 `child.OnEnter`),内层按自己的 `_idx = -1` 逻辑从头跑,符合预期。
+- **Sequence 套 Parallel**:Sequence 在 Advance 时调 `child.OnEnter` → `ParallelAction.OnEnter` 已经重建 `_childElapsed` / `_childFinished`,不会脏。
+
+**OnExit 收尾:**
+
+Sequence override 了 `OnExit`(基类原本是空实现):
+- `Loop=true` 且当前有 child 在跑 → 调 `Children[_idx].OnExit(enemy)` 收尾,避免外层 `ForceExit`(ShooterPhase 切走)时漏清理
+- `Loop=false` → 不 override 行为,children 自身在 OnTick 内已逐个 OnExit,与旧行为等价
+
+**典型用法:**
+
+- Boss 短循环节奏:`SequenceAction` Loop=true,自身 Duration=5s,Children=[Fire(2s), Wait(1s)] → 5 秒内反复"开火 2 秒 + 停顿 1 秒"两次
+- 自机狙走位:`SequenceAction` Loop=true,自身 Duration=10s,Children=[MoveToA(3s), MoveToB(3s), Wait(1s)] → 10 秒内反复绕场
+- 旧用法不变:`SequenceAction` Loop=false,Children=[A, B, C] → 顺序跑完 A→B→C 后空转等外层切走(等价旧 v1 行为)
+
+**老 .asset 兼容:**
+
+- `Loop` 是新增字段,默认 `false` → 老 .asset 反序列化后 `Loop=false` → 走现状分支,**行为 100% 等价**。
+- 不需要 `[FormerlySerializedAs]`(字段是新加,不是改名)。
+
+---
+
 #### 4.1 内置 MoveBehaviour 速查表
 
 | 类型 | SRName | 范式 | 关键字段 |

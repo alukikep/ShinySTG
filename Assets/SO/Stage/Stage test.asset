@@ -29,7 +29,7 @@ MonoBehaviour:
         Duration: 1
         SpawnInterval: 1
         EnemyPrefab: {fileID: 3322077835522038162, guid: d2303041f257c1f41a7c9fc8664540de, type: 3}
-        SpawnPosition: {x: -5, y: 3}
+        SpawnPosition: {x: -0.5, y: 5.5}
         SpawnPositionStrategy:
           rid: 6177227073745846277
         InitialRotation: 0

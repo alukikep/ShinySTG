@@ -17,7 +17,7 @@ MonoBehaviour:
   MaxLength: 24
   WarningTime: 2
   ExpandTime: 0.3
-  ActiveTime: 1.5
+  ActiveTime: 6
   ShrinkTime: 0.2
   CollideInWarning: 0
   CollideInExpanding: 0
