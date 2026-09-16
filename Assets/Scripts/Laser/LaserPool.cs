@@ -94,13 +94,23 @@ namespace ShinySTG.Laser
         }
 
         /// <summary>
-        /// 回收一条激光。严格对齐 BulletPool.Return:先摘 modifier 订阅 → 清 modifier 列表
-        /// → SetActive(false) → 从 _active 移除 → 按 Data 路由到正确桶。
+        /// 回收一条激光。严格对齐 BulletPool.Return 流程:
+        ///   1. SetActive(false) → 同步触发 LaserEntity.OnDisable →
+        ///      OnDisable 内部:DetachSignalTriggers + ClearModifiers(PR3 起新增 Detach 步骤)
+        ///   2. 从 _active 移除
+        ///   3. 按 Data 路由到正确桶
+        ///
+        /// ★ 为什么不在这里显式调 DetachSignalTriggers + ClearModifiers:
+        ///   Unity SetActive(false) 是同步触发 OnDisable 的,这里显式调会与 OnDisable 内调用重复。
+        ///   OnDetach 内部 _subscribedThisAttach 防重复 Subscribe,语义上安全,但徒增一次遍历 —— 没必要。
+        ///
+        /// ★ 但 BulletPool.Return 是显式调(因为 Bullet.OnDestroy 才触发 OnDisable,SetActive(false) 不一定触发)
+        ///   —— 这是激光版 vs 子弹版的差异,不是 bug,详见 arch-laser §13.5.2 注释。
         /// </summary>
         public void Return(LaserEntity laser)
         {
             if (laser == null) return;
-            // ★ OnDisable 会自动 ClearModifiers(LaserEntity.OnDisable),这里不用手动。
+            // ★ SetActive(false) 同步触发 OnDisable,内部完成 DetachSignalTriggers + ClearModifiers
             laser.gameObject.SetActive(false);
             _active.Remove(laser);
 

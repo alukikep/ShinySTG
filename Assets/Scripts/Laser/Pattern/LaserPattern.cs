@@ -97,11 +97,17 @@ namespace ShinySTG.Laser
         }
 
         /// <summary>
-        /// 挂 modifier(ModifierPrefabs + extraModifiers 拼接),并重置所有 modifier 的窗口。
+        /// 挂 modifier(ModifierPrefabs + extraModifiers 拼接),并重置所有 modifier 的窗口 + 挂信号 trigger。
         /// 子类 <see cref="StraightLaserPattern"/> / <see cref="BidirectionalStraightLaserPattern"/> 共用。
         ///
-        /// ★ 与 BulletPool.AttachModifiers 同思路,但因 LaserEntity modifier 体系 PR1 只暴露最小钩子
-        ///   (完整 Delay/Duration 体系留 PR3),所以这里也只调 AddModifier + ResetAllModifierWindows。
+        /// ★ 与 BulletPool.AttachModifiers 同思路:
+        ///   1. AddModifier(Clone 实例) —— 每条激光独立 modifier
+        ///   2. ResetAllModifierWindows —— 清双时钟 + 兜底新建 DelayStartTrigger
+        ///   3. AttachSignalTriggers —— 订阅型 StartTrigger 订阅 BulletSignalBus(信号触发链路打通)
+        ///
+        /// ★ 自 PR3 升级:最后追加 AttachSignalTriggers,与子弹版 BulletPool.AttachModifiers 完全对齐。
+        ///   顺序关键:必须 ResetWindow 之后才能 Attach —— OnAttach 内部 reset 自己的 per-instance 状态
+        ///   (如 _signalReceived=false),然后 Subscribe。
         /// </summary>
         protected static void AttachModifiers(LaserEntity laser, LaserModifier[] prefabs, LaserModifier[] extras)
         {
@@ -123,6 +129,10 @@ namespace ShinySTG.Laser
                 }
             }
             laser.ResetAllModifierWindows();
+            // ★ 订阅型 StartTrigger(订阅 BulletSignalBus)在这里激活订阅。
+            //   必须在 ResetWindow 之后调 —— OnAttach 内部 reset 自己的 per-instance 状态
+            //   (如 _signalReceived=false),然后 Subscribe 进 BulletSignalBus。
+            laser.AttachSignalTriggers();
         }
     }
 }

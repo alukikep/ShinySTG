@@ -159,7 +159,9 @@ namespace ShinySTG.Laser
             }
 
             // ── 2. 修饰器 Tick ──
-            for (int i = 0; i < _modifiers.Count; i++) _modifiers[i].OnTick(this, dt);
+            // ★ 自 PR3 时间窗/触发器升级后改为基类的 Modify()(内部统一管时间窗 + 调 ModifyCore)。
+            //   对齐子弹版 Bullet.LateUpdate 调 bullet.Modifiers[i].Modify(this, dt)。
+            for (int i = 0; i < _modifiers.Count; i++) _modifiers[i].Modify(this, dt);
 
             // ★ 自 §13.5 起新增:modifier 可能在 OnTick 里重写 Position / Angle(典型:LaserOrbitModifier 圆周运动),
             //   step 1 的 transform 同步是 step 1 末尾的(应用 Velocity/AngularVelocity 后),
@@ -271,9 +273,51 @@ namespace ShinySTG.Laser
             for (int i = 0; i < _modifiers.Count; i++) _modifiers[i]?.ResetWindow();
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // 信号触发器生命周期管理(对齐 Bullet.AttachSignalTriggers / Bullet.DetachSignalTriggers)
+        //   - 由 LaserPattern.AttachModifiers 在 ResetAllModifierWindows 之后统一调 AttachSignalTriggers,
+        //     顺序与 BulletPool.AttachModifiers 一致(详见 BulletPool.cs 注释)。
+        //   - 由 LaserPool.Return / LaserEntity.OnDisable 在 ClearModifiers 之前统一调 DetachSignalTriggers,
+        //     顺序关键:DetachSignalTriggers 需要遍历 _modifiers,先于 ClearModifiers。
+        //   - 订阅型 trigger(OnSignalLaserModifierStartTrigger / DelayOrSignalLaserModifierStartTrigger)
+        //     在 OnAttach 内部调 BulletSignalBus.Subscribe,OnDetach 内部调 Unsubscribe。
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 把每条 modifier 的 StartTrigger 挂上:订阅型 trigger 在这里 Subscribe BulletSignalBus。
+        /// ★ 必须在 ResetAllModifierWindows 之后调 —— OnAttach 内部 reset 自己的 per-instance 状态
+        ///   (如 _signalReceived=false),然后 Subscribe 进 BulletSignalBus。
+        /// </summary>
+        public void AttachSignalTriggers()
+        {
+            for (int i = 0; i < _modifiers.Count; i++)
+            {
+                var m = _modifiers[i];
+                if (m?.StartTrigger != null) m.StartTrigger.OnAttach(this);
+            }
+        }
+
+        /// <summary>
+        /// 把每条 modifier 的 StartTrigger 摘下:订阅型 trigger 在这里 Unsubscribe BulletSignalBus。
+        /// ★ 必须在 ClearModifiers 之前调(否则遍历到一半 _modifiers 已清空,残留 handler 留在 _subs)。
+        /// ★ OnDetach 内部有 _subscribedThisAttach 标志位防重复 Subscribe,本方法多次调用安全。
+        /// </summary>
+        public void DetachSignalTriggers()
+        {
+            for (int i = 0; i < _modifiers.Count; i++)
+            {
+                var m = _modifiers[i];
+                if (m?.StartTrigger != null) m.StartTrigger.OnDetach(this);
+            }
+        }
+
         void OnDisable()
         {
             // 被回收 / 场景卸载时的清理钩子
+            // ★ 自 PR3 升级:先摘 BulletSignalBus 订阅,再清 modifier(对齐 Bullet.OnDestroy 的 DetachSignalTriggers + ClearModifiers 顺序)
+            //   顺序关键:DetachSignalTriggers 需要遍历 _modifiers 列表,必须在 ClearModifiers 之前调。
+            //   否则信号型 StartTrigger 的 OnAttach 残留的 handler 还在 _subs 字典里,下次 Emit 时 NRE。
+            DetachSignalTriggers();
             ClearModifiers();
         }
     }

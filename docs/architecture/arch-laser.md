@@ -87,6 +87,25 @@
   - **不做位置偏移**:两条激光共享同一个 `position`。若需肩炮等"两个不同发射点"的双向,Action 层用两个 FireLaserAction 各偏一点,或未来加 MultiAngleLaserPattern
   - **共享 FireExtensions 累加字典**: 一次 Fire 走一次 Resolver,fireCount +=1;正反两条同角度、同长度、同 modifier、同阵营
 
+- **`RingLaserPattern: LaserPattern`** —— **单向环形激光**(同点等分扇出 N 条):
+  - 字段: `Count: int`(默认 16)/ `Radius: float`(默认 0,每条激光沿自身方向的外推距离)/ `LengthMultiplier: float`(默认 1)
+  - **几何语义**: `position` = 共用起点(可被 Base.PositionOffset 修正),每条激光 `rad = centerRad + (2π/N)·i`,端点 = `origin + (cos rad, sin rad)·length`。N 条**独立 `LaserEntity`**,各自走完五段状态机
+  - **视觉语义**: N 条等分环形 → 圆盘形 / 多向散射
+  - **对齐 Bullet 端**: 复用 `RingFirePattern` 的均分算法(`step = 360°/Count`)与 `Radius` 外推语义;激光版每条独占生命周期
+  - **与 BidirectionalStraightLaserPattern 的边界**: Ring 是 N 条等分,**全部单向**,无 `rad + π` 的反向第二条;Bidirectional 是固定 2 条**正反对称**
+  - `GetFireCount() = Count`(对齐 CompositeFirePattern 语义,Boss `ShotsFired` 按 N 算)
+  - **共享 FireExtensions 中心方向**: 一次 Fire 走一次 Resolver,fireCount +=1;N 条共用同一个 `centerRad` 与同一个 `from`(已含 Base.PositionOffset)
+
+- **`ArcLaserPattern: LaserPattern`** —— **单向弧形激光**(同点弧长内扇出 N 条):
+  - 字段: `Count: int`(默认 8)/ `ArcLengthDeg: float`(默认 60,弧长)/ `Radius: float`(默认 0)/ `LengthMultiplier: float`(默认 1)
+  - **几何语义**: 中线由 FireExtensions 解析,每条 `rad = centerRad - ArcLength/2 + (ArcLength/(N-1))·i`,N 条独立 `LaserEntity`。`Count == 1` 退化为沿中线的单条
+  - **视觉语义**: N 条扇形展开 → ◣ 形 / 锥形散射
+  - **对齐 Bullet 端**: 复用 `ArcFirePattern` 的弧长均分算法(`start = centerRad - ArcLength/2`、`step = ArcLength/(N-1)`)与 `Radius` 外推语义
+  - **与 RingLaserPattern 的边界**: Arc 是 ArcLengthDeg 范围内局部扇出,默认扇形 60°;Ring 是全 360° 等分
+  - **与 BidirectionalStraightLaserPattern 的边界**: Arc 全部单向,无反向第二条
+  - `GetFireCount() = Count`(对齐 CompositeFirePattern 语义)
+  - **共享 FireExtensions 中心方向**: 同 RingLaserPattern 套路
+
 - **`LaserRendererBase`(abstract MonoBehaviour)** + **`SpriteStretchLaserRenderer`** —— 视觉抽象:
   - `LaserRendererBase` 暴露 `OnLaserInit(laser)` / `OnLaserTick(laser)` 两个钩子
   - `SpriteStretchLaserRenderer`(PR1 默认实现)抓三个子 SpriteRenderer:
@@ -206,11 +225,13 @@ return angle
 
 ---
 
-### 13.5 LaserModifier 实例
+### 13.5 LaserModifier 实例 + 时间窗/触发器体系
 
 > 板块维护者写自定义 LaserModifier 的参考章节。详细实现以源文件 + 本节为准。
+>
+> ★ 自 PR3 升级后,`LaserModifier` 已对齐 `BulletModifier` 的完整双时钟 + 信号触发体系(详见 §13.5.4)。
 
-`LaserModifier`(PR1 阶段只暴露最小钩子 `OnTick / OnDetach / ResetWindow / Clone`,完整 Delay/Duration 双时钟留到 PR3)目前**内置实例只有一个**:
+`LaserModifier` 当前**内置实例**:`LaserOrbitModifier` (§13.5.1)。基类时间窗/触发器 API 详见 §13.5.4。
 
 #### 13.5.1 `LaserOrbitModifier` —— 激光圆周运动
 
@@ -264,8 +285,16 @@ Modifiers 数组 → + → 下拉选 LaserModifier/Orbit
 **约束与未来扩展**:
 
 - **只挂一个 Orbit modifier**: 多个会互相覆盖 Position/Angle(Position 没有 BounceBulletModifier "第一个 true 胜出" 的 bool 返回机制)。
-- **未来可继承拓展**: `EllipseOrbitModifier`(椭圆: x/y 半轴分离)、`Figure8OrbitModifier`(8 字形: 两个圆心插值)、`SpiralOrbitModifier`(半径随时间变化) —— 都基于"每帧重写 Position/Angle"的同套路,只需 override `OnTick`。
-- **Delay/Duration 时序控制**: 当前 PR1 不支持(基类无此钩子);若需要"前 0.5s 直线飞,后 2s 转圈",要么在 LaserModifier 基类加 PR3 双时钟体系,要么本类内自带 `_timer` 自实现。
+- **未来可继承拓展**: `EllipseOrbitModifier`(椭圆: x/y 半轴分离)、`Figure8OrbitModifier`(8 字形: 两个圆心插值)、`SpiralOrbitModifier`(半径随时间变化) —— 都基于"每帧重写 Position/Angle"的同套路,只需 override `ModifyCore`。
+- **Delay/Duration 时序控制**: ★ PR3 起基类已自带(`Delay` / `StartTrigger` / `Duration` / `OneShot`),详见 §13.5.4。本 modifier 不需要自实现计时器。
+- **常见时序配置示例**(基类字段直接配即可,无需 override):
+
+  | 场景 | 配置 |
+  |---|---|
+  | 出生 0.5s 后开始转 | `Delay = 0.5` |
+  | 出生 1s 后开始转,转 3s 后停 | `Delay = 1`, `Duration = 3` |
+  | Boss 蓄力吼后才开始转 | `StartTrigger = LaserTrigger/On Signal`, SignalName="boss_charge_done" |
+  | 转 1 圈后停下(180°/秒) | `AngularSpeed = 180`, `Duration = 2` |
 
 #### 13.5.2 对 `LaserEntity` 的必要改造(配套)
 
@@ -283,12 +312,103 @@ Modifiers 数组 → + → 下拉选 LaserModifier/Orbit
 
 1. 新建 `Assets/Scripts/Laser/<YourModifier>.cs`
 2. 继承 `LaserModifier` + 加 `[Serializable, SRName("LaserModifier/<名字>")]`
-3. override `OnTick(LaserEntity laser, float dt)` 修改 `laser.Position / Angle / Velocity / AngularVelocity / LengthEase`
-4. per-instance 状态用 `[NonSerialized]`,`ResetWindow()` 必须能彻底重置(否则池复用会状态污染)
+3. override **`ModifyCore(LaserEntity laser, float dt)`**(不是 `OnTick` —— PR3 起 `OnTick` 已重命名,基类 `Modify()` 统一管时间窗)
+4. per-instance 状态用 `[NonSerialized]`,池复用时基类 `ResetWindow` 会调 **`protected override void OnResetWindow()`** 虚钩子(对齐子弹版 `OnWindowEnter` 钩子模型),子类 override 这个钩子清自己的状态即可(基类 `OnResetWindow` 默认空,**不需要 super 调 base**)。`ResetWindow` 本身仍是 `public void`(非 virtual,子类不能 override)
 5. 引用类型字段(`Transform` 等)override `Clone()` 深拷;值类型字段用默认 `MemberwiseClone`
 6. owner Destroy 防御走 `_owner as UnityEngine.Object == null`(对齐子弹版)
+7. 如需「进入窗口瞬间一次」逻辑:override `protected override void OnWindowEnter(LaserEntity laser)`,配合 `OneShot = true` 实现一次性触发
+8. 如需「退出窗口清理」逻辑:override `protected override void OnWindowExitCleanup(LaserEntity laser)`(基类 `OnWindowExit` 默认 noop 后调到这里)
 
 详见 CONTRIBUTING.md §2 "新 BulletModifier" 行(架构套路 1:1 对仗,只把 Bullet 换成 LaserEntity、把 FireExtension 换成 LaserFireExtension)。
+
+#### 13.5.4 时间窗/触发器体系(PR3 升级核心)
+
+自 PR3 起,`LaserModifier` 对齐 `BulletModifier` 的完整双时钟 + 信号触发体系,激光 modifier **自动**获得以下能力,无需任何额外代码:
+
+**Inspector 字段**(对所有 modifier 子类生效,默认值与 PR1 旧行为 100% 等价):
+
+| 字段 | 类型 | 默认 | 等价 PR1 行为 |
+|---|---|---|---|
+| `Delay` | float | 0 | 旧版不存在该概念,默认 0 = 出生即生效 |
+| `StartTrigger` | `[SerializeReference, SR] LaserModifierStartTrigger` | null | 旧版不存在;null → 兜底 `DelayLaserModifierStartTrigger{Delay=this.Delay}` |
+| `Duration` | float | 0 | 旧版不存在;0 = 永久生效 |
+| `AutoSkipOutsideWindow` | bool | true | 旧版没有窗口概念,默认行为等价 |
+| `OneShot` | bool | false | 旧版不存在;false = 持续型 |
+
+**双时钟模型**(对齐 `BulletModifier`):
+
+- `_elapsed` (时钟 A):激光出生至今,一直累加,供 `StartTrigger.ShouldActivate` 判断
+- `_windowElapsed` (时钟 B):窗口内累计时间,只在 `_isActive=true` 时累加,直接对接 `Duration`
+- `_windowStarted` (粘性位):窗口是否「已触发过」,OneShot 锁死 + 信号型 trigger 不重复触发
+- `_windowExhausted` (OneShot 锁死位):触发过一次后,后续不再激活
+
+**Modify 流程**(基类 `public void Modify(LaserEntity laser, float deltaTime)` 统一调度):
+
+```
+1. _elapsed += dt
+2. StartTrigger.ShouldActivate(laser, _elapsed) → triggerReady
+3. durationExpired = Duration > 0 && _windowElapsed >= Duration
+4. 计算 nowActive(未触发 / OneShot 已结束 / 持续 中 三阶段)
+5. 边缘触发:enter / exit(OneShot 触发后立刻 exit + 锁死)
+6. AutoSkipOutsideWindow 时,窗口外直接 return(子类 ModifyCore 不会被调)
+7. 子类 ModifyCore(laser, dt) ← 子类 override 这个
+```
+
+**向后兼容性**: 老 .asset 反序列化后 `StartTrigger` 字段为 null,`ResetWindow` 兜底为 `DelayLaserModifierStartTrigger{Delay = this.Delay}`,基类 `Delay=0` 时立即激活,**行为 100% 等价**。
+
+#### 13.5.5 LaserModifierStartTrigger 实例
+
+`LaserModifierStartTrigger` 基类(全局命名空间,与 `ModifierStartTrigger` 同款 —— 详见 CONTRIBUTING.md §4.7)位于 `Assets/Scripts/Laser/LaserModifierStartTrigger.cs`,提供 **3 个 SR 多态子类**:
+
+| 子类 | SRName | 用途 | 关键字段 |
+|---|---|---|---|
+| `DelayLaserModifierStartTrigger` | `LaserTrigger/Delay` | `elapsed >= Delay` 即激活。默认,等价基类 `Delay` 字段 | `Delay`(float) |
+| `OnSignalLaserModifierStartTrigger` | `LaserTrigger/On Signal` | 订阅 `BulletSignalBus` 信号,收到即激活。可配 MaxWait 兜底 + 距离判定 | `SignalName` / `MaxWait` / `RequireInRange` / `MaxDistanceFromOrigin` |
+| `DelayOrSignalLaserModifierStartTrigger` | `LaserTrigger/Delay Or Signal` | Delay 与信号任一先到即激活 | `Delay` / `SignalName` |
+
+**★ 跨子体系联动 ★**
+
+激光 signal trigger **复用 `BulletSignalBus`**(不新建 `LaserSignalBus`)。同一信号名可同时被子弹版 `OnSignalStartTrigger` + 激光版 `OnSignalLaserModifierStartTrigger` 订阅 —— Emit 一次全场响应。
+
+典型场景: Boss 蓄力吼(`EmitSignalAction.Emit("boss_charge_done")`) → 所有挂 `OnSignalStartTrigger` 的子弹 + 所有挂 `OnSignalLaserModifierStartTrigger` 的激光**同时**激活,零额外代码。
+
+**订阅生命周期**:
+
+- `OnAttach(LaserEntity laser)`:modifier 挂到激光时调一次,订阅型 trigger 在这里 `Subscribe`
+- `OnDetach(LaserEntity laser)`:激光回池/销毁时调一次,订阅型 trigger 在这里 `Unsubscribe`
+- 调用入口:
+  - 订阅:`LaserPattern.AttachModifiers` → `laser.AttachSignalTriggers()`(在 `ResetAllModifierWindows` **之后**)
+  - 摘除:`LaserEntity.OnDisable` → `DetachSignalTriggers()`(在 `ClearModifiers` **之前**)→ 同时被 `LaserPool.Return` 同步触发(`SetActive(false)` 同步 OnDisable)
+
+**Owner Destroy 防御**: `OnSignalLaserModifierStartTrigger` 的 `_attachedLaser as UnityEngine.Object == null` 检测(对齐子弹版 `HomingEnemyModifier.IsTargetValid`),owner 死后 trigger 静默失效。
+
+**深拷**: `LaserModifier.Clone` 自动 `StartTrigger.Clone()` 深拷,确保每条激光的 trigger 独立(否则订阅型 trigger 会被多条激光共享,导致订阅泄漏 + 状态污染)。
+
+#### 13.5.6 对 `LaserEntity` 的 PR3 进一步改造
+
+为支持时间窗/触发器体系,`LaserEntity` 在 §13.5.2 三处改动基础上再追加 **3 处**:
+
+1. **LateUpdate 调度入口改名**: `_modifiers[i].OnTick(this, dt)` → `_modifiers[i].Modify(this, dt)`(基类 `Modify` 统一管时间窗 + 调 `ModifyCore`)。
+2. **新增 `AttachSignalTriggers()` 方法**:遍历 `_modifiers` 调每个 `StartTrigger.OnAttach(this)`,由 `LaserPattern.AttachModifiers` 在 `ResetAllModifierWindows` 之后调用。
+3. **新增 `DetachSignalTriggers()` 方法**:遍历 `_modifiers` 调每个 `StartTrigger.OnDetach(this)`,由 `LaserEntity.OnDisable` 在 `ClearModifiers` 之前调用,实现订阅生命周期闭环。
+4. **OnDisable 兜底**: `DetachSignalTriggers()` + `ClearModifiers()`(顺序关键,Detach 先于 Clear),防「激光已回池但 handler 还在 `_subs` 字典里」导致下次 `Emit` 时 NRE。
+
+**Pool.Return 路径差异**(对齐子弹版但不强制双调):
+
+- 子弹版:`BulletPool.Return` 显式调 `bullet.DetachSignalTriggers + ClearModifiers`(因为 `Bullet.OnDestroy` 才触发 `OnDisable`)
+- 激光版:`LaserPool.Return` 只调 `SetActive(false)` —— `SetActive(false)` **同步触发** `LaserEntity.OnDisable`,OnDisable 内部已调 `DetachSignalTriggers + ClearModifiers`,不再重复调(避免遍历两次 `_modifiers`)
+
+这是激光版 vs 子弹版的差异,**不是 bug**。
+
+#### 13.5.7 对 `LaserOrbitModifier` 的升级(向后兼容 breaking change)
+
+PR3 升级后,`LaserOrbitModifier` 必须做以下改动(其他 modifier 子类若编写需遵循):
+
+- `public override void OnTick(LaserEntity, float)` → **`public override void ModifyCore(LaserEntity, float)`**(重命名 + 语义保留)
+- ~~`public override void ResetWindow()` 必须在头部加 `base.ResetWindow()`~~(已废弃 —— `ResetWindow` 在基类是非 virtual 的,override 它会触发 CS0506)。
+  ★ 正确做法:override **`protected override void OnResetWindow()`** 虚钩子(对齐子弹版 `OnWindowEnter` 钩子模型)。基类 `ResetWindow` 由 `LaserEntity.ResetAllModifierWindows` 显式调用,内部会自动跑完双时钟清零 → 兜底 StartTrigger → 调 `OnResetWindow()` 形成完整链路;子类 override `OnResetWindow` 只需要清自己的 lazy Init 状态,不需要 super 调 base(基类 `OnResetWindow` 默认空)。
+
+**用户视角**:已挂 `LaserOrbitModifier` 的 `.asset` **零修改** —— `Delay=0` / `StartTrigger=null` / `Duration=0` 默认值与 PR1 行为 100% 等价;新功能(Delay / Duration / StartTrigger / OneShot)**自动可用**,策划只需在 Inspector 配字段,无需改代码。
 
 ---
 

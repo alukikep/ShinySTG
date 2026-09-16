@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 746041e88abfe204ab0c047c85dd05d4, type: 3}
+  m_Name: UUZLaserData
+  m_EditorClassIdentifier: 
+  VisualWidth: 0.8
+  CollisionWidth: 0.15
+  MaxLength: 24
+  WarningTime: 2
+  ExpandTime: 0.3
+  ActiveTime: 1.5
+  ShrinkTime: 0.2
+  CollideInWarning: 0
+  CollideInExpanding: 0
+  CollideInShrinking: 0
+  Sprite: {fileID: 0}
+  BodyColor: {r: 1, g: 0, b: 0.8464918, a: 1}
+  HeadSprite: {fileID: 0}
+  WarningColor: {r: 1, g: 0.24213827, b: 0.3724955, a: 0.55}
+  HeadColor: {r: 1, g: 0, b: 0.79020596, a: 1}

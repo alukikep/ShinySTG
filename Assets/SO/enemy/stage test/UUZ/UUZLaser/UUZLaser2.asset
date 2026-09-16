@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d6f542989c6dea45bba7b035890f6e0, type: 3}
+  m_Name: UUZLaser2
+  m_EditorClassIdentifier: 
+  Data: {fileID: 11400000, guid: 6b26c058f96702c4fba8883518d4b3b3, type: 2}
+  ModifierPrefabs:
+  - rid: 6177227118142816270
+  FireSounds: []
+  FireExtensions: []
+  Damage: 1
+  Count: 3
+  Radius: 2
+  LengthMultiplier: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 6177227118142816270
+      type: {class: LaserOrbitModifier, ns: ShinySTG.Laser, asm: Assembly-CSharp}
+      data:
+        Delay: 0.5
+        StartTrigger:
+          rid: -2
+        Duration: 1
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 1
+        AngularSpeed: -120
+        PresetCenter: {x: NaN, y: NaN}
+        OffsetFromOwner: {x: 0, y: 0}

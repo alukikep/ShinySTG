@@ -28,8 +28,8 @@ namespace ShinySTG.Laser
     ///
     /// <para>★ 协作边界 ★</para>
     /// <list type="bullet">
-    ///   <item>本 modifier 在 OnTick 里<b>直接重写</b> <see cref="LaserEntity.Position"/> 和 <see cref="LaserEntity.Angle"/>,
-    ///         <see cref="LaserEntity.LateUpdate"/> 会在 modifier OnTick 后自动同步 transform 与端点,
+    ///   <item>本 modifier 在 <see cref="LaserModifier.ModifyCore"/> 里<b>直接重写</b> <see cref="LaserEntity.Position"/> 和 <see cref="LaserEntity.Angle"/>,
+    ///         <see cref="LaserEntity.LateUpdate"/> 会在 modifier ModifyCore 后自动同步 transform 与端点,
     ///         视觉与碰撞段自动跟随圆周运动。</item>
     ///   <item>本 modifier 会<b>清零 laser.Velocity</b>(避免一边圆周一边平移);
     ///         <b>不动 laser.AngularVelocity</b>(本 modifier 直接重写 Angle,不依赖框架累积)。</item>
@@ -94,11 +94,11 @@ namespace ShinySTG.Laser
         [NonSerialized] Vector2  _center;           // 当前帧圆心(世界坐标)
         [NonSerialized] float    _radius;           // Init 时锁定的半径(运行期不变)
         [NonSerialized] float    _phaseAngle;       // 当前极坐标相位角(弧度,从 Init 起累加)
-        [NonSerialized] bool     _initialized;      // lazy Init 标志:首帧 OnTick 触发初始化
+        [NonSerialized] bool     _initialized;      // lazy Init 标志:首帧 ModifyCore 触发初始化
         [NonSerialized] Transform _ownerTransform;  // FollowOwner 模式缓存 owner Transform(每帧直接读 .position)
 
         // ────────────────────────────────────────────────────────────
-        //  Init:首帧 OnTick 自动调用,锁定圆心 / 半径 / 初始相位角
+        //  Init:首帧 ModifyCore 自动调用,锁定圆心 / 半径 / 初始相位角
         // ────────────────────────────────────────────────────────────
         void LazyInit(LaserEntity laser)
         {
@@ -137,7 +137,8 @@ namespace ShinySTG.Laser
             //   激光当前所在位置相对圆心的极坐标角,作为累加起点
             //   atan2(y - cy, x - cx) → 返回 [-π, π] 弧度
             //   ★ 用激光当前 Position(已被 Velocity / AngularVelocity 之前的 LateUpdate step 1 更新过),
-            //     但本 modifier 在 OnTick 阶段才跑,所以激光 Position 是 Init 时的位置 —— 正确。★
+            //     但本 modifier 在 ModifyCore 阶段才跑(LaserEntity.LateUpdate step 2),
+            //     所以激光 Position 是 Init 时的位置 —— 正确。★
             Vector2 toLaser = laser.Position - _center;
             _phaseAngle = Mathf.Atan2(toLaser.y, toLaser.x);
 
@@ -147,12 +148,22 @@ namespace ShinySTG.Laser
         }
 
         // ────────────────────────────────────────────────────────────
-        //  OnTick:每帧调用(LaserEntity.LateUpdate step 2)
+        //  ModifyCore:每帧调用(LaserEntity.LateUpdate step 2 → LaserModifier.Modify 入口 → 本方法)
+        //
+        //  ★ 自 PR3 时间窗/触发器升级后,
+        //    基类 LaserModifier 已有 Modify() 统一管理时间窗口 + 调 ModifyCore(),
+        //    本类从 OnTick(LaserEntity, float) 重命名为 ModifyCore(LaserEntity, float),
+        //    行为完全保留(lazy init / 累加相位角 / 重写 Position / Angle)。
+        //  ★ 现在自动获得「Delay / Duration / StartTrigger / OneShot」四件套支持:
+        //    - 设 Delay = 0.5 → 前 0.5s 激光沿初始方向直线飞(基类 AutoSkipOutsideWindow=true 时不调 ModifyCore)
+        //    - 设 Duration = 3 + Delay = 1 → 1s 后开始转,转 3s 后停(不再圆周,沿最后方向直线飞)
+        //    - 设 StartTrigger = On Signal → 等信号到了才开始转
+        //    - 设 OneShot = true → 进入窗口的瞬间 OnWindowEnter 触发一次,本 ModifyCore 不会再被调
         // ────────────────────────────────────────────────────────────
-        public override void OnTick(LaserEntity laser, float dt)
+        public override void ModifyCore(LaserEntity laser, float dt)
         {
             // 1. lazy Init —— LaserModifier PR1 没有显式 Init 钩子(对齐 BulletModifier 的设计:
-            //   用 ResetWindow 触发,这里简化为首帧 OnTick 触发,池复用时 ResetWindow 清 _initialized)
+            //   用 ResetWindow 触发,这里简化为首帧 ModifyCore 触发,池复用时 ResetWindow 清 _initialized)
             if (!_initialized)
             {
                 LazyInit(laser);
@@ -184,7 +195,7 @@ namespace ShinySTG.Laser
             // 4. 重算 Position —— 极坐标公式
             //   Position = Center + R * (cos θ, sin θ)
             //   ★ laser.Position 是 internal set(同 Assembly-CSharp 可见,见 LaserEntity.cs 字段注释),可写。
-            //   因为 LaserEntity.LateUpdate 会在 modifier OnTick 末尾再同步一次 transform,
+            //   因为 LaserEntity.LateUpdate 会在 modifier ModifyCore 末尾再同步一次 transform,
             //   这里写完 Position 后,视觉立刻生效,不需要我们手动改 transform。
             Vector2 newPos = _center + new Vector2(
                 Mathf.Cos(_phaseAngle) * _radius,
@@ -199,11 +210,19 @@ namespace ShinySTG.Laser
         }
 
         // ────────────────────────────────────────────────────────────
-        //  ResetWindow:池复用时调用,重置 lazy Init 标志
+        //  OnResetWindow:池复用时由基类 ResetWindow 调用的钩子,重置 lazy Init 标志
+        //   ★ 自 CS0506 修复:从 override ResetWindow(基类非 virtual,会编译失败)
+        //     改为 override 虚钩子 OnResetWindow(对齐子弹版 OnWindowEnter 钩子模型)。
+        //   ★ 这里不需要 super 调 base.OnResetWindow()(基类默认空实现)。
+        //   ★ 这里不需要 super 调 base.ResetWindow()(基类 ResetWindow 由 LaserEntity.ResetAllModifierWindows
+        //     显式调用,会自动跑完双时钟清零 + 兜底 StartTrigger + 调 OnResetWindow() —— 形成完整链路)。
         // ────────────────────────────────────────────────────────────
-        public override void ResetWindow()
+        protected override void OnResetWindow()
         {
             // ★ 池复用时必须重置,否则从池里取出来的激光会用上一发的圆心/半径/相位 —— 状态污染!
+            //   注:正常路径下 AttachModifiers 每次 m.Clone() 从模板 SO 资产克隆新实例,
+            //   模板里的 _initialized 默认是 false,Clone 后新实例也是 false —— Orbit 的「lazy Init 重置」
+            //   实际上靠 Clone 自动实现,OnResetWindow 是双保险(边角场景用户手动 AddModifier 时仍兜底)。
             _initialized = false;
             _center = default;
             _radius = 0f;
