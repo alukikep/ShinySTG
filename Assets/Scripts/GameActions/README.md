@@ -66,3 +66,7 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 在 StartActions 中使用可延迟首阶段，在 DefeatActions 中使用可保留 Boss 等待战后对话，
 仅显示立绘的战后对话也可放入 CompleteActions。外层 WaitForCompletion 与 Entry.BlockTimeline 均应开启。
 无敌和消弹仍需显式配置，完整步骤见 [对话配置](../Dialogue/README.md#boss-战前与战后配置)。
+
+## Boss 背景演出
+
+在 Actions 中选择 Game Action/Play Background Cue，指定 Cue，场景复用当前关卡上的 LevelBackgroundBinding。动作按真实过渡完成结束，外层 WaitForCompletion 决定是否阻塞宿主。外部接管、播放失败或缺少绑定会终止本组动作并记录 Failure；取消仅影响自己启动的句柄。详细配置和验收见 [背景操作指南](../Background/README.md#boss-背景演出4b)。

@@ -22,6 +22,7 @@ Encounter 将其解释为阶段或收尾的等待条件，关卡时间轴是否�
 [WaitGameAction](../../Assets/Scripts/GameActions/WaitGameAction.cs)；不需要为每种演出修改 Encounter 字段。
 PlayDialogueAction 已适配对话句柄，按真实结束状态完成，Dispose 只取消自己启动的会话。
 场景需要唯一启用的 DialogueService；缺服务、播放失败或外部取消终止本组动作并记录 Failure。
+PlayBackgroundCueAction 通过当前关卡的 LevelBackgroundBinding 播放，使用独立背景句柄等待及取消。Encounter 将真实 LevelRuntime 传入 Context，CompleteActions 不依赖 Owner 存活。编辑模式预览跳过背景动作，Play 中的预览或旧 Runtime 被拒绝。外部接管、播放失败和缺绑定终止本组动作并记录 Failure。
 Timeline 适配尚未实现，也应按实际完成状态结束，而非猜测播放时长。
 
 - Start 启动，Tick 推进，IsComplete 表示结束；Dispose 在正常结束、取消或失败时释放资源。
@@ -61,6 +62,8 @@ GlobalCommandContext.Invocation 由 BossController 的阶段退出入口传入�
 快照传给指令。需要 Boss 位置时应在其销毁前执行，不能依赖 CompleteActions 中已失效的 Owner。
 
 ## 与其他板块的关系
+
+- [background](./arch-background.md)：Cue 句柄、关卡绑定与背景动作控制权。
 
 - [items](./arch-items.md)：SpawnDropsCommand 复用道具生成与配置。
 

@@ -1,6 +1,6 @@
 # 3D 背景系统
 
-提供独立于战斗相机的三维背景、直线循环布景、Cue 过渡、播放句柄与关卡绑定。Boss GameAction 尚未接入。
+提供独立于战斗相机的三维背景、直线循环布景、Cue 过渡、播放句柄与关卡绑定。Boss Encounter 可通过 Play Background Cue 动作等待背景过渡。
 
 职责和扩展边界见 [背景架构](../../../docs/architecture/arch-background.md)。首次配置按下列章节顺序操作。
 
@@ -44,6 +44,20 @@
 
 升级代码：[LoopingBackgroundSetup.cs](./Editor/LoopingBackgroundSetup.cs)；运行组件：[LoopingBackgroundStrip.cs](./LoopingBackgroundStrip.cs)。每帧只更新预建路段的位置，没有实例化、销毁或新建集合。手动回退时删除 LoopingBackgroundContent 并重新启用 BackgroundContent，相机保持双层配置。
 
+## 从美术路段 Prefab 生成循环背景
+
+1. 制作一个路段：根节点位置/旋转归零、缩放为 1，模型放到子物体；沿局部 Z 拼接，长度例如 32，接缝位于 Z=-16 和 Z=16。可先将现有 Segment 复制出来并归零，再拖到 Project 保存为 Prefab。
+2. 本版仅支持静态几何（MeshRenderer、SpriteRenderer、LODGroup 及必要的 Transform/MeshFilter）。移除碰撞体、Animator、粒子、脚本和 Missing Script，包括非激活子物体。不要把整个背景根节点保存为路段。
+3. 退出 Play，选中 LoopingBackgroundContent，打开 `STG > Background > Build Loop From Prefab`。检查 Target Strip，拖入 Segment Prefab，填写 Segment Length、Rear Edge 和 Segment Count。
+4. 点击 Replace Segments From Prefab。目标组件下全部子物体会被替换；旧路段不另行备份，但可一次 Undo 恢复。组件自身、速度、暂停设置、相机和外部绑定不变。
+5. 保存场景，进入 Play，测试连续滚动、最大速度、所有镜头 Cue、重置与关卡重开。生成后在进入 Play 前验证 Undo/Redo，并保存重开场景确认 Prefab 引用及布局参数持久化。
+
+路段保留 Prefab 连接，生成实例的所有子物体覆盖为 Background3D 层并取消 Static 标记，因为运行时会移动。源 Prefab 不被修改。造型更新可直接修改源 Prefab；若增添新子物体，需再次生成以统一层与 Static 标记，改变长度也需重新生成。禁止后续给这些循环 Prefab 添加本版不支持的可变状态组件。
+
+长度由明确的拼接约定决定，不从树枝等装饰物包围盒自动估算。工具校验结构和数值，但不能判定美术接缝是否吻合或镜头是否露出边缘；需在 Game 视图检查。起始中心为 Rear Edge 减半段长度，后续每段相隔一段长度；增加数量主要扩展前方覆盖，Rear Edge 用于保证回收发生在视野后方。目标循环组件须为普通场景对象，不能直接修改 Prefab 实例中的循环容器。
+
+源码：[BackgroundPrefabBuilder.cs](./Editor/BackgroundPrefabBuilder.cs)。
+
 ## Cue 过渡
 
 1. 退出 Play，在 `StageBackgroundRoot` 上添加 `StageBackgroundController`。
@@ -57,7 +71,7 @@
 
 验收：位置、角度、FOV、速度应平滑变化，玩家和弹幕屏幕坐标不受影响；播放一半切换另一份 Cue 应从当前画面继续；把 Duration 设置为 0 后应立即应用目标。过渡中暂停循环组件应同时暂停镜头，恢复后继续；Time.timeScale 为 0 也会暂停。禁用 Controller 结束过渡并保留当前值，循环组件独立继续滚动；禁用整个背景根节点则滚动也停止。无效 Cue 不替换已有过渡。进入 Play 后不应同时手动编辑镜头或让其他动画控制相同参数。
 
-曲线必须从 (0,0) 到 (1,1)，输出进度限制在 0~1；不支持通过曲线超调。测试时先用小幅偏转，位置/FOV 大幅变化可能露出布景边界，需要调整布景覆盖范围。完整复位使用控制器的 Reset Entire Background，关卡接入见下文，Boss 动作接入尚未实现。
+曲线必须从 (0,0) 到 (1,1)，输出进度限制在 0~1；不支持通过曲线超调。测试时先用小幅偏转，位置/FOV 大幅变化可能露出布景边界，需要调整布景覆盖范围。完整复位使用控制器的 Reset Entire Background，关卡接入见下文，Boss 动作接入见下文。
 
 源码：[BackgroundCue.cs](./BackgroundCue.cs)、[StageBackgroundController.cs](./StageBackgroundController.cs)。运行时代码不引用 UnityEditor，Inspector 配置使用 Unity 序列化编辑，支持标准 Undo 和场景保存。
 
@@ -71,7 +85,7 @@
 
 禁用或销毁控制器取消播放，旧句柄不会继续等待。重新启用不自动恢复已取消的演出；单独禁用控制器时道路独立继续滚动，禁用根节点时整个背景停止。引用失效或曲线求值无效会使正在播放的句柄 Failed。统一 Pause 与 Time.timeScale=0 都保留演出进度；全局时间缩放不由 Resume 修改。
 
-验收：过渡中暂停/恢复；连续播放 A、B 后检查 A 为 Cancelled 且取消 A 不影响 B；播放非法 Cue 时旧播放继续；任意时刻完整重置并检查镜头/速度/路段；完成后再取消仍为 Completed；过渡中禁用控制器后句柄为 Cancelled。退出再进入 Play、保存后重新打开场景也应正常。关卡重开由绑定处理，GameAction 适配尚未实现。
+验收：过渡中暂停/恢复；连续播放 A、B 后检查 A 为 Cancelled 且取消 A 不影响 B；播放非法 Cue 时旧播放继续；任意时刻完整重置并检查镜头/速度/路段；完成后再取消仍为 Completed；过渡中禁用控制器后句柄为 Cancelled。退出再进入 Play、保存后重新打开场景也应正常。关卡重开由绑定处理，Boss 动作配置见下文。
 
 ## 关卡绑定
 
@@ -98,3 +112,19 @@
 - 移除：优先在创建后使用 Undo。若手动删除 StageBackgroundRoot，必须同时恢复战斗相机原来的 Clear Flags 和 Culling Mask，否则清屏不完整可能产生残影。未改动前的 SampleScene 配置分别为 Skybox 和 Everything。
 
 第一阶段由编辑器工具配置真实场景对象，第二阶段由 LoopingBackgroundStrip 在运行时驱动布景；保存后的配置可随场景进入构建。新目录和脚本的 `.meta` 由 Unity 导入时生成，提交时应一并保留。
+
+## Boss 背景演出（4B）
+
+保留已有 LevelBackgroundBinding。在 BossEncounter 资产的 StartActions.Actions 中选择 `Game Action/Play Background Cue` 并指定 SlowTurn，开启该序列的 WaitForCompletion。BossEncounterEntry 的 BlockTimeline 可开启，镜头过渡期间背景仍会独立推进。
+
+在对应 PhasePresentations 的 EnterActions 中配置 Cruise 并开启 WaitForCompletion，即可在进入该阶段前等待恢复镜头。首阶段进入动作紧接开场动作；若希望减速画面保持至后续阶段，请将 Cruise 配置到后续 PhaseIndex。DefeatActions 和 CompleteActions 同样支持；CompleteActions 不依赖仍然存在的 Boss 对象。
+
+动作本身始终等待实际句柄完成，外层 WaitForCompletion 决定是否阻塞 Boss 阶段；关闭后动作仍由 Encounter 持续管理，并可能在阶段退出或遭遇结束时被取消。不要在同一 Parallel 中同时播放两个背景 Cue。关卡时间点或手动 Cue 可接管当前播放，原动作将报告取消并终止其后续序列。
+
+缺绑定、禁用背景、无效 Cue、旧/缺失关卡上下文或外部取消均通过 Runner 记录 Failure，并结束本组动作；当前 Encounter 将失败视为等待结束，不会自动中止整场遭遇。动作 Dispose 只取消自己持有的句柄，不停止道路、不撤销新 Cue。关卡重开仍由绑定完整重置背景。
+
+编辑模式的 Encounter Preview 将背景动作作为无操作完成；Play 中的预览 Runtime 会被拒绝，不能影响真实背景。自定义动作宿主需要在 GameActionContext 传入当前 LevelController.Runtime，不能只传 Owner。
+
+验收：开场镜头完成后才开始战斗；阶段恢复镜头后再进入战斗；阻塞时间轴时背景正常运动；中途重开恢复初始状态；手动 Cue 打断时旧序列报告失败且新 Cue 继续；禁用背景或移除绑定后不无限等待；CompleteActions 在 Boss 销毁后仍可播放。失败测试会有预期的 Console 异常日志。运行时配置不应在播放中修改。
+
+源码：[PlayBackgroundCueAction.cs](../GameActions/PlayBackgroundCueAction.cs)。

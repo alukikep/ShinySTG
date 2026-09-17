@@ -13,6 +13,7 @@ namespace ShinySTG.Level.Encounter
         readonly BossHealth _health;
         readonly BossController _controller;
         readonly bool _blocksTimeline;
+        readonly LevelRuntime _levelRuntime;
         readonly GameActionRunner _runner = new();
         GameActionContext _context;
         GameActionHandle _phaseActions, _startActions, _defeatActions, _completeActions;
@@ -21,11 +22,13 @@ namespace ShinySTG.Level.Encounter
         public bool IsComplete => _complete;
         public bool BlocksTimeline => _blocksTimeline && !_complete;
 
-        public BossEncounterRuntime(BossEncounterDefinition definition, GameObject bossObject, bool blocksTimeline)
+        public BossEncounterRuntime(BossEncounterDefinition definition, GameObject bossObject, bool blocksTimeline,
+            LevelRuntime levelRuntime = null)
         {
             _definition = definition;
             _bossObject = bossObject;
             _blocksTimeline = blocksTimeline;
+            _levelRuntime = levelRuntime;
             _boss = bossObject != null ? bossObject.GetComponent<Boss>() : null;
             _health = bossObject != null ? bossObject.GetComponent<BossHealth>() : null;
             _controller = bossObject != null ? bossObject.GetComponent<BossController>() : null;
@@ -35,7 +38,7 @@ namespace ShinySTG.Level.Encounter
                 _complete = true;
                 return;
             }
-            _context = new GameActionContext(bossObject.transform, _controller);
+            _context = new GameActionContext(bossObject.transform, _controller, levelRuntime: _levelRuntime);
             _boss.RetainForDefeatActions = true;
             _controller.PhaseActions = PlayPhaseActions;
             _health.OnDeath += HandleDefeated;
@@ -73,7 +76,7 @@ namespace ShinySTG.Level.Encounter
             _defeated = true;
             _runner.Dispose();
             _context = new GameActionContext(_bossObject != null ? _bossObject.transform : null, _controller,
-                _controller != null ? _controller.CurrentPhaseIndex : -1);
+                _controller != null ? _controller.CurrentPhaseIndex : -1, _levelRuntime);
             AudioMix.PlaySfx(_definition?.DefeatSfx);
             _defeatActions = _runner.Play(_definition?.DefeatActions, _context);
             if (Gate(_definition?.DefeatActions, _defeatActions) == null || _defeatActions.IsComplete)
@@ -89,7 +92,7 @@ namespace ShinySTG.Level.Encounter
             if (presentation != null) AudioMix.PlaySfx(entering ? presentation.EnterSfx : presentation.ExitSfx);
             if (_health == null || _health.IsDead) return null;
             var sequence = entering ? presentation?.EnterActions : presentation?.ExitActions;
-            _phaseActions = _runner.Play(sequence, new GameActionContext(_bossObject.transform, _controller, index));
+            _phaseActions = _runner.Play(sequence, new GameActionContext(_bossObject.transform, _controller, index, _levelRuntime));
             return Gate(sequence, _phaseActions);
         }
 

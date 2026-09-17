@@ -25,12 +25,15 @@ namespace ShinySTG.GameActions
         public BossController Boss { get; }
         public int PhaseIndex { get; }
         public Vector2 Position { get; }
-        public GameActionContext(Transform owner, BossController boss = null, int phaseIndex = -1)
+        public ShinySTG.Level.LevelRuntime LevelRuntime { get; }
+        public GameActionContext(Transform owner, BossController boss = null, int phaseIndex = -1,
+            ShinySTG.Level.LevelRuntime levelRuntime = null)
         {
             Owner = owner;
             Boss = boss;
             PhaseIndex = phaseIndex;
             Position = owner != null ? (Vector2)owner.position : Vector2.zero;
+            LevelRuntime = levelRuntime;
         }
     }
 }

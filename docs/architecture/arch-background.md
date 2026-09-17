@@ -23,10 +23,10 @@ PlayBackgroundCueEntry 是一次性时间点指令，经 LevelController.Request
 
 绑定订阅关卡开始、完成和 Cue 请求：开始或重开时完整重置，结束时取消播放并暂停。禁用时退订并停止背景；重新启用按关卡当前状态同步，不补播错过的条目。一个背景只由一个关卡绑定驱动。未配置背景的旧关卡不要求迁移。
 
-扩展新的时间点背景指令时，沿用 SpawnEntry、Controller 事件及绑定转发，运行状态不能存入条目配置。Boss 的 PlayBackgroundCueAction 尚未实现；后续应复用独立句柄，按实际完成状态等待，取消时只清理本次播放。
+扩展新的时间点背景指令时，沿用 SpawnEntry、Controller 事件及绑定转发，运行状态不能存入条目配置。PlayBackgroundCueAction 复用绑定与独立句柄，按实际完成状态等待，取消时只清理本次播放。Encounter 将真实关卡 Runtime 传入 GameActionContext，贯穿开场、阶段、击破与收尾，避免预览或旧上下文操作真实背景。缺绑定、播放失败及外部取消通过 Runner 终止本组动作并记录 Failure；Encounter 将失败视为等待结束，不自动中止遭遇。
 
 ## 与其他板块的关系
 
 - [level](./arch-level.md)：负责时间点触发与关卡生命周期，不逐帧驱动背景动画。
-- [game-actions](./arch-game-actions.md)：后续背景动作适配沿用可等待、可取消的契约，目前尚未接入。
+- [game-actions](./arch-game-actions.md)：背景动作沿用可等待、可取消的契约，外层 WaitForCompletion 控制宿主等待。
 - [操作说明](../../Assets/Scripts/Background/README.md)：场景搭建、Cue 配置、关卡绑定与验收步骤。

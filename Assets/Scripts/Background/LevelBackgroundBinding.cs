@@ -51,6 +51,14 @@ namespace ShinySTG.Background
                 Debug.LogWarning($"[Background] 关卡 Cue 播放失败：{handle.Failure}", this);
         }
 
+        public BackgroundPlaybackHandle PlayForRuntime(LevelRuntime runtime, BackgroundCue cue)
+        {
+            if (!Application.isPlaying || !isActiveAndEnabled || _level == null || !_level.IsRunning
+                || runtime == null || runtime != _level.Runtime || _boundBackground == null)
+                throw new System.InvalidOperationException("[Background] 背景动作需要启用的关卡绑定及当前真实关卡 Runtime。");
+            return _boundBackground.Play(cue);
+        }
+
         void StopBackground()
         {
             if (_boundBackground == null) return;
