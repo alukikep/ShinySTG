@@ -4,6 +4,8 @@
 运行时数据不写回对话资产；播放服务返回可以等待和取消的句柄。
 默认播放期间锁定玩家移动、低速操作及主炮/子机射击。无敌、关卡等待和音乐由宿主配置。
 
+职责与扩展边界见 [对话系统架构](../../../docs/architecture/arch-dialogue.md)。
+
 ## 最小场景配置
 
 1. 创建一个 Screen Space - Overlay Canvas，配置 CanvasScaler 为 Scale With Screen Size。

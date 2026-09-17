@@ -27,6 +27,7 @@
 | FirePattern/发射扩展 | `docs/architecture/arch-fire-pattern.md` |
 | 敌人行为 | `docs/architecture/arch-enemy-ai.md` |
 | Boss | `docs/architecture/arch-boss.md` |
+| 对话/战前战后演出 | `docs/architecture/arch-dialogue.md` |
 | 关卡运行时 | `docs/architecture/arch-level.md` |
 | 关卡编辑器 | `LEVEL_EDITOR.md` 或 `Assets/Scripts/Level/Editor/README.md` |
 | 音频配置 | `Assets/Scripts/Audio/README.md` |

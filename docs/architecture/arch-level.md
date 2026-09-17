@@ -35,7 +35,13 @@
 ---
 
 
+## 对话接入
+
+Boss 对话通过 Encounter 动作接入。BlockTimeline 控制整场遭遇是否阻塞关卡，WaitForCompletion 控制动作是否延迟阶段或收尾，两者职责不同。对话控制锁不暂停场上其他单位，音乐仍按现有出场/击败事件切换。
+
 ## 与其他板块的关系
+
+- [dialogue](./arch-dialogue.md) — 对话播放及与战斗的协作边界。
 
 - [game-actions](./arch-game-actions.md) — 统一 SR 动作配置与跨帧执行器。
 

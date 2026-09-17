@@ -106,7 +106,13 @@ Phase 3 (暴走)
 ---
 
 
+## 对话接入
+
+战前对话使用等待式 StartActions；战后需保留 Boss 时使用 DefeatActions，仅立绘时可使用 CompleteActions。PlayDialogueAction 不改变 Boss 死亡通知的时机；无敌和消弹仍需显式配置。
+
 ## 与其他板块的关系
+
+- [dialogue](./arch-dialogue.md) — 对话播放及与战斗的协作边界。
 
 - [game-actions](./arch-game-actions.md) — 通用动作的运行、取消与扩展契约。
 

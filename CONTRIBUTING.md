@@ -23,6 +23,7 @@
 | FirePattern、FireExtension、FireSound | [`arch-fire-pattern.md`](./docs/architecture/arch-fire-pattern.md) |
 | EnemyAction、MoveBehaviour、Duration | [`arch-enemy-ai.md`](./docs/architecture/arch-enemy-ai.md) |
 | BossPhase、BossSignal、多管血 | [`arch-boss.md`](./docs/architecture/arch-boss.md) |
+| 对话、玩家控制锁与 Boss 对话接入 | [`arch-dialogue.md`](./docs/architecture/arch-dialogue.md) |
 | SpawnEntry 与关卡运行时 | [`arch-level.md`](./docs/architecture/arch-level.md) |
 | 关卡编辑器 Drawer/Preview | [`Assets/Scripts/Level/Editor/README.md`](./Assets/Scripts/Level/Editor/README.md) |
 | 音频配置 | [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) |

@@ -20,7 +20,9 @@ Encounter 将其解释为阶段或收尾的等待条件，关卡时间轴是否�
 新增演出能力时，新建带 `[Serializable, SRName("Game Action/名称")]` 的 GameAction 子类，
 实现 CreateRuntime，返回拥有独立状态的 GameActionRuntime。可参考
 [WaitGameAction](../../Assets/Scripts/GameActions/WaitGameAction.cs)；不需要为每种演出修改 Encounter 字段。
-对话和 Timeline 的具体适配尚未实现，后续适配应按实际完成状态结束，而非猜测播放时长。
+PlayDialogueAction 已适配对话句柄，按真实结束状态完成，Dispose 只取消自己启动的会话。
+场景需要唯一启用的 DialogueService；缺服务、播放失败或外部取消终止本组动作并记录 Failure。
+Timeline 适配尚未实现，也应按实际完成状态结束，而非猜测播放时长。
 
 - Start 启动，Tick 推进，IsComplete 表示结束；Dispose 在正常结束、取消或失败时释放资源。
 - 句柄的 Cancel 幂等；异常被记录到 Failure 并终止该序列，后续动作不再执行。
@@ -42,6 +44,7 @@ ExecuteCommandsAction 的无敌操作是持久命名锁，取消动作不会撤�
 
 ## 与其他板块的关系
 
+- [dialogue](./arch-dialogue.md)：对话播放、控制锁与取消边界。
 - [boss](./arch-boss.md)：阶段过渡与击破保留由 Controller/Boss 提供生命周期入口。
 - [level](./arch-level.md)：Encounter 是动作宿主，关卡阻塞时仍推进动作。
 - [enemy-ai](./arch-enemy-ai.md)：通过行为流适配和全局指令共享现有能力。
