@@ -23,14 +23,17 @@ namespace ShinySTG.Player
             if (_health == null) return;
 
             // 显示 Lives / GrazeCount(左上角固定位置)
-            GUI.Box(new Rect(10, 10, 220, 70), "Player Stats");
+            GUI.Box(new Rect(10, 10, 280, 95), "Player Stats");
             GUI.Label(new Rect(20, 35, 200, 20),
-                "Lives: " + _health.Lives + "   Power: " + _health.PowerLevel);
+                "Lives: " + _health.Lives + "   Power: " + _health.Power.ToString("F2"));
             GUI.Label(new Rect(20, 55, 200, 20),
                 "GrazeCount: " + _health.GrazeCount);
+            var resources = GetComponent<PlayerResources>();
+            if (resources != null)
+                GUI.Label(new Rect(20, 75, 260, 20), "Score: " + resources.Score + "   Bomb: " + resources.Bombs);
 
             // 调试按钮:点一下触发一次擦弹累加(不依赖敌人发射)
-            if (GUI.Button(new Rect(10, 90, 220, 30), "Debug: Trigger Graze +1"))
+            if (GUI.Button(new Rect(10, 115, 220, 30), "Debug: Trigger Graze +1"))
             {
                 _health.DebugTriggerGraze();
             }

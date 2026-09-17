@@ -37,6 +37,7 @@ namespace ShinySTG.Player
         public PlayerHealth   Health   { get; private set; }
         public PlayerOptions  Options  { get; private set; }
         public PlayerHitbox   Hitbox   { get; private set; }
+        public PlayerResources Resources { get; private set; }
 
         // ─── PlayerInput(新版 Input System)回调 ─────────────
         // 由 PlayerInput 组件(Behavior = Invoke C# Events)调用。
@@ -60,6 +61,9 @@ namespace ShinySTG.Player
             Health   = GetComponent<PlayerHealth>();
             Options  = GetComponent<PlayerOptions>();
             Hitbox   = GetComponent<PlayerHitbox>();
+            Resources = GetComponent<PlayerResources>();
+            // 旧 prefab 无需重新挂组件；新增组件也可预先配置初始 Bomb 库存。
+            if (Resources == null) Resources = gameObject.AddComponent<PlayerResources>();
         }
 
         void OnDestroy()

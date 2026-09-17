@@ -207,7 +207,7 @@ namespace ShinySTG.EnemyAI.Boss
             StartGate?.Cancel();
 
             // 1. 走当前 phase 收尾
-            ExitCurrentPhase();
+            ExitCurrentPhase(Health != null && Health.IsDead ? CommandInvocation.BossDeath : CommandInvocation.Stopped);
 
             // 2. 一次性广播 Defeated(给"解锁下一关 / UI 提示"等订阅)
             if (!_defeated)
@@ -249,7 +249,7 @@ namespace ShinySTG.EnemyAI.Boss
             // __BOSSDEBUG__ #3:阶段切走(进 NextPhase 说明 ShouldExit 已为 true)
             Debug.Log($"[__BOSSDEBUG__] NextPhase from idx={_phaseIdx}", this);
 
-            ExitCurrentPhase();
+            ExitCurrentPhase(CommandInvocation.PhaseCompleted);
 
             int next = _phaseIdx + 1;
             if (_stopped) return;
@@ -269,14 +269,14 @@ namespace ShinySTG.EnemyAI.Boss
             if (next < Phases.Length) RequestPhase(next);
         }
 
-        void ExitCurrentPhase()
+        void ExitCurrentPhase(CommandInvocation invocation)
         {
             if (_current == null) return;
             var exiting = _current;
             _current = null;
             OnPhaseExited?.Invoke(_phaseIdx, exiting);
             exiting.OnExit(transform);
-            GlobalCommandExecutor.Execute(exiting.ExitCommands, new GlobalCommandContext(transform, this));
+            GlobalCommandExecutor.Execute(exiting.ExitCommands, new GlobalCommandContext(transform, this, invocation));
             if (!_stopped || (Health != null && Health.IsDead))
                 _phaseGate = PhaseActions?.Invoke(_phaseIdx, false);
         }

@@ -17,6 +17,7 @@
 | [game-actions](./docs/architecture/arch-game-actions.md) | Encounter 动作序列、可等待演出与全局指令 | — |
 | [dialogue](./docs/architecture/arch-dialogue.md) | 线性对话、播放句柄与玩家控制锁 | — |
 | [extension-guide](./docs/architecture/arch-extension-guide.md) | 加新功能统一套路 / 反模式 / 数据 vs 逻辑边界 | §6 |
+| [items](./docs/architecture/arch-items.md) | 可配置掉落、撒出与吸附、拾取结算和对象池 | — |
 | [player](./docs/architecture/arch-player.md) | `Player` 主控 + 子机 + `OptionPositionForm` | §7 |
 | [hitbox](./docs/architecture/arch-hitbox.md) | 统一 AABB + 阵营 + 网格空间索引 | §8 |
 | [level](./docs/architecture/arch-level.md) | `LevelDefinition` + `SpawnEntry` 多态 | §9 |
@@ -33,13 +34,14 @@
 
 ```
 游戏场景 (Scene)
-├── Player (主控 + Movement + Shooting + Options + Health)
+├── Player (主控 + Movement + Shooting + Options + Health + Resources)
 │     → 引用 FirePattern 资产、读 BoundsService.PlayableArea
 ├── Boss / 普通敌人 (总控 + Health + Hitbox + BehaviorFlow)
 │     → AI 层: BehaviorFlow SO 持有 EnemyAction[] / MoveBehaviour[]
 │     → 通过 BulletPool.FireGroup / LaserPool.Fire 触发弹 / 激光
 ├── BulletPool (场景单例) ─────► Bullet (对象池复用 + Modifier 多态)
 ├── LaserPool  (场景单例) ─────► LaserEntity (5 段状态机 + Renderer 多态)
+├── ItemDropService (场景单例) ─► ItemPickup (撒出、吸附、对象池)
 ├── CollisionService / LaserService ─► HitboxComponent / 阵营过滤
 ├── BoundsService (单例)        ─► PlayableArea + CullingArea(Gizmo 可视化)
 └── AudioSystem (PersistentSingleton) ─► SfxCue / BgmTrack / Bus
@@ -56,6 +58,8 @@
 - **bullet ↔ laser**:两套独立运行时子体系,完全平行、互不依赖。阵营过滤共用 `CollisionTeam`,但碰撞数学分开(AABB 网格 vs 点-线段距离)。
 - **fire-pattern**:被 `enemy-ai` (`FireAction`) / `player` (`PlayerShooting` / `Options`) / `laser` (`LaserPattern.FireSounds`) 引用。
 - **audio**:被几乎所有板块通过"嵌入 `SfxCue` 字段"方式使用(`PlayerHealth` / `BossHealth` / `EnemyHealth` / `FireSound` / `SpawnEntry/PlaySFX` 等)。
+
+- **items**：敌人死亡与 Boss 阶段指令读取 DropProfile 生成道具；CollisionService 检测拾取，奖励通过 PlayerHealth / PlayerResources 结算。
 
 **运行时支撑层**:
 

@@ -181,7 +181,16 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 ---
 
 
+## 死亡掉落
+
+Enemy 总控在 HP 清零的单次死亡路径中保存位置，停止行为流后提交死亡 DropProfile，
+再销毁敌人。道具脱离敌人的 Transform 和生命周期独立运行。Health 不承担奖励生成，
+SelfDestructAction、离场销毁和 OnDisable 不触发死亡掉落。
+行为流需要显式撒道具时，可通过 ExecuteGlobalCommandsAction 使用 SpawnDropsCommand。
+
 ## 与其他板块的关系
+
+- [items](./arch-items.md) — 敌人死亡掉落与显式撒道具共用生成服务。
 
 - [game-actions](./arch-game-actions.md) — RunBehaviorFlowAction 复用战斗行为；GameAction 通过实际完成状态支持跨帧演出，不替换 EnemyAction 的 Duration 契约。
 

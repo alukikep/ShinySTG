@@ -26,6 +26,7 @@
 | 子弹/Modifier | `docs/architecture/arch-bullet.md` |
 | FirePattern/发射扩展 | `docs/architecture/arch-fire-pattern.md` |
 | 敌人行为 | `docs/architecture/arch-enemy-ai.md` |
+| 道具/掉落/拾取 | `docs/architecture/arch-items.md` |
 | Boss | `docs/architecture/arch-boss.md` |
 | 对话/战前战后演出 | `docs/architecture/arch-dialogue.md` |
 | 关卡运行时 | `docs/architecture/arch-level.md` |

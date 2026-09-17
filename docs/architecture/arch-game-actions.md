@@ -42,7 +42,19 @@ ExecuteCommandsAction 的无敌操作是持久命名锁，取消动作不会撤�
 消弹仍走 BulletPool/LaserPool 的标准回收流程。指令按阵营筛选，默认包括敌方子弹和激光；
 一次清除不禁止后续发射，也不暂停世界。
 
+## 撒道具指令
+
+SpawnDropsCommand 是瞬时生成指令；通过 ExecuteCommandsAction 或 ExecuteGlobalCommandsAction
+可复用，不等待道具下落或拾取，也不会在取消动作时撤销已生成道具。
+GlobalCommandContext.Invocation 由 BossController 的阶段退出入口传入结束原因；
+普通显式调用为 Direct，不受指令的阶段退出开关限制。
+
+当前撒道具指令需要有效 Owner，使用其执行时位置；ExecuteCommandsAction 不将 GameActionContext.Position
+快照传给指令。需要 Boss 位置时应在其销毁前执行，不能依赖 CompleteActions 中已失效的 Owner。
+
 ## 与其他板块的关系
+
+- [items](./arch-items.md)：SpawnDropsCommand 复用道具生成与配置。
 
 - [dialogue](./arch-dialogue.md)：对话播放、控制锁与取消边界。
 - [boss](./arch-boss.md)：阶段过渡与击破保留由 Controller/Boss 提供生命周期入口。

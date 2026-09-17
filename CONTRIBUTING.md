@@ -22,6 +22,7 @@
 | BulletModifier、时间窗和信号 | [`arch-bullet.md`](./docs/architecture/arch-bullet.md) |
 | FirePattern、FireExtension、FireSound | [`arch-fire-pattern.md`](./docs/architecture/arch-fire-pattern.md) |
 | EnemyAction、MoveBehaviour、Duration | [`arch-enemy-ai.md`](./docs/architecture/arch-enemy-ai.md) |
+| 道具掉落、吸附与拾取 | [`arch-items.md`](./docs/architecture/arch-items.md) |
 | BossPhase、BossSignal、多管血 | [`arch-boss.md`](./docs/architecture/arch-boss.md) |
 | 对话、玩家控制锁与 Boss 对话接入 | [`arch-dialogue.md`](./docs/architecture/arch-dialogue.md) |
 | SpawnEntry 与关卡运行时 | [`arch-level.md`](./docs/architecture/arch-level.md) |

@@ -81,7 +81,7 @@ namespace ShinySTG.Hitbox
             DrawBounds(Color);
         }
 
-        void OnDrawGizmosSelected()
+        protected virtual void OnDrawGizmosSelected()
         {
             DrawBounds(SelectedColor);
         }

@@ -36,6 +36,14 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 
 扩展契约见 [通用游戏动作架构](../../../docs/architecture/arch-game-actions.md)。
 
+## 撒道具
+
+在 Execute Commands 中添加 Command/Spawn Drops 并指定 DropProfile，可在演出中显式生成道具。
+生成是瞬时操作，不等待拾取，取消演出不会撤回已生成道具。此类直接调用不受阶段退出开关限制。
+指令需要有效 Owner，使用执行时位置；Boss 已销毁后的 CompleteActions 无法依靠位置快照生成。
+阶段奖励优先配置在 BossPhase.ExitCommands，不要在演出中重复配置同一份奖励。
+创建道具与场景服务见 [道具配置](../Items/README.md)。
+
 ## Boss 对话
 
 `Game Action/Play Dialogue` 指定 DialogueDefinition，并默认锁定玩家移动与射击。

@@ -106,11 +106,23 @@ Phase 3 (暴走)
 ---
 
 
+## 阶段掉落
+
+在 BossPhase.ExitCommands 配置 SpawnDropsCommand，复用阶段退出的单一路径。
+Controller 通过 GlobalCommandContext.Invocation 区分正常阶段结束、Boss 死亡和手动停止；
+撒道具指令可分别允许前两种原因，手动停止不产生阶段奖励。奖励在阶段 OnExit 后、Encounter 退出动作之前生成。
+
+每次实际退出只执行一次；过渡期间死亡不会重复结算已退出阶段。未进入或被跳过的阶段不补发奖励，
+没有当前阶段时死亡也没有阶段奖励。需要最终击破奖励时，让最终阶段保持到死亡并配置退出指令。
+循环阶段每次实际退出均重新结算。不要同时在阶段指令与 Encounter 演出里配置同一份奖励。
+
 ## 对话接入
 
 战前对话使用等待式 StartActions；战后需保留 Boss 时使用 DefeatActions，仅立绘时可使用 CompleteActions。PlayDialogueAction 不改变 Boss 死亡通知的时机；无敌和消弹仍需显式配置。
 
 ## 与其他板块的关系
+
+- [items](./arch-items.md) — 阶段退出提供触发原因，道具系统独立生成和回收。
 
 - [dialogue](./arch-dialogue.md) — 对话播放及与战斗的协作边界。
 

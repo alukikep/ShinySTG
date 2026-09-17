@@ -54,6 +54,9 @@ namespace ShinySTG.Player
 
         [Tooltip("运行时当前火力级(0..MaxPower)。由外部 PowerUp() 提升。")]
         public int PowerLevel { get; private set; }
+        public int PowerUnits { get; private set; }
+        public float Power => PowerUnits / 100f;
+        public event Action<int> OnPowerChanged;
 
         [Header("Invincibility")]
         [Tooltip("出生时的无敌时长(秒)。")]
@@ -88,6 +91,7 @@ namespace ShinySTG.Player
         {
             Lives = Mathf.Max(0, InitialLives);
             PowerLevel = Mathf.Clamp(InitialPower, 0, MaxPower);
+            PowerUnits = PowerLevel * 100;
             InvincibleRemaining = SpawnInvincibleDuration;
             if (InvincibleRemaining > 0f) OnInvincibleStart?.Invoke();
         }
@@ -199,9 +203,21 @@ namespace ShinySTG.Player
         /// <summary>吃火力道具时调用。clamp 到 [0, MaxPower]。</summary>
         public void PowerUp(int delta = 1)
         {
-            int next = Mathf.Clamp(PowerLevel + delta, 0, MaxPower);
-            if (next == PowerLevel) return;
-            PowerLevel = next;
+            SetPowerUnits((long)PowerUnits + (long)delta * 100);
+        }
+
+        /// <summary>百分之一 Power 为一个单位；小 P +1，大 P +100。</summary>
+        public void AddPowerUnits(int delta) => SetPowerUnits((long)PowerUnits + delta);
+
+        void SetPowerUnits(long value)
+        {
+            int next = (int)Math.Max(0L, Math.Min(value, (long)Mathf.Max(0, MaxPower) * 100));
+            if (next == PowerUnits) return;
+            int oldLevel = PowerLevel;
+            PowerUnits = next;
+            PowerLevel = PowerUnits / 100;
+            OnPowerChanged?.Invoke(PowerUnits);
+            if (PowerLevel == oldLevel) return;
             OnPowerUp?.Invoke(PowerLevel);
             if (_powerUpSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_powerUpSfx, position: (Vector2)transform.position);
         }

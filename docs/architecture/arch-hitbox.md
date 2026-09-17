@@ -44,7 +44,19 @@
 ---
 
 
+## 道具拾取边界
+
+CollisionService 同时承担道具接触检测：在自身子弹伤害结算之后，重新检查玩家拾取资格，
+遍历活跃道具，与 PlayerHitbox.PickupBounds 做 AABB 比较，调用 ItemPickup.TryCollect。
+道具不进入伤害网格，也不新建空间索引；单玩家与道具逐一比较即可。
+没有 BulletPool 时仍执行拾取检测。此顺序只约束 CollisionService 内部，不声明与独立 LaserService 的先后关系。
+
+拾取与吸附范围均独立于受伤 WorldBounds。吸附由道具系统读取 AttractionBounds 并驱动运动，
+CollisionService 不负责移动或具体奖励。出生当帧不拾取，遍历结束后统一回收已收取道具。
+
 ## 与其他板块的关系
+
+- [items](./arch-items.md) — 统一接触检测，运动、奖励和回收由道具系统承担。
 
 本板块与其他板块的依赖 / 协作关系(简单文字说明):
 

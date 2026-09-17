@@ -28,11 +28,25 @@
 ---
 
 
+## 道具与玩家资源
+
+`PlayerHealth` 以整数百分单位保存 Power，对外显示小数；射击和子机继续读取向下取整的
+`PowerLevel`。原有 InitialPower、MaxPower 和 PowerUp 整级接口保留。OnPowerChanged 通知数值变化，
+OnPowerUp 仅在整数等级变化时通知。残机仍由 PlayerHealth 管理。
+
+`PlayerResources` 管理分数与 Bomb 库存，不负责 Bomb 释放。Player.Awake 获取该组件，旧 prefab
+缺失时在运行时补齐；需要配置初始库存时可预先添加组件。
+
+`PlayerHitbox` 提供独立的拾取和吸附 AABB；原 Size / WorldBounds 仍专用于受伤。
+无敌不妨碍拾取，死亡或禁用玩家不能拾取；对话控制锁只锁输入，不自动暂停道具。
+
 ## 对话接入
 
 PlayerControlLock 提供可叠加的控制令牌，持有期间移动与低速输入被屏蔽，主炮和子机共用受限后的 FireHeld。输入源继续提交原始按键状态，避免松键事件丢失；最后一个锁释放当帧仍禁止射击，长按攻击需松开再按。每个宿主只释放自己的令牌，锁覆盖期间新生成的玩家，但不提供无敌或暂停世界。子系统注册时重置静态锁集合。
 
 ## 与其他板块的关系
+
+- [items](./arch-items.md) — 拾取调用玩家资源接口，吸附和拾取读取 PlayerHitbox 的独立范围。
 
 - [dialogue](./arch-dialogue.md) — 对话播放及与战斗的协作边界。
 

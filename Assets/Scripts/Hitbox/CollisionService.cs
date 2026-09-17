@@ -107,7 +107,11 @@ namespace ShinySTG.Hitbox
 
         void LateUpdate()
         {
-            if (BulletPool.Instance == null) return;
+            if (BulletPool.Instance == null)
+            {
+                TickItemsVsPlayer();
+                return;
+            }
 
             // 1. 清网格,准备重建
             _grid.Clear();
@@ -171,6 +175,27 @@ namespace ShinySTG.Hitbox
 
             // 7. deferred return
             FlushReturns();
+            TickItemsVsPlayer();
+        }
+
+        void TickItemsVsPlayer()
+        {
+            var service = ShinySTG.Items.ItemDropService.Instance;
+            if (service == null || !service.isActiveAndEnabled) return;
+            var player = ShinySTG.Player.Player.Instance;
+            if (ShinySTG.Items.ItemPickup.CanCollect(player))
+            {
+                Rect pickupBounds = player.Hitbox.PickupBounds;
+                var items = service.ActiveItems;
+                int count = items.Count; // 本轮奖励回调生成的道具留到后续帧。
+                for (int i = 0; i < count && i < items.Count; i++)
+                {
+                    var item = items[i];
+                    if (item == null || !item.isActiveAndEnabled || item.SpawnFrame >= Time.frameCount) continue;
+                    if (HitboxMath.AABBOverlap(pickupBounds, item.Bounds)) item.TryCollect(player);
+                }
+            }
+            service.FlushCollected();
         }
 
         void FlushReturns()

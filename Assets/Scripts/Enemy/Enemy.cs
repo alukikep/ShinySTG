@@ -26,6 +26,8 @@ namespace ShinySTG.EnemyAI
         public EnemyHitbox  Hitbox  { get; private set; }
 
         bool _dead;
+        [SerializeField, Tooltip("被击杀时的掉落；离场自毁不触发。留空不掉落。")]
+        ShinySTG.Items.DropProfile _deathDrops;
 
         void Awake()
         {
@@ -51,9 +53,11 @@ namespace ShinySTG.EnemyAI
         {
             if (_dead) return;
             _dead = true;
+            Vector2 dropPosition = transform.position;
 
             // 停掉行为流(强制退出当前 action,避免 BehaviorFlowRuntime 状态悬挂)
             if (Shooter != null) Shooter.Stop();
+            ShinySTG.Items.ItemDropService.Spawn(_deathDrops, dropPosition);
 
             // 兜底:本版本直接销毁。后续要做死亡动画/撒豆,在这里替换成协程即可。
             Destroy(gameObject);

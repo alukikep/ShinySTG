@@ -46,6 +46,7 @@ MonoBehaviour:
       data:
         Commands:
         - rid: 6177227137434517520
+        - rid: 6177227143308115968
     - rid: 6177227137434517520
       type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
       data:
@@ -80,3 +81,9 @@ MonoBehaviour:
       data:
         Dialogue: {fileID: 11400000, guid: 9a22af9073286494ca2cfd146e3d0bc4, type: 2}
         LockPlayerControls: 1
+    - rid: 6177227143308115968
+      type: {class: SpawnDropsCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        Profile: {fileID: 11400000, guid: 9d28ef3de5397d54482d1bc36a6f6957, type: 2}
+        OnPhaseCompleted: 1
+        OnBossDeath: 0
