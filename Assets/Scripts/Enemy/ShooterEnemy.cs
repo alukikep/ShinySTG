@@ -7,7 +7,7 @@ using ShinySTG.EnemyAI;
 /// boss prefab 上不再需要挂多个 ShooterEnemy 组件来切换不同的行为流。
 ///
 /// 生命周期说明:
-///   - 自毁路径 1:行为流跑完,SelfDestructAction 直接 Destroy(gameObject)。
+///   - 自毁路径 1:SelfDestructAction 请求无奖励离场。
 ///   - 自毁路径 2:HP 打空,Enemy 总控订阅 EnemyHealth.OnDeath 后调 Stop() + Destroy(gameObject)。
 /// 本组件本身不监听 Health,也不在死亡时自毁 —— 一切交给总控层处理。
 /// </summary>
@@ -36,8 +36,11 @@ public class ShooterEnemy : MonoBehaviour
     /// </summary>
     public void Stop()
     {
-        _runtime?.ForceExit(transform);
+        var runtime = _runtime;
         _runtime = null;
+        runtime?.Dispose(transform);
     }
+
+    void OnDestroy() => Stop();
 }
 

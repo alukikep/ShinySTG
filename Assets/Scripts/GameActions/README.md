@@ -36,6 +36,21 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 
 扩展契约见 [通用游戏动作架构](../../../docs/architecture/arch-game-actions.md)。
 
+## 清除普通敌人
+
+在 Execute Commands 的 Commands 下拉选择 **Command/Clear Enemies**，让当前全部普通敌人
+无奖励自毁，保留 Boss。敌人行为流也可通过 **Action/Execute Global Commands** 使用同一指令。
+该指令不受敌人无敌状态影响，不触发死亡掉落，不阻止后续刷怪；若需清除已有弹幕，
+再添加 **Command/Clear Projectiles**。取消演出不会恢复已清除的敌人。
+
+普通敌人还可在 Enemy 组件启用 **Self Destruct Out Of Bounds**，使用场景 BoundsService 的
+**Culling Area** 判断出界。**Entry Grace Seconds** 为边界外出生的敌人提供入场时间；
+进入范围后再次出界即自毁，始终未进入则在宽限耗尽后自毁。此路径同样不掉落道具，
+使用 Destroy 销毁而非对象池回收。
+
+验证时同时放置普通敌人与 Boss，执行指令，确认普通敌人消失、Boss 保留且没有死亡掉落；
+另检查边界内出生后离场、边界外入场及入场超时三种情况。
+
 ## 撒道具
 
 在 Execute Commands 中添加 Command/Spawn Drops 并指定 DropProfile，可在演出中显式生成道具。

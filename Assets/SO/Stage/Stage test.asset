@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Entries:
   - rid: 6177227137434517512
+  - rid: 6177227145319809027
   Duration: 60
   Pool: {fileID: 0}
   AutoSwitchBgm: 1
@@ -31,3 +32,20 @@ MonoBehaviour:
         SpawnPosition: {x: -0.5, y: 6}
         InitialRotation: 0
         BlockTimeline: 1
+    - rid: 6177227145319809027
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 2.6933331
+        OneShot: 1
+        Duration: 6
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
+        SpawnPosition: {x: 0, y: 0}
+        SpawnPositionStrategy:
+          rid: 6177227145319809028
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227145319809028
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0, y: 0}

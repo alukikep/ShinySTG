@@ -47,6 +47,7 @@ MonoBehaviour:
         Commands:
         - rid: 6177227137434517520
         - rid: 6177227143308115968
+        - rid: 6177227145319809029
     - rid: 6177227137434517520
       type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
       data:
@@ -87,3 +88,6 @@ MonoBehaviour:
         Profile: {fileID: 11400000, guid: 9d28ef3de5397d54482d1bc36a6f6957, type: 2}
         OnPhaseCompleted: 1
         OnBossDeath: 0
+    - rid: 6177227145319809029
+      type: {class: ClearEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data: 

@@ -17,7 +17,8 @@ namespace ShinySTG.EnemyAI
         float _elapsedInCurrent;
         float _delayLeft;
         bool  _started;
-        public bool IsComplete => _flow == null || _flow.Actions == null || _flow.Actions.Length == 0 || (_started && _index < 0);
+        bool _disposed;
+        public bool IsComplete => _disposed || _flow == null || _flow.Actions == null || _flow.Actions.Length == 0 || (_started && _index < 0);
 
         public BehaviorFlowRuntime(BehaviorFlow flow)
         {
@@ -69,8 +70,12 @@ namespace ShinySTG.EnemyAI
             //   本 Tick 直接读缓存,不再重复抽样。
             if (_elapsedInCurrent >= current.CurrentDuration)
             {
+                // OnExit 可能自毁宿主并重入 ForceExit；先撤下当前动作。
+                int next = _index + 1;
+                _index = -1;
                 current.OnExit(owner);
-                AdvanceTo(_index + 1, owner);
+                if (owner == null || !owner.gameObject.activeInHierarchy) return;
+                AdvanceTo(next, owner);
             }
         }
 
@@ -91,12 +96,15 @@ namespace ShinySTG.EnemyAI
 
         public void Dispose(Transform owner)
         {
+            if (_disposed) return;
+            _disposed = true;
             ForceExit(owner);
             if (_flow != null) Object.Destroy(_flow);
         }
 
         void AdvanceTo(int next, Transform owner)
         {
+            if (_disposed || owner == null || !owner.gameObject.activeInHierarchy) return;
             var actions = _flow.Actions;
             if (actions == null) return;
 

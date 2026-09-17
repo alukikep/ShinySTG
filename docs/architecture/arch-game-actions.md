@@ -42,6 +42,14 @@ ExecuteCommandsAction 的无敌操作是持久命名锁，取消动作不会撤�
 消弹仍走 BulletPool/LaserPool 的标准回收流程。指令按阵营筛选，默认包括敌方子弹和激光；
 一次清除不禁止后续发射，也不暂停世界。
 
+## 普通敌人清场
+
+ClearEnemiesCommand 对执行时已登记的普通敌人发起无奖励自毁，排除 Boss。
+该操作不依赖有效 Owner，不经过伤害或击杀事件，不受无敌限制；不清除已发射弹幕，
+也不影响之后生成的敌人。需要同时消弹时组合 ClearProjectilesCommand。
+指令为瞬时操作，取消外层动作不会恢复已清除的敌人。
+生命周期由 [Enemy 自毁入口](./arch-enemy-ai.md#自毁与出界)负责。
+
 ## 撒道具指令
 
 SpawnDropsCommand 是瞬时生成指令；通过 ExecuteCommandsAction 或 ExecuteGlobalCommandsAction

@@ -845,7 +845,8 @@ MonoBehaviour:
     height: 0
   PickupSize: {x: 0.5, y: 0.5}
   AttractionEnabled: 1
-  AttractionSize: {x: 2, y: 2}
+  FastAttractionSize: {x: 1.5, y: 1.5}
+  SlowAttractionSize: {x: 3, y: 3}
 --- !u!1 &837713720
 GameObject:
   m_ObjectHideFlags: 0

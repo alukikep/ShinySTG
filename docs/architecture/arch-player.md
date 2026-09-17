@@ -38,6 +38,11 @@ OnPowerUp 仅在整数等级变化时通知。残机仍由 PlayerHealth 管理�
 缺失时在运行时补齐；需要配置初始库存时可预先添加组件。
 
 `PlayerHitbox` 提供独立的拾取和吸附 AABB；原 Size / WorldBounds 仍专用于受伤。
+吸附范围按本对象 PlayerMovement.FocusHeld 在高速、低速配置间切换，不按实际移动速度判断；
+缺少移动组件时使用高速范围。控制锁屏蔽 Focus 输入时同样使用高速范围。
+旧 AttractionSize 通过 FormerlySerializedAs 迁移为高速配置，低速范围独立配置。
+模式切换只影响开始吸附的判定，已经吸附的道具继续追踪。配置与可视化见
+[道具操作说明](../../Assets/Scripts/Items/README.md)。
 无敌不妨碍拾取，死亡或禁用玩家不能拾取；对话控制锁只锁输入，不自动暂停道具。
 
 ## 对话接入

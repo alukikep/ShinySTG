@@ -10,7 +10,7 @@ namespace ShinySTG.EnemyAI
     /// 不用 Singleton —— 敌人可能很多,Scene 里同时存在 N 个 Enemy 不该共享 Instance。
     ///
     /// 生命周期的处理:
-    ///   - 行为流跑完时(SelfDestructAction)= ShooterEnemy 自己 Destroy 自己(沿用旧行为)
+    ///   - 自毁 / 出界 / 清场指令走 SelfDestruct，不触发死亡奖励
     ///   - HP 打空时(EnemyHealth.OnDeath)= 本组件统一处理:停行为流 + Destroy
     ///
     /// 后续如果要做"死亡动画播完再销毁 / 撒豆再销毁",
@@ -26,6 +26,12 @@ namespace ShinySTG.EnemyAI
         public EnemyHitbox  Hitbox  { get; private set; }
 
         bool _dead;
+        bool _enteredCullingArea;
+        float _outsideAge;
+        [SerializeField, Tooltip("出界时自毁，不触发死亡掉落。边界使用 BoundsService.CullingArea。")]
+        bool _selfDestructOutOfBounds = true;
+        [SerializeField, Min(0f), Tooltip("从边界外生成时允许入场的秒数；进入边界后不再提供宽限。")]
+        float _entryGraceSeconds = 5f;
         [SerializeField, Tooltip("被击杀时的掉落；离场自毁不触发。留空不掉落。")]
         ShinySTG.Items.DropProfile _deathDrops;
 
@@ -41,7 +47,40 @@ namespace ShinySTG.EnemyAI
 
         void OnEnable()
         {
+            _enteredCullingArea = IsInsideCullingArea();
+            _outsideAge = 0f;
             if (Health != null) Health.OnDeath += HandleDeath;
+        }
+
+        void LateUpdate()
+        {
+            if (_dead || !_selfDestructOutOfBounds) return;
+            if (IsInsideCullingArea())
+            {
+                _enteredCullingArea = true;
+                return;
+            }
+            _outsideAge += Time.deltaTime;
+            if (_enteredCullingArea || _outsideAge >= Mathf.Max(0f, _entryGraceSeconds))
+                SelfDestruct();
+        }
+
+        bool IsInsideCullingArea()
+        {
+            var bounds = ShinySTG.Stage.BoundsService.Instance;
+            Vector2 position = transform.position;
+            return bounds != null ? bounds.ContainsCulling(position)
+                : Mathf.Abs(position.x) <= 10f && Mathf.Abs(position.y) <= 20f;
+        }
+
+        /// <summary>无奖励离场；立即撤下碰撞和活跃登记，帧末销毁，不受无敌影响。</summary>
+        public void SelfDestruct()
+        {
+            if (_dead) return;
+            _dead = true;
+            gameObject.SetActive(false);
+            if (Shooter != null) Shooter.Stop();
+            Destroy(gameObject);
         }
 
         void OnDisable()

@@ -13,7 +13,10 @@ namespace ShinySTG.EnemyAI
     {
         public override void OnExit(Transform enemy)
         {
-            if (enemy != null) UnityEngine.Object.Destroy(enemy.gameObject);
+            if (enemy == null) return;
+            var controller = enemy.GetComponent<Enemy>();
+            if (controller != null) controller.SelfDestruct();
+            else UnityEngine.Object.Destroy(enemy.gameObject);
         }
     }
 }

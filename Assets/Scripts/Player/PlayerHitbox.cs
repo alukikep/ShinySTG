@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using ShinySTG.Hitbox;
 
 namespace ShinySTG.Player
@@ -20,10 +21,25 @@ namespace ShinySTG.Player
         public Vector2 PickupSize = new Vector2(0.5f, 0.5f);
         [Tooltip("是否开启近距离道具吸附。")]
         public bool AttractionEnabled = true;
-        [Tooltip("开始吸附的范围，不影响受伤判定。")]
-        public Vector2 AttractionSize = new Vector2(2f, 2f);
+        [FormerlySerializedAs("AttractionSize")]
+        [Tooltip("高速模式开始吸附的范围（宽、高），不影响受伤判定。")]
+        public Vector2 FastAttractionSize = new Vector2(2f, 2f);
+        [Tooltip("低速（Focus）模式开始吸附的范围（宽、高）。已吸附的道具不会因切换模式而停止追踪。")]
+        public Vector2 SlowAttractionSize = new Vector2(2f, 2f);
+
+        PlayerMovement _movement;
+
+        public Vector2 CurrentAttractionSize
+        {
+            get
+            {
+                if (_movement == null) _movement = GetComponent<PlayerMovement>();
+                return _movement != null && _movement.FocusHeld ? SlowAttractionSize : FastAttractionSize;
+            }
+        }
+
         public Rect PickupBounds => ItemBounds(PickupSize);
-        public Rect AttractionBounds => ItemBounds(AttractionSize);
+        public Rect AttractionBounds => ItemBounds(CurrentAttractionSize);
 
         Rect ItemBounds(Vector2 size)
         {
@@ -36,7 +52,15 @@ namespace ShinySTG.Player
         {
             base.OnDrawGizmosSelected();
             DrawItemBounds(PickupBounds, Color.cyan);
-            if (AttractionEnabled) DrawItemBounds(AttractionBounds, Color.yellow);
+            if (AttractionEnabled)
+            {
+                if (Application.isPlaying) DrawItemBounds(AttractionBounds, Color.yellow);
+                else
+                {
+                    DrawItemBounds(ItemBounds(FastAttractionSize), Color.yellow);
+                    DrawItemBounds(ItemBounds(SlowAttractionSize), Color.magenta);
+                }
+            }
         }
 
         void DrawItemBounds(Rect bounds, Color color)

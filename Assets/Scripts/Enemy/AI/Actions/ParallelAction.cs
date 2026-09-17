@@ -27,8 +27,10 @@ namespace ShinySTG.EnemyAI
             int n = Children != null ? Children.Length : 0;
             _childElapsed  = new float[n];
             _childFinished = new bool[n];
+            for (int i = 0; i < n; i++) _childFinished[i] = true;
             for (int i = 0; i < n; i++)
             {
+                if (enemy == null || !enemy.gameObject.activeInHierarchy) return;
                 var c = Children[i];
                 if (c != null)
                 {
@@ -38,6 +40,7 @@ namespace ShinySTG.EnemyAI
                     //   - Fixed:等价旧 float Duration(老 .asset 通过 _legacyDuration 兜底)
                     //   - Random Range:每次 Parallel 进入时各 child 独立抽样 → 节奏抖动
                     c.SetCurrentDuration(c.ResolveDuration());
+                    _childFinished[i] = false;
                     c.OnEnter(enemy);
                 }
             }
@@ -49,6 +52,7 @@ namespace ShinySTG.EnemyAI
             int n = Children.Length;
             for (int i = 0; i < n; i++)
             {
+                if (enemy == null || !enemy.gameObject.activeInHierarchy) return;
                 if (_childFinished[i] || Children[i] == null) continue;
 
                 _childElapsed[i] += dt;
@@ -57,8 +61,8 @@ namespace ShinySTG.EnemyAI
                 // ★ vX 起:读 CurrentDuration(已由 OnEnter 时抽样缓存),不再是基类 float Duration 字段
                 if (_childElapsed[i] >= Children[i].CurrentDuration)
                 {
-                    Children[i].OnExit(enemy);
                     _childFinished[i] = true;
+                    Children[i].OnExit(enemy);
                     continue;
                 }
 
@@ -74,7 +78,10 @@ namespace ShinySTG.EnemyAI
             {
                 // 只对"还活着"的 child 调用 OnExit,避免重复清理
                 if (!_childFinished[i] && Children[i] != null)
+                {
+                    _childFinished[i] = true;
                     Children[i].OnExit(enemy);
+                }
             }
         }
     }

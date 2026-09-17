@@ -74,6 +74,7 @@ namespace ShinySTG.EnemyAI
             }
 
             // ③ 跑当前 child
+            if (_idx < 0 || enemy == null || !enemy.gameObject.activeInHierarchy) return;
             var current = Children[_idx];
             if (current == null)
             {
@@ -82,13 +83,16 @@ namespace ShinySTG.EnemyAI
             }
 
             current.OnTick(enemy, dt);
+            if (enemy == null || !enemy.gameObject.activeInHierarchy) return;
             _elapsedInCurrent += dt;
 
             // ★ vX 起:读 CurrentDuration(已由 Advance 时抽样缓存),不再是基类 float Duration 字段
             if (_elapsedInCurrent >= current.CurrentDuration)
             {
+                int next = _idx + 1;
+                _idx = -1;
                 current.OnExit(enemy);
-                Advance(_idx + 1, enemy);
+                Advance(next, enemy);
             }
         }
 
@@ -99,14 +103,16 @@ namespace ShinySTG.EnemyAI
             //   OnExit 收尾,否则 child 的清理会漏。与 ParallelAction.OnExit 同套路。
             if (_idx >= 0 && Children != null && _idx < Children.Length)
             {
-                Children[_idx]?.OnExit(enemy);
+                var current = Children[_idx];
                 _idx = -1;
+                current?.OnExit(enemy);
             }
             // 非循环序列也可能被宿主提前中断，必须清理仍在执行的 child。
         }
 
         void Advance(int next, Transform enemy)
         {
+            if (enemy == null || !enemy.gameObject.activeInHierarchy) return;
             if (Children == null || Children.Length == 0) { _idx = -1; return; }
             if (next >= Children.Length)
             {

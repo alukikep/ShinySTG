@@ -162,7 +162,7 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 | `WaitAction` | `Action/Wait` | 什么都不做,只占用 Duration | (无) |
 | `EmitSignalAction` | `Action/Emit Signal` | 在时间轴上向 `BulletSignalBus` 发全局信号(Boss 喊话 / 阶段切换 / modifier 解锁) | `SignalName` + `EmitMode`(OnEnterOnly / EveryTick / OnInterval) + `Interval` |
 | `ExecuteGlobalCommandsAction` | `Action/Execute Global Commands` | 进入 Action 时执行一组场景级游戏指令 | `Commands`(`Clear Projectiles` / `Set Invincibility` 等) |
-| `SelfDestructAction` | `Action/Self Destruct` | 到达时销毁自身(常作 Sequence 收尾) | (无) |
+| `SelfDestructAction` | `Action/Self Destruct` | 动作退出时无奖励自毁(常作 Sequence 收尾) | (无) |
 | `ParallelAction` | `Action/Parallel` | 并行容器,所有 children 同时跑 | `Children` + `StartTrigger`(SR 多态) + 基础 DurationConfig |
 | `SequenceAction` | `Action/Sequence` | 顺序容器,逐个跑完 children,可选 `Loop=true` 在自身 Duration 内循环 | `Children` + `Loop` + 基础 DurationConfig |
 
@@ -180,6 +180,19 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 
 ---
 
+
+## 自毁与出界
+
+普通敌人的行为自毁、出界清理和 ClearEnemiesCommand 共用 Enemy.SelfDestruct，
+不经过扣血或死亡事件，不受无敌影响，也不提交死亡掉落。对象立即禁用并退出活跃登记，
+行为流停止并释放运行时克隆，GameObject 在帧末销毁；普通敌人不使用对象池。
+
+出界检测使用 BoundsService.CullingArea；服务缺失时采用与旧子弹边界一致的兜底范围。
+边界外出生的敌人有可配置的入场宽限，进入范围后再次出界即自毁；始终未进入的敌人
+在宽限耗尽后自毁。需要长期在范围外活动时，可关闭 Enemy 的出界自毁。
+
+清场指令排除 Boss，保留已发射弹幕，也不阻止后续刷怪。配置入口见
+[清除普通敌人](../../Assets/Scripts/GameActions/README.md#清除普通敌人)。
 
 ## 死亡掉落
 
