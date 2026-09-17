@@ -76,7 +76,8 @@
 
 详见 `Assets/Scripts/Stage/BoundsService.cs` + `Assets/Scripts/Stage/Editor/BoundsServiceHandles.cs` + `Assets/Scripts/Stage/Editor/BoundsServiceSceneBootstrap.cs`。
 
-详见 `Assets/Scripts/Audio/README.md`(配置说明) + [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md#音频集成自动切歌--时间点-sfx)(关卡编辑器使用)。
+详见 [`Assets/Scripts/Audio/README.md`](../../Assets/Scripts/Audio/README.md)(配置说明)和
+[`LEVEL_EDITOR.md`](../../LEVEL_EDITOR.md#音频集成)(关卡编辑器使用)。
 
 
 ---

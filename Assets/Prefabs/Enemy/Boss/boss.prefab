@@ -114,6 +114,9 @@ MonoBehaviour:
     CurrentHp: 0
     TriggerOnEmpty: 1
   LegacyMaxHp: 1000
+  _hitSfx: {fileID: 0}
+  _barDepletedSfx: {fileID: 0}
+  _deathSfx: {fileID: 0}
   Hitbox: {fileID: 0}
   CurrentBarIndex: 0
   LegacyCurrentHp: 0
@@ -134,6 +137,7 @@ MonoBehaviour:
   SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
   AlwaysDraw: 1
   Team: 2
+  IsFogged: 0
   _cachedBounds:
     serializedVersion: 2
     x: 0
@@ -169,20 +173,20 @@ MonoBehaviour:
       data:
         ExitTriggers:
         - rid: 6177226968670666752
-        Flow: {fileID: 11400000, guid: e06e59cefb0c2694daba10125ea8cd42, type: 2}
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
         ResetOnEnter: 1
     - rid: 6177226966485434376
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
         ExitTriggers:
         - rid: 6177226986570383360
-        Flow: {fileID: 11400000, guid: aa8988b41be8512458b964141c6af7d0, type: 2}
+        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
         ResetOnEnter: 1
     - rid: 6177226966485434380
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
         ExitTriggers: []
-        Flow: {fileID: 11400000, guid: e06e59cefb0c2694daba10125ea8cd42, type: 2}
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
         ResetOnEnter: 1
     - rid: 6177226968670666752
       type: {class: PhaseTrigger, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}

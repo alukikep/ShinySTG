@@ -26,7 +26,7 @@
 - `BgmPlaylist` —— BGM 列表(Tracks + Shuffle + Loop + CrossfadeDuration)。
 - `AudioBus` —— 总线配置(兼容 Unity AudioMixerGroup + PlayerPrefs 持久化)。
 - `AudioBank` —— SfxCue 分组容器(纯 Inspector 组织用,不强制走)。
-- `LevelAudioBinding` —— 关卡↔BGM 绑定(**接口预留,运行时默认不启用**,供 LevelEditor 后续扩展「切换 BGM」方法时使用)。
+- `LevelAudioBinding` —— 关卡与 BGM 的绑定资产。`LevelController.BeginLevel()` 在 `AutoSwitchBgm` 开启时自动交给 `AudioEventHub`。
 
 **多态扩展点(走 `[Serializable, SRName]` 下拉,与 FireExtension / EnemyAction / BossPhase 同套路):**
 

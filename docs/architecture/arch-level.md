@@ -29,7 +29,7 @@
 - **新条目类型**(等玩家到位 / 周期性 / 全清触发 / 概率触发 / **时间点 SFX** / ...):新建 `SpawnEntry` 子类 + `[SRName("Entry/<名字>")]`,在 `ShouldTrigger` / `OnTrigger` 两个钩子实现,无需改 `LevelController`(详见 `Assets/Scripts/Level/`)。
 - **Boss Encounter 扩展**:表现配置放在 `BossEncounterDefinition`,运行时协调放在 `BossEncounterRuntime`;旧 `BossSpawnEntry` 已弃用,仅用于已有资产反序列化。
 - **可视化时间轴编辑器**:已实现完整的时间轴 / 列表 / 详情面板 + Preview + Scene Gizmos。详见 [§10](#10-关卡编辑器子系统)。
-- **关卡级 BGM 自动切歌**:在 `LevelDefinition.AudioBinding` 挂 `LevelAudioBinding` 资产,`BeginLevel` 时 `AudioEventHub.TryBind` 自动订阅事件切歌。详见 [§11](#11-音频音乐系统audiosystem)。
+- **关卡级 BGM 自动切歌**:在 `LevelDefinition.AudioBinding` 挂 `LevelAudioBinding` 资产,`BeginLevel` 时 `AudioEventHub.TryBind` 自动订阅事件切歌。详见 [audio](./arch-audio.md)。
 
 
 ---

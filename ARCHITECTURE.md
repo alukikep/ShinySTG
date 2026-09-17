@@ -98,10 +98,10 @@
 | 架构板块文档 | `docs/architecture/arch-<子系统>.md` | 架构视角:为什么这样设计 / 子体系边界 / 扩展套路 |
 | 子系统 README | `Assets/Scripts/<子系统>/README.md` | Inspector / SO 创建 / 字段配置操作步骤 |
 
-**Audio** 是当前唯一同时拥有"架构板块"和"子系统 README"的子系统,前者讲架构,后者讲操作,**互不重复**。其他子系统(Laser / Boss / Player 等)暂只有架构板块文档;若某个子系统未来操作复杂度上升(配 Inspector 流程长),可补子系统 README,与板块文档分工同上。
+Audio 与 Level Editor 同时拥有架构板块和操作/扩展 README：前者讲边界，后者讲具体操作。其他子系统若配置流程明显复杂，也可按同一原则补充 README。
 
 ---
 
 ## 6. 兼容旧引用
 
-源码注释、README 表格里仍可能出现 `ARCHITECTURE §X.Y` / `详见 ARCHITECTURE §X` 这类短文本。这类引用现在对应"原 ARCHITECTURE.md"章节号,板块文件顶部会标注"本板块对应 ARCHITECTURE § X"(含原行号区间),人脑可据此跳转到对应板块。**不需要**批量改源码注释——保持现状即可。
+旧源码注释中可能仍有 `ARCHITECTURE §X.Y` 形式的历史引用。新文档不要继续使用章节号；应直接链接对应的 `docs/architecture/arch-*.md` 文件或标题。触及旧引用附近代码时再顺手修正，无需为此批量改源码。

@@ -1,382 +1,136 @@
 # ShinySTG 关卡编辑器使用说明
 
-> 本文档是 [README §7](./README.md#7-关卡关卡编辑器) 的独立展开。
-> 关卡的**完整设计 / 扩展点 / 与既有层对齐说明**见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §9。
-> 本文档面向"使用关卡编辑器配关卡的人",讲操作流程,不重复架构决策。
+本文只讲如何创建、编辑和运行关卡。编辑器扩展见
+[`Assets/Scripts/Level/Editor/README.md`](./Assets/Scripts/Level/Editor/README.md)，系统边界见
+[`arch-level.md`](./docs/architecture/arch-level.md) 和
+[`arch-level-editor.md`](./docs/architecture/arch-level-editor.md)。
 
----
+## 快速上手
 
-## 目录
+1. 在 Project 窗口选择 `Create -> STG -> Level`，创建 `LevelDefinition`。
+2. 打开 `STG -> Level Editor`，载入关卡资产。
+3. 用 `+ Add` 添加条目，设置触发时间、Prefab 和出生位置。
+4. 场景中新建 `LevelController`，把关卡资产拖到 `Definition`。
+5. 进入 Play Mode。`AutoStart` 勾选时关卡自动开始，否则由外部代码调用 `BeginLevel()`。
 
-1. [快速上手 30 秒](#快速上手-30-秒)
-2. [创建关卡资产](#创建关卡资产)
-3. [在场景里跑关卡](#在场景里跑关卡)
-4. [编辑关卡条目](#编辑关卡条目)
-5. [可订阅的关卡事件](#可订阅的关卡事件)
-6. [加新条目类型(扩展指南)](#加新条目类型扩展指南)
-7. [持续型条目(Duration)与时间轴堆叠](#持续型条目duration与时间轴堆叠)
-8. [Boss Encounter](#boss-encounter)
+## 编辑器界面
 
----
-
-## 快速上手 30 秒
-
-```
-1.  Project 窗口右键 → Create → STG → Level  →  命名 Stage1.asset
-2.  点开 Stage1.asset 的 Entries 数组,+ 几条:
-       TriggerTime=0.0   Simple   SpawnPosition=(0, 4)    EnemyPrefab=教学小怪
-       TriggerTime=2.0   Wave     CenterPosition=(0, 4)  SpacingX=0.8  Prefabs=[小怪,小怪,小怪]
-3.  场景里建 GameObject,挂 LevelController,把 Stage1.asset 拖到 Definition
-4.  Play → 关卡自动开跑
-```
-
----
-
-## 创建关卡资产
-
-1. Project 窗口右键 → **Create → STG → Level**
-2. 输入关卡名(如 `Stage1.asset`),生成一份 `LevelDefinition` 资产
-3. 选中资产,在 Inspector 里编辑即可
-
-资产会被自动写入 Project 视图;`*.meta` 文件自动生成,记得进库。
-
----
-
-## 在场景里跑关卡
-
-1. 场景里新建一个 GameObject(命名 `LevelController`)
-2. Add Component → `LevelController`(自动用项目自带 `Singleton<T>` 基类,无需手动设单例)
-3. 把刚才的 `.asset` 拖到 `Definition` 字段
-4. 进 Play Mode → 关卡自动按 `AutoStart=true` 开始(若不需要自动开始,把 `AutoStart` 勾掉,运行时调 `LevelController.Instance.BeginLevel()`)
-
-> 关卡运行时需要在场景里有 `BulletPool`(普通关卡共用场景默认池即可;Boss 关卡配专属弹 prefab 时,把它拖到关卡资产的 `Pool` 字段)。
-> 若没在 `Pool` 字段配且场景里有 `BulletPool`,`LevelController` 会在 `BeginLevel` 时自动 `FindObjectOfType` 兜底(`AutoFindBulletPool` 默认开)。
-
-### 关卡结束方式
-
-- **自然结束**:`LevelDefinition.Duration > 0` 时,时间到自动调 `CompleteLevel()`,触发 `OnLevelComplete`。
-- **强制结束**:外部脚本调 `LevelController.Instance.CompleteLevel()`(玩家死亡 / 退出按钮 / 调试热键)。
-
----
-
-## 编辑关卡条目
-
-点开 `.asset` 的 `Entries` 数组,点 `+` 号新增条目。每个条目**通过下拉菜单选类型**(由项目自带 `SREditor` 插件提供,继承 `SpawnEntry` 的子类会自动出现在下拉里)。
-
-### 内置 5 种正式条目
-
-| 类型 | 下拉路径 | 用途 |
-|---|---|---|
-| **Simple** | `敌人生成/Simple` | 单点生成 — 配 `TriggerTime` / `SpawnPosition` / `EnemyPrefab`,可选 `OverrideFlow` 临时换行为流 |
-| **Wave** | `敌人生成/Wave` | 横排生成 — 配 `Prefabs[]` 数组 + `CenterPosition` + `SpacingX`,自动沿 X 轴等距铺 |
-| **Boss 战** | `遭遇/Boss 战` | 启动 `BossEncounterDefinition`:生成 Boss、响应阶段演出,并可阻塞时间轴直到遭遇完成 |
-| **Sustain** | `敌人生成/Sustain` | 在点位持续刷敌 — 配 `Duration` + `SpawnInterval`,期间每 N 秒生成一次(详见 §7) |
-| **Play SFX** | `音效/Play SFX` | 时间点音效 — 配 `Cue` + 可选 `Position`,在 `TriggerTime` 播 SFX(详见[音频集成](#音频集成自动切歌--时间点-sfx)) |
-
-> **下拉分类规则**:Toolbar 的 `+ Add ▾` 菜单按 `[SRName("分类/条目")]` 自动生成子菜单。
-> 第一个 `/` 前是分类名,后面是条目名。当前正式分类包含:`敌人生成` / `遭遇` / `音效`。
-> 自定义 SpawnEntry 子类时,**强烈建议**给 SRName 加分类前缀(例如 `自定义/我的条目`),避免菜单扁平化。
-
-### 典型配法示例
-
-```
-时间 = 0.0  → Simple   TriggerTime=0.0, SpawnPosition=(0, 4),   EnemyPrefab=教学小怪
-时间 = 2.0  → Wave     TriggerTime=2.0, CenterPosition=(0, 4), SpacingX=0.8,
-                     Prefabs=[红小怪, 蓝小怪, 红小怪, 蓝小怪, 红小怪]   ← 5 只横排交错
-时间 = 5.0  → Simple   TriggerTime=5.0, SpawnPosition=(-3, 3), EnemyPrefab=精英怪, OverrideFlow=精英行为.flow
-时间 = 8.0  → Simple   TriggerTime=8.0, SpawnPosition=( 3, 3), EnemyPrefab=精英怪, OverrideFlow=精英行为.flow
-时间 = 12.0 → Boss 战  TriggerTime=12.0, SpawnPosition=(0, 5), Encounter=Stage1BossEncounter,
-                     BlockTimeline=true
-时间 = 15.0 → Simple   SpawnPosition=(0, -4), EnemyPrefab=自毁冲锋怪, OverrideFlow=向下冲.flow
-                     ← 实际等 Boss Encounter 完成后才执行
-```
-
-> **同 prefab 配不同行为流的小技巧**:`SimpleSpawnEntry` 的 `OverrideFlow` 字段会临时覆盖 prefab 自带的 Flow —— 适合"同一个敌人 prefab,在不同时间点以不同行为出场"。
-
-### 增 / 删 / 复制 / 快捷键
-
-> 这些操作都走 `LevelEditorCommands`,Toolbar / 时间轴 / 列表 / 快捷键共用一份逻辑,支持 **Ctrl+Z 撤销**。
-
-| 操作 | 入口 |
+| 区域 | 用途 |
 |---|---|
-| 加 | Toolbar `+ Add ▾` 下拉(自动列出所有 `SpawnEntry` 子类) |
-| 删 | Toolbar `Delete` / 时间轴右键 → Delete / 列表右键 → Delete / **选中后按 Delete 或 Backspace** |
-| 复制 | Toolbar `Duplicate` / 时间轴右键 → Duplicate / 列表右键 → Duplicate(瞬时点偏移 +0.5s,持续型偏移 +Duration) |
-| 跳到 Scene | 时间轴右键 → Focus in Scene / 列表右键 → Focus in Scene(`SceneView.LookAt`) |
+| Toolbar | 打开资产、新增、复制、删除和音频绑定 |
+| 列表 | 浏览和选择全部条目 |
+| 时间轴 | 查看触发顺序、拖动时间和持续时间 |
+| 详情 | 编辑当前条目的 Inspector 字段 |
+| Preview | 在 Editor 中预览触发时序 |
+| Scene Gizmo | 查看出生位置和选中项 |
 
-> 快捷键(Delete / Backspace)只在焦点不在输入框(`GUIUtility.keyboardControl == 0`)时生效,避免误删正在编辑的字段值。
+选中条目后可使用 Delete/Backspace 删除；复制、删除和 Scene 聚焦也可从右键菜单执行。
+写操作支持 Unity Undo。
 
-### Simple vs Wave 怎么选
+## 创建与运行关卡
 
-- **只有 1 只**:`Simple`
-- **2 只以上,大致沿 X 一行 / 一列**:`Wave`(中心点 + 间距一行搞定)
-- **2 只以上,每只位置都要单独定(弧线/斜线/不规则)**:`Simple` 写 N 条
-- **2 只以上,需要"每只不同 prefab + 不同位置 + 不同行为流"**:`Simple` 写 N 条(`Wave` 整波共用 InitialRotation,不支持 Flow 覆盖)
+### LevelDefinition
 
----
+常用配置：
 
-## 可订阅的关卡事件
+- `Entries`：按触发时间执行的关卡条目。
+- `Pool`：可选的关卡专用 `BulletPool`；留空时由运行时按配置查找。
+- `AudioBinding`：关卡音乐绑定。
+- `AutoSwitchBgm`：开始关卡时是否自动绑定音乐事件。
 
-`LevelController` 暴露以下实例事件,UI / 计分 / 动画 / 章节选择等系统可订阅:
+字段含义和默认值以当前 Inspector Tooltip 为准。
 
-```csharp
-LevelController.Instance.OnLevelStart    += def => { /* 关卡开始 */ };
-LevelController.Instance.OnLevelComplete += def => { /* Duration 到 / 外部调 CompleteLevel */ };
-LevelController.Instance.OnEnemySpawned  += go  => { /* 每只敌人生成时 */ };
-LevelController.Instance.OnBossSpawned   += go  => { /* boss 生成时 */ };
-LevelController.Instance.OnBossDefeated  += go  => { /* boss 击败时(留口) */ };
-```
+### LevelController
 
-风格与 `PlayerHealth` 的实例事件一致(`OnLifeLost` / `OnRevive` / `OnAllLivesLost` 同款)。
+- `Definition` 指向要运行的关卡。
+- `AutoStart=true` 时进入 Play Mode 自动调用 `BeginLevel()`。
+- 重新运行当前定义使用已有的 reload 接口，不要在外部重复创建 Runtime。
 
----
+关卡结束条件和事件由 `LevelController`/`LevelRuntime` 提供；订阅前先确认当前代码中的事件签名。
 
-## Boss Encounter
+## 关卡条目
 
-正式 Boss 战统一通过 `BossEncounterEntry + BossEncounterDefinition` 配置。旧 `BossSpawnEntry` 已弃用,不会再出现在新增菜单中;类型仍保留,只用于打开和迁移已有的 SerializeReference 资产。
+`+ Add` 菜单会列出当前可用的 `SpawnEntry` 子类。常见选择原则：
 
-### 配置步骤
-
-1. Project 窗口右键 → **Create → STG → Boss Encounter**。
-2. 在 Encounter 资产的 `BossPrefab` 中拖入 Boss prefab。
-3. 根据需要配置出场音效、击破音效、击破收尾等待和各阶段进入/退出音效。
-4. 在关卡编辑器中选择 `+ Add → 遭遇 → Boss 战`。
-5. 将 Encounter 资产拖到条目的 `Encounter` 字段,设置生成位置。
-6. 勾选 `BlockTimeline`:Boss 战开始后关卡时间停止推进,但玩家、Boss、子弹、激光与音频仍正常运行。
-
-```text
-BossEncounterEntry 到点
-  → Encounter 生成 BossPrefab
-  → 监听 BossController 阶段进入/退出
-  → 监听 BossHealth.OnDeath
-  → 击破后执行 DefeatOutroDelay
-  → Encounter 完成并解除关卡时间轴阻塞
-```
-
-关卡编辑器只决定“何时开始哪场 Boss 遭遇”。符卡阶段与战斗判定仍在 Boss 配置中;阶段表现映射放在 Encounter 资产中,不需要拆成主关卡时间轴上的绝对时间条目。
-
----
-
-## 音频集成(自动切歌 + 时间点 SFX)
-
-关卡编辑器提供两种把音频接进关卡的方式:**关卡级自动切歌**(`LevelAudioBinding` 配法)和**时间轴 SFX 条目**(`Entry/Play SFX`)。两种完全正交,可混用。
-
-### 关卡级自动切歌(`LevelAudioBinding`)
-
-每个关卡可以挂一个 `LevelAudioBinding` 资产,`LevelController.BeginLevel` 时 AudioEventHub 会自动启用切歌:
-
-| 事件 | 切到 |
+| 需求 | 条目类型 |
 |---|---|
-| `OnLevelStart` | `AudioBinding.Playlist` |
-| `OnBossSpawned` | `AudioBinding.BossMusic`(交叉淡化 `ToBossCrossfade` 秒) |
-| `OnBossDefeated` | `AudioBinding.DefeatMusic`(交叉淡化 `ToDefeatCrossfade` 秒) |
+| 出现单个敌人 | Simple/单体出生条目 |
+| 同时或按间隔出现一组敌人 | Wave/波次条目 |
+| Boss 战 | Boss Encounter |
+| 指定时刻播放音效 | Play SFX |
+| 占据一段时间的逻辑 | Sustain/持续型条目 |
 
-**两种用法**:
-1. **关卡资产一站式**(推荐):在 `LevelDefinition.AudioBinding` 字段挂 binding 资产,关卡自带决定切什么 BGM
-2. **全局模板**(向后兼容):多个关卡共用同一套 binding 时,在 `AudioSystem.LevelBindings[]` 集中配,关卡 AudioBinding 留空
+菜单名称以 `[SRName]` 和当前 Inspector 显示为准；新增类型后无需把完整清单复制到本文。
 
-**三步配法**:
-1. 打开关卡编辑器 → 选中关卡资产
-2. 工具栏点 `+ Create AudioBinding`(自动创建同名 `_AudioBinding.asset` 并双向反引用)
-3. 选中新生成的 binding 资产,在 Inspector 里拖 BGM 资产到 `Playlist` / `BossMusic` / `DefeatMusic` 字段
+### Simple 与 Wave
 
-之后点 `♪ Open AudioBinding` 可以一键回到 binding 配置。
+- 单个特殊敌人、独立位置和行为使用 Simple。
+- 同构敌群、规则间距或统一波次配置使用 Wave。
+- 如果每个敌人的配置差异很大，多个 Simple 通常比一个复杂 Wave 更清晰。
 
-#### 关卡级开关
+### Boss Encounter
 
-`LevelDefinition.AutoSwitchBgm`(默认 `true`):
-- `true` + AudioBinding 非空 → 自动切歌启用
-- `false` → 此关卡不参与自动切歌(BGM 由调用方手动控制,适合过场关 / 静音关)
+配置 Boss Prefab、出生位置及对应阶段资产。Boss 的阶段、信号和血条规则见
+[`arch-boss.md`](./docs/architecture/arch-boss.md)。
 
-### 时间点 SFX 条目(`Entry/Play SFX`)
+进入 Boss 战后，关卡事件可驱动音乐切换；Boss 击败后继续执行后续条目还是结束关卡，
+以当前关卡定义和 Controller 配置为准。
 
-按时间轴触发一次性 SFX(UI 警告、阶段切换音、剧情音效等)。`+ Add ▾` → `Entry/Play SFX` 添加。
+## 持续型条目与时间轴
 
-| 字段 | 用途 |
+带 `Duration` 的条目在时间轴显示为区间，瞬时条目显示为固定宽度标记。
+
+- 拖动区间主体改变开始时间。
+- 若当前条目支持调整持续时间，可拖动区间边缘。
+- 重叠区间会分配到不同 lane，避免视觉覆盖。
+- 完全位于当前视口外的条目不会堆在视口边缘。
+
+持续型条目的实际运行语义由其类型决定，时间轴宽度只负责表达时间范围。
+
+## 音频集成
+
+### 关卡自动切歌
+
+点击工具栏 `+ Create AudioBinding` 可在关卡资产旁创建同名绑定并自动建立引用。填写：
+
+| 字段 | 时机 |
 |---|---|
-| `TriggerTime` | 触发时间(秒) |
-| `Cue` | SfxCue 资产(必填;空 = 跳过) |
-| `UsePosition` | 勾上 = 在 `Position` 世界坐标发声;不勾 = 2D 监听(跟随 Listener) |
-| `VolumeMul` / `Pitch` | 临时覆盖,与 SfxCue 默认值叠加乘 |
+| `Playlist` | 关卡开始 |
+| `BossMusic` | Boss 出现 |
+| `DefeatMusic` | Boss 击败 |
 
-Editor Preview 期间也会播(走 `LevelEditorPlayer.TriggerOne` → `OnTrigger` 路径);无 AudioSystem 时静默返回。
+当 `LevelDefinition.AutoSwitchBgm=true` 且场景有 `AudioSystem` 时，`BeginLevel()` 会自动绑定，
+不需要手动调用 `EnableAutoSwitch()`。
 
-### 时序示例
+### 时间点音效
 
-```
-TriggerTime=0.0   AudioBinding.Playlist = StageTheme          ← 关卡开始
-TriggerTime=2.0   Simple   prefab=小怪                            ← 小怪入场
-TriggerTime=15.0  Play SFX Cue=WarnSound                       ← 警告音
-TriggerTime=30.0  Boss 战 Encounter=Boss1Encounter              ← 生成 Boss并自动切 BossMusic
-Boss Encounter 完成前,后续时间轴保持阻塞
-BossDefeated → AudioBinding.DefeatMusic;收尾完成后时间轴恢复
-```
+在时间轴添加 `Entry/Play SFX`，设置 `TriggerTime` 和 `SfxCue`。它适合剧情提示、警报或
+关卡节奏音；敌人受击和开火等对象事件应配置在对应组件或 `FirePattern` 上。
 
-详见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) 的「BGM 切换」章节。
+音频资产配置见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)。
 
----
+## 常见问题
 
-## 加新条目类型(扩展指南)
+### Play 后没有生成内容
 
-按项目惯例,加新关卡条目类型 = 在 `Assets/Scripts/Level/SpawnEntries/` 下新建子类:
+检查 `LevelController.Definition`、`AutoStart`、条目 Prefab、触发时间，以及 Unity Console。
+若 `AutoStart=false`，确认外部确实调用了 `BeginLevel()`。
 
-```csharp
-using SerializeReferenceEditor;
-using UnityEngine;
+### Scene 中看不到位置标记
 
-namespace ShinySTG.Level.SpawnEntries
-{
-    [Serializable, SRName("Entry/Conditional")]   // 下拉菜单里会出现 "Entry/Conditional"
-    public class ConditionalSpawnEntry : SpawnEntry
-    {
-        // 自己加字段,例如"等玩家到达某 X 才触发"
-        public float PlayerXThreshold;
+打开 Scene 视图的 Gizmos，确认关卡编辑器已加载资产，并重新选择条目。
 
-        public override bool ShouldTrigger(bool alreadyFired)
-        {
-            if (!base.ShouldTrigger(alreadyFired)) return false;
-            return Player.Instance != null && Player.Instance.transform.position.x >= PlayerXThreshold;
-        }
+### 时间轴条目无法操作
 
-        public override void OnTrigger(LevelRuntime runtime, LevelDefinition def)
-        {
-            // 生成逻辑
-        }
-    }
-}
-```
+先确认详情输入框没有占用键盘焦点；拖拽问题同时检查当前缩放和条目是否位于可见区域。
 
-新条目会自动出现在 `Entries` 数组的下拉里,无需改 `LevelController`。
+### 自动音乐没有切换
 
-### 三个常用钩子
+检查 `AudioSystem`、`AutoSwitchBgm`、`AudioBinding`、绑定中的音乐字段，以及
+`BeginLevel()` 是否执行。
 
-- **`ShouldTrigger(alreadyFired)`** — 每帧调用,问"现在该不该触发"。默认实现处理 OneShot。
-- **`OnTrigger(runtime, def)`** — 触发时的实际操作(生成 prefab / 启动 boss / 调关事件)。
-- **可选 override** `TriggerTime`(继承自基类)或加自己的字段(比如示例里的 `PlayerXThreshold`)。
+## 文档边界
 
-### 常见条目类型速查
-
-| 想做的事 | 加什么子类 |
-|---|---|
-| 玩家到达某 X 才生成 | `ConditionalSpawnEntry`,override `ShouldTrigger` |
-| 周期性每 N 秒生成一波 | `RepeatSpawnEntry`,基类 `OneShot = false` 即可 |
-| 等一波清完再出下一波 | `OnClearedEntry`,override `ShouldTrigger` 读 `runtime.ActiveUnits` |
-| 概率触发 | `ChanceSpawnEntry`,override `ShouldTrigger` 里 `Random.value < Chance` |
-| V 字 / 弧形 / 螺旋阵 | `CurvedWaveSpawnEntry : WaveSpawnEntry`,override `OnTrigger` |
-| 在点位持续刷敌(已实现) | `SustainSpawnEntry`(`[SRName("敌人生成/Sustain")]`),配 Duration + SpawnInterval |
-
----
-
-## 持续型条目(Duration)与时间轴堆叠
-
-> 关卡里"短时间内多个 entry 同时作用"很容易互相遮挡 —— 时间轴**自动把重叠的 entry 堆到不同 lane**,并且任何 `SpawnEntry` 都可设 `Duration` 让它"占据一段时间"而不是"一个时间点"。
-
-### 字段位置
-
-`Duration` 是 `SpawnEntry` 基类字段,**所有 entry 都能用**:
-
-- `Duration <= 0`:瞬时点(原有行为,block 宽度固定 140px)
-- `Duration > 0`:持续型,block 宽度 = `Duration × 像素/秒`
-
-### 时间轴交互
-
-| 操作 | 效果 |
-|---|---|
-| 拖动 block **中部** | 改 `TriggerTime`(瞬时点 / 持续型都一样) |
-| 拖动 block **右边缘 6px** | 改 `Duration`(只持续型生效;瞬时点无边缘可拖) |
-| Hover 右边缘 | 鼠标变 ↔ 形状,提示可拖 |
-| 右侧详情面板 | `TriggerTime` / `Duration` / 其他字段都在那里,改完时间轴实时更新 |
-
-### 视觉
-
-- **瞬时点 block**:`Time` 起点,固定 140px 宽,标签 = "类型 @ 时间"
-- **持续型 block**:左 8px 实色(标识起点)+ 主体半透明同色 + 右边缘 2px 暗线(暗示可拖)
-- **重叠堆叠**:多个 entry 时间区间重叠时,自动分配到不同 lane(纵向上下排开),不遮挡
-
-### `Sustain` 条目(`Entry/Sustain`)
-
-最常见的持续型用法:**在指定点位周期性刷敌**。
-
-| 字段 | 说明 |
-|---|---|
-| `TriggerTime` | 开始时间(秒) |
-| `Duration` | 持续时间(秒)。例如 3.0 表示从 t 持续到 t+3 |
-| `SpawnInterval` | 两次生成之间的间隔(秒)。<= 0 = 只生成一次(退化成 Simple) |
-| `EnemyPrefab` / `SpawnPosition` / `InitialRotation` / `OverrideFlow` | 同 Simple |
-| `SpawnPositionStrategy` | 每次生成时相对 `SpawnPosition` 的"偏移算法"([SerializeReference] 多态,下拉选)。详见下方"位置策略" |
-
-**位置策略 `SpawnPositionStrategy`**(对齐 SfxRule / FireExtension 的多态下拉套路):
-
-| 策略 | 说明 |
-|---|---|
-| `Fixed` | 固定累加:第 N 只 = `SpawnPosition + (N-1) × Offset`。`Offset=(0,0)` 时所有生成都在 `SpawnPosition`。 |
-| `Random` | 范围随机:每次独立抽 `[-Range, +Range]` 内的偏移(每只敌人位置独立,无累加)。`Range=(0,0)` 时所有生成都在 `SpawnPosition`。 |
-
-**典型配法**(关卡编辑器中的"+ Add ▾" → Entry/Sustain):
-```
-时间 = 5.0   Duration = 3.0   SpawnInterval = 0.5
-SpawnPosition = (0, 4)   EnemyPrefab = 刷怪A
-
-→ 从 5.0s 到 8.0s,每 0.5s 生成一只刷怪A,共 7 只。
-```
-
-**典型配法 2**(配合 `Fixed` 策略拉一条"小怪行军线"):
-```
-时间 = 5.0   Duration = 3.0   SpawnInterval = 0.5
-SpawnPosition = (0, 4)   SpawnPositionStrategy = Fixed(Offset=(1, 0))   EnemyPrefab = 刷怪A
-
-→ 从 5.0s 到 8.0s,每 0.5s 生成一只刷怪A,
-  位置依次为 (0,4)、(1,4)、(2,4)、(3,4)、(4,4)、(5,4)、(6,4),共 7 只。
-```
-
-**典型配法 3**(配合 `Random` 策略散开刷怪):
-```
-时间 = 5.0   Duration = 3.0   SpawnInterval = 0.5
-SpawnPosition = (0, 4)   SpawnPositionStrategy = Random(Range=(0.5, 0.5))   EnemyPrefab = 刷怪A
-
-→ 从 5.0s 到 8.0s,每 0.5s 生成一只刷怪A,位置在 (0±0.5, 4±0.5) 方框内独立随机抽,共 7 只。
-```
-
-> **位置策略语义**:
-> - `Fixed` 的 `Offset` **每次生成后累加**一份,所以 N 只的位置形成"行军线"。
-> - `Random` 的 `Range` 是单次抽样范围,每只独立抽,**不连续、不累加**。
-> - `OnTrigger` 时 strategy 内部状态会被 `Reset()`(Fixed 的累加器清零);同一条 entry 多次触发仍从原点开始。
-> - 加新策略(贝塞尔轨迹 / 围绕某点公转 / 正弦摆动 ...)= 新建 `SpawnPositionStrategy` 子类 + `[SRName("PositionStrategy/<名字>")]`,Inspector 下拉自动出现,无需改 `SustainSpawnEntry`。
-
-### 自定义持续型条目
-
-任何 `SpawnEntry` 子类都能"持续"——override `OnTick(runtime, t, dt)` 即可,`t` 是从触发起已过时间(`0..Duration`):
-
-```csharp
-[Serializable, SRName("Entry/CountDown")]
-public class CountDownSpawnEntry : SpawnEntry
-{
-    public Vector2 SpawnPosition;
-
-    public override void OnTrigger(LevelRuntime runtime, LevelDefinition def)
-    {
-        // 给自己画个倒计时提示之类的初始动作
-        runtime.RegisterSustained(this);
-    }
-
-    public override void OnTick(LevelRuntime runtime, float t, float dt)
-    {
-        if (t >= 0f && t < dt) /* 第一帧:开始动画 */
-        if (t >= Duration - dt) /* 最后一帧:结束动画 */
-    }
-}
-```
-
-`RegisterSustained` 必须在 `OnTrigger` 第一行调一次(防止漏调,基类 `LevelRuntime.Tick` 也会兜底自动注册)。
-
-### 时间轴堆叠 lane 的工作机制
-
-```
-entry[0] t=1.0 dur=0   lane 0  ← 顶层
-entry[1] t=2.0 dur=0   lane 0  ← 同 lane 不重叠
-entry[2] t=3.0 dur=2.0 lane 0  ← 占 [3..5]
-entry[3] t=4.0 dur=1.0 lane 1  ← 与 entry[2] 重叠 → 堆到 lane 1
-entry[4] t=5.5 dur=0   lane 0  ← entry[2] 已结束,回到 lane 0
-```
-
-贪心分配:每个 entry 找"最早可容纳它的 lane",找不到就新开 lane。**所有 entry 自动堆叠,不需要手动画轨道**。
+- 本文不包含新增 `SpawnEntry`、Drawer 或 Preview 的代码教程。
+- 新条目类型的运行时契约见 `arch-level.md`；编辑器画法见 Editor 扩展指南。
+- 精确字段和事件签名以源码和 Inspector 为准，避免在多处维护易过期的完整字段表。

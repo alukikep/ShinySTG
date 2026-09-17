@@ -11,8 +11,8 @@
 
 > **本节只讲"它在架构里的位置"**,不讲怎么用 / 怎么扩展。
 >
-> - **使用者**(配关卡):见 [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md)
-> - **扩展者**(加新 Drawer / Preview):见 [`Assets/Scripts/Level/Editor/README.md`](./Assets/Scripts/Level/Editor/README.md)
+> - **使用者**(配关卡):见 [`LEVEL_EDITOR.md`](../../LEVEL_EDITOR.md)
+> - **扩展者**(加新 Drawer / Preview):见 [`Assets/Scripts/Level/Editor/README.md`](../../Assets/Scripts/Level/Editor/README.md)
 
 ### 在架构里的位置
 

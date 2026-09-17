@@ -266,7 +266,8 @@ FirePattern 还有第二个多态模块数组 `FireSounds[]`,**与 FireExtension
 - **扩展**:新建 `XxxFireSound.cs : FireSound` + `[SRName("FireSound/<名字>")]`,Inspector 自动下拉出现
 - **与 PlayerShooting._shootSfx 关系**(可并存):`_shootSfx` 是"玩家整体开火"(不论哪个 pattern),`FireSounds[]` 是"特定 pattern 的特征音"(同一 pattern 在玩家 vs 敌人可配不同 cue)
 
-详见 `Assets/Scripts/Bullet/FireExtension/FireSound.cs` 顶部注释 + `Assets/Scripts/Audio/README.md` §6.5。
+详见 `Assets/Scripts/Bullet/FireExtension/FireSound.cs` 顶部注释和
+[`Assets/Scripts/Audio/README.md`](../../Assets/Scripts/Audio/README.md#firepattern-开火音)。
 
 ### 3.3 出生雾化多态扩展(SpawnFogConfig)
 
