@@ -35,6 +35,10 @@
 ---
 
 
+## 背景接入
+
+PlayBackgroundCueEntry 通过 LevelController.RequestBackgroundCue 发出一次性请求。Controller 校验真实 Runtime，避免预览操作真实背景；LevelBackgroundBinding 订阅请求和生命周期事件，将其转发到显式绑定的背景控制器。关卡开始或重开时重置背景，结束时取消演出并暂停。背景自身计时不依赖关卡 Elapsed，Encounter 阻塞时间轴不会冻结已启动的过渡。详见 [背景架构](./arch-background.md)。
+
 ## 对话接入
 
 Boss 对话通过 Encounter 动作接入。BlockTimeline 控制整场遭遇是否阻塞关卡，WaitForCompletion 控制动作是否延迟阶段或收尾，两者职责不同。对话控制锁不暂停场上其他单位，音乐仍按现有出场/击败事件切换。

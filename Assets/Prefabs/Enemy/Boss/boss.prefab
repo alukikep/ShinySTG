@@ -78,7 +78,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 2747690628134850419, guid: 16037dbd798344f57a526d53d48f5ead, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0, b: 0.28621006, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -171,6 +171,8 @@ MonoBehaviour:
     - rid: 6177226960998236162
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
+        EnterCommands: []
+        ExitCommands: []
         ExitTriggers:
         - rid: 6177226968670666752
         Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
@@ -178,6 +180,8 @@ MonoBehaviour:
     - rid: 6177226966485434376
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
+        EnterCommands: []
+        ExitCommands: []
         ExitTriggers:
         - rid: 6177226986570383360
         Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
@@ -185,6 +189,8 @@ MonoBehaviour:
     - rid: 6177226966485434380
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
+        EnterCommands: []
+        ExitCommands: []
         ExitTriggers: []
         Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
         ResetOnEnter: 1

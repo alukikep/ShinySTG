@@ -15,6 +15,8 @@ MonoBehaviour:
   Entries:
   - rid: 6177227137434517512
   - rid: 6177227145319809027
+  - rid: 6177227147044978688
+  - rid: 6177227147044978689
   Duration: 60
   Pool: {fileID: 0}
   AutoSwitchBgm: 1
@@ -49,3 +51,17 @@ MonoBehaviour:
       type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
       data:
         Offset: {x: 0, y: 0}
+    - rid: 6177227147044978688
+      type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 2.7866664
+        OneShot: 1
+        Duration: 0
+        Cue: {fileID: 11400000, guid: ae2148d9e49ce4e41a2fc36956c0f75c, type: 2}
+    - rid: 6177227147044978689
+      type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 5.7066665
+        OneShot: 1
+        Duration: 0
+        Cue: {fileID: 11400000, guid: fa3fa37bc1664014888346ed10715666, type: 2}

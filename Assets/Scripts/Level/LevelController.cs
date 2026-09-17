@@ -32,6 +32,20 @@ namespace ShinySTG.Level
         public event Action<LevelDefinition> OnLevelStart;
         /// <summary>关卡"自然结束"(Duration 到时),或外部调 CompleteLevel 时触发。</summary>
         public event Action<LevelDefinition> OnLevelComplete;
+        /// <summary>关卡时间点请求背景演出，由可选的背景绑定接收。</summary>
+        public event Action<ShinySTG.Background.BackgroundCue> OnBackgroundCueRequested;
+
+        public void RequestBackgroundCue(LevelRuntime runtime, ShinySTG.Background.BackgroundCue cue)
+        {
+            // 同时隔离编辑器预览、旧 Runtime 和已结束的关卡。
+            if (!Application.isPlaying || !_running || runtime == null || runtime != _runtime) return;
+            if (OnBackgroundCueRequested == null)
+            {
+                Debug.LogWarning("[Level] 背景条目未找到启用的 LevelBackgroundBinding。", this);
+                return;
+            }
+            OnBackgroundCueRequested.Invoke(cue);
+        }
         /// <summary>任何 SpawnEntry 生成敌人成功后触发(参数 = 实例化出来的 GameObject)。</summary>
         public event Action<GameObject>      OnEnemySpawned;
         /// <summary>任何 SpawnEntry 生成 Boss 成功后触发。</summary>

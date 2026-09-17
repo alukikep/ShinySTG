@@ -23,6 +23,7 @@
 | [level](./docs/architecture/arch-level.md) | `LevelDefinition` + `SpawnEntry` 多态 | §9 |
 | [level-editor](./docs/architecture/arch-level-editor.md) | `EditorWindow` / 时间轴 / Preview / Gizmo | §10 |
 | [audio](./docs/architecture/arch-audio.md) | `AudioSystem` + `SfxCue` + `BgmTrack` + 多态规则(架构视角) | §11 |
+| [background](./docs/architecture/arch-background.md) | 双相机背景、循环布景、Cue 播放与关卡绑定 | — |
 | [bounds](./docs/architecture/arch-bounds.md) | `BoundsService` 单例 + `PlayableArea` + `CullingArea` | §12 |
 | [laser](./docs/architecture/arch-laser.md) | `LaserEntity` 5 段状态机 + 视觉/判定宽度分离 | §13 |
 
@@ -60,6 +61,8 @@
 - **audio**:被几乎所有板块通过"嵌入 `SfxCue` 字段"方式使用(`PlayerHealth` / `BossHealth` / `EnemyHealth` / `FireSound` / `SpawnEntry/PlaySFX` 等)。
 
 - **items**：敌人死亡与 Boss 阶段指令读取 DropProfile 生成道具；CollisionService 检测拾取，奖励通过 PlayerHealth / PlayerResources 结算。
+
+- **background ↔ level**：关卡广播 Cue 请求及生命周期事件，显式背景绑定负责转发；背景独立推进，不改变战斗视角。
 
 **运行时支撑层**:
 

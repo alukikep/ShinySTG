@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Actions:
   - rid: 6177226893683064832
-  Loop: 1
+  Loop: 0
   StartDelay: 0
   references:
     version: 2
@@ -22,7 +22,15 @@ MonoBehaviour:
     - rid: 6177226893683064832
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Duration: 1
+        DurationConfig:
+          rid: 6177227145319809026
+        _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: e877089c07f368142a586984ff222bfa, type: 2}
         FireRate: 2
+        OneShot: 0
         AimOffsetDeg: 0
+        ExtraModifierPrefabs: []
+    - rid: 6177227145319809026
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
