@@ -115,6 +115,13 @@ namespace ShinySTG.Level.Editor.Views.Preview
         {
             if (!_playing || _paused || _def?.Entries == null) return;
 
+            // 与运行时 LevelRuntime 保持一致：先推进遭遇过程，再判断是否阻塞时间轴。
+            // BossEncounterRuntime 在阻塞期间仍需继续 Tick，以便战斗/收尾动作完成。
+            float dt = (float)deltaSeconds;
+            _runtime?.TickTimelineProcesses(dt);
+            if (_runtime != null && _runtime.HasBlockingProcess)
+                return;
+
             _elapsed += deltaSeconds;
             for (int i = 0; i < _def.Entries.Length; i++)
             {
@@ -126,8 +133,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
             }
 
             // 推动持续条目
-            _runtime?.TickSustained((float)deltaSeconds);
-            _runtime?.TickTimelineProcesses((float)deltaSeconds);
+            _runtime?.TickSustained(dt);
         }
 
         // ─── 内部 ───────────────────────────────────────────────
@@ -161,6 +167,17 @@ namespace ShinySTG.Level.Editor.Views.Preview
             readonly List<GameObject> _tracked = new();
             readonly List<SpawnEntry> _sustained = new();
             readonly List<ILevelTimelineProcess> _processes = new();
+
+            public bool HasBlockingProcess
+            {
+                get
+                {
+                    for (int i = 0; i < _processes.Count; i++)
+                        if (_processes[i] != null && _processes[i].BlocksTimeline)
+                            return true;
+                    return false;
+                }
+            }
 
             public StubLevelRuntime(LevelDefinition def) : base(def) { }
 
