@@ -68,7 +68,7 @@
 ### 关卡系统
 1. `LevelDefinition` SO 资产
 2. `LevelRuntime` 按时间轴驱动
-3. 5 个内置 `SpawnEntry`(Simple / Wave / Sustain / Boss / PlaySFX)
+3. 5 个正式 `SpawnEntry`(Simple / Wave / Sustain / Boss Encounter / PlaySFX);旧 `BossSpawnEntry` 仅保留资产兼容
 4. 2 个内置 `SpawnPositionStrategy`(Fixed / Random)
 5. 关卡事件(OnLevelStart / OnLevelComplete / OnBossSpawned / OnBossDefeated)
 6. `BulletPool` 自动兜底
@@ -108,7 +108,7 @@
 ---
 
 ## 待办(勾选式)
-
+目前反魂蝶有部分逻辑有补下问题，比如发射弹幕重叠
 ### 子弹系统
 - [ ] modifier信号触发系统(`ModifierStartTrigger` SR 多态 + `BulletSignalBus` + `EmitSignalAction`)的 Duration 职责仍有怪异之处,记得排查
   - 历史决策、已实现的多态字段见 [ARCHITECTURE.md](./ARCHITECTURE.md) §2.6 / §2.8

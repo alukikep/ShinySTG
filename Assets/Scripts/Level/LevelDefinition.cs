@@ -16,7 +16,7 @@ namespace ShinySTG.Level
     public class LevelDefinition : ScriptableObject
     {
         [Header("Timeline")]
-        [Tooltip("时间轴条目。点击 + 号,通过 SR 下拉选具体类型(Entry/Simple / Entry/Wave / Entry/Boss / ...)。\n" +
+        [Tooltip("时间轴条目。点击 + 号,通过 SR 下拉选具体类型(敌人生成/Simple / 敌人生成/Wave / 遭遇/Boss 战 / ...)。\n" +
                  "运行时按 TriggerTime 升序触发,时间相同按数组顺序。")]
         [SerializeReference, SR]
         public SpawnEntry[] Entries;

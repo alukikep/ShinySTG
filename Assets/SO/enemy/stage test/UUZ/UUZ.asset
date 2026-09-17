@@ -18,6 +18,7 @@ MonoBehaviour:
   - rid: 6177227119395078182
   - rid: 6177227119395078184
   - rid: 6177227119395078224
+  - rid: 6177227121349623808
   Loop: 1
   StartDelay: 0
   references:
@@ -46,6 +47,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 61ace9648075af54f9a58d041f90bf95, type: 2}
         FireRate: 1
+        OneShot: 0
         AimOffsetDeg: 30
         ExtraModifierPrefabs: []
     - rid: 6177227118142816267
@@ -60,6 +62,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: e3b0d0005310fb8428103d834c496803, type: 2}
         FireRate: 1
+        OneShot: 0
         AimOffsetDeg: 90
         ExtraModifierPrefabs: []
     - rid: 6177227118142816269
@@ -79,7 +82,7 @@ MonoBehaviour:
     - rid: 6177227119395078148
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 1
+        Value: 1.4
     - rid: 6177227119395078166
       type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -102,6 +105,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
         FireRate: 4
+        OneShot: 1
         AimOffsetDeg: 4.5
         ExtraModifierPrefabs: []
     - rid: 6177227119395078169
@@ -116,6 +120,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
         FireRate: 4
+        OneShot: 1
         AimOffsetDeg: 4.5
         ExtraModifierPrefabs: []
     - rid: 6177227119395078171
@@ -130,6 +135,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
         FireRate: 4
+        OneShot: 1
         AimOffsetDeg: 4.5
         ExtraModifierPrefabs: []
     - rid: 6177227119395078173
@@ -158,6 +164,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
         FireRate: 4
+        OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
     - rid: 6177227119395078177
@@ -172,6 +179,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
         FireRate: 4
+        OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
     - rid: 6177227119395078179
@@ -186,6 +194,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
         FireRate: 4
+        OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
     - rid: 6177227119395078181
@@ -201,7 +210,7 @@ MonoBehaviour:
     - rid: 6177227119395078183
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 3
+        Value: 2
     - rid: 6177227119395078184
       type: {class: SequenceAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -215,7 +224,7 @@ MonoBehaviour:
     - rid: 6177227119395078185
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 2
+        Value: 1.6
     - rid: 6177227119395078197
       type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -238,6 +247,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
         FireRate: 2
+        OneShot: 1
         AimOffsetDeg: 4.5
         ExtraModifierPrefabs:
         - rid: 6177227119395078205
@@ -253,6 +263,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
         FireRate: 2
+        OneShot: 1
         AimOffsetDeg: 4.5
         ExtraModifierPrefabs:
         - rid: 6177227119395078206
@@ -268,6 +279,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
         FireRate: 2
+        OneShot: 1
         AimOffsetDeg: 4.5
         ExtraModifierPrefabs:
         - rid: 6177227119395078207
@@ -284,7 +296,7 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        TurnRate: 8
+        TurnRate: 12
     - rid: 6177227119395078206
       type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
       data:
@@ -294,7 +306,7 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        TurnRate: 8
+        TurnRate: 12
     - rid: 6177227119395078207
       type: {class: SteerTowardModifier, ns: , asm: Assembly-CSharp}
       data:
@@ -304,7 +316,7 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        TurnRate: 8
+        TurnRate: 12
     - rid: 6177227119395078208
       type: {class: ParallelAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -327,6 +339,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
         FireRate: 2
+        OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs:
         - rid: 6177227119395078212
@@ -343,7 +356,7 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        TurnRate: -8
+        TurnRate: -12
     - rid: 6177227119395078213
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -352,6 +365,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: ed7bf79e58796fc4ab49634c7f98a5a8, type: 2}
         FireRate: 2
+        OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs:
         - rid: 6177227119395078215
@@ -368,7 +382,7 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        TurnRate: -8
+        TurnRate: -12
     - rid: 6177227119395078216
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -377,6 +391,7 @@ MonoBehaviour:
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: 34fcb00196147264680e59ee3417cc95, type: 2}
         FireRate: 2
+        OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs:
         - rid: 6177227119395078218
@@ -393,7 +408,7 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        TurnRate: -8
+        TurnRate: -12
     - rid: 6177227119395078224
       type: {class: WaitAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -403,4 +418,30 @@ MonoBehaviour:
     - rid: 6177227119395078225
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 3
+        Value: 2
+    - rid: 6177227121349623808
+      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227121349623809
+        _legacyDuration: 1
+        Move:
+          rid: 6177227121349623811
+    - rid: 6177227121349623809
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 6177227121349623811
+      type: {class: RandomWalkInRegionMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        RegionCenter: {x: -0.5, y: 5.5}
+        RegionSize: {x: 1, y: 1}
+        MaxStepDistance: 1
+        DirectionCenterDeg: 0
+        DirectionSpreadDeg: 360
+        IntervalMin: 1
+        IntervalMax: 1
+        Mode: 0
+        PeakSpeed: 3
+        ArrivedThreshold: 0.05
+        RandomSeedOffset: 0

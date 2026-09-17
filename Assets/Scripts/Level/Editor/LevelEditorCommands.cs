@@ -32,7 +32,7 @@ namespace ShinySTG.Level.Editor
             {
                 case SimpleSpawnEntry s: pos = s.SpawnPosition; break;
                 case WaveSpawnEntry   w: pos = w.CenterPosition; break;
-                case BossSpawnEntry   b: pos = b.SpawnPosition; break;
+                case BossEncounterEntry b: pos = b.SpawnPosition; break;
             }
             if (SceneView.lastActiveSceneView != null)
             {

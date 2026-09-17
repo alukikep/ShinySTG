@@ -52,7 +52,7 @@ LevelEditorWindow (主窗口:菜单 / 装配 / 协调)
 
 ### 何时需要加
 
-- 想让 `BossSpawnEntry` 在时间轴上画成特殊图标(目前是矩形块 + 文字)
+- 想让 `BossEncounterEntry` 在时间轴上画成更丰富的遭遇摘要
 - 想给某种 entry 在 Scene 视图画箭头 / 范围圈 / 路径预览
 - 想给某种 entry 改变默认颜色(默认按类型上色)
 
@@ -66,17 +66,17 @@ using UnityEngine;
 
 namespace ShinySTG.Level.Editor.Drawers
 {
-    public class BossSpawnEntryDrawer : ISpawnEntryDrawer
+    public class BossEncounterEntryDrawer : ISpawnEntryDrawer
     {
         // 告诉 Registry 接管哪种类型(必须 override —— 默认实现对所有 entry 返回 true)
-        public override bool Handles(SpawnEntry entry) => entry is BossSpawnEntry;
+        public override bool Handles(SpawnEntry entry) => entry is BossEncounterEntry;
 
         // 只 override 想改的部分,其余走基类默认;
         // 基类详见 ISpawnEntryDrawer.cs 顶部注释里的契约说明。
         public override string GetLabel(SpawnEntry entry)
         {
-            var b = (BossSpawnEntry)entry;
-            return $"⚔ Boss @ {b.TriggerTime:F1}s";
+            var b = (BossEncounterEntry)entry;
+            return $"⚔ Boss Encounter @ {b.TriggerTime:F1}s";
         }
 
         public override Color GetColor(SpawnEntry entry) => new Color(1f, 0.3f, 0.3f);
@@ -103,7 +103,7 @@ namespace ShinySTG.Level.Editor.Drawers
 
         public override void DrawSceneGizmo(SpawnEntry entry, LevelEditorContext ctx)
         {
-            var b = (BossSpawnEntry)entry;
+            var b = (BossEncounterEntry)entry;
             var prev = Handles.color;
             Handles.color = Color.red;
 
@@ -128,7 +128,7 @@ namespace ShinySTG.Level.Editor.Drawers
 **不需要**任何注册代码。`LevelEditorDrawerRegistry` 在 Domain Reload 时通过 `TypeCache.GetTypesDerivedFrom<ISpawnEntryDrawer>()` 反射自动发现,缓存到 `Dictionary<Type, ISpawnEntryDrawer>`。
 
 > **优先级规则**:`Registry.Resolve(entry)` 按"先扫到的 Handles 返回 true 的抽屉"分派。
-> 你自己的 `BossSpawnEntryDrawer` 排在 `DefaultSpawnEntryDrawer` 之前(后者 `Handles` 返回 true 但被显式跳过),所以 Boss 会用你的画法。
+> 你自己的 `BossEncounterEntryDrawer` 排在 `DefaultSpawnEntryDrawer` 之前(后者 `Handles` 返回 true 但被显式跳过),所以 Boss Encounter 会用你的画法。
 > 多个自定义 drawer 处理同一类型时,**先写在文件夹前面的赢**。
 
 ---

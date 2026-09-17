@@ -36,6 +36,7 @@
 **扩展点:**
 - 新增 Boss 阶段:新建 `BossPhase` 子类,加到 `BossController.Phases`(详见 `Assets/Scripts/Enemy/Boss/`)。
 - 新增阶段退出信号源:新建 `BossSignal` 子类,加 `[Serializable, SRName("Signal/<你的名字>")]`,在 `BossController.Signals` 数组里下拉选(详见下文"内置 Signal")。
+- 阶段演出不直接写进 `BossPhase`:正式 Boss 战由 `BossEncounterDefinition` 配置表现映射,监听 `BossController.OnPhaseEntered / OnPhaseExited`。关卡时间轴等待的是 Encounter 完成,而不是仅等待 HP 清零。
 
 ### 5.1 内置 Signal(BossSignal 多态信号源)
 
@@ -110,3 +111,4 @@ Phase 3 (暴走)
 - [enemy-ai](./arch-enemy-ai.md) — Phase 体本质是 BehaviorFlow(ShooterPhase);复用 EnemyAction 全部类型
 - [hitbox](./arch-hitbox.md) — BossHitbox 继承 HitboxComponent,阵营 = Enemy
 - [bullet](./arch-bullet.md) — Boss 可发玩家弹(玩家阵营)打其他敌人(罕见)
+- [level](./arch-level.md) — `BossEncounterEntry` 启动遭遇并按需阻塞关卡时间轴;旧 `BossSpawnEntry` 已弃用

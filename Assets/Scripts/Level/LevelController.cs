@@ -110,6 +110,7 @@ namespace ShinySTG.Level
         public void CompleteLevel()
         {
             if (_completed) return;
+            _runtime?.CancelTimelineProcesses();
             _completed = true;
             _running   = false;
             OnLevelComplete?.Invoke(Definition);

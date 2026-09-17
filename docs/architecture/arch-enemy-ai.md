@@ -151,6 +151,33 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 
 ---
 
+#### 4.2 内置 EnemyAction 速查表
+
+| 类型 | SRName | 范式 | 关键字段 |
+|---|---|---|---|
+| `FireAction` | `Action/Fire` | 持续按 FireRate 触发 `BulletPool.FireGroup(Pattern, ...)`(OneShot=true 时只触发一次) | `Pattern`(FirePattern 资产) + `FireRate` + `OneShot` + `AimOffsetDeg` + `ExtraModifierPrefabs` |
+| `FireLaserAction` | `Action/Fire Laser` | 持续按 FireRate 触发 `LaserPool.FireGroup(Pattern, ...)`,字段镜像 FireAction(OneShot=true 时只触发一次) | `Pattern`(LaserPattern 资产) + `FireRate` + `OneShot` + `AimOffsetDeg` + `ExtraModifierPrefabs` |
+| `MoveAction` | `Action/Move` | 用 `MoveBehaviour` 多态驱动位移 | `Move`(SR 多态) + 视 MoveBehaviour 类型的内部字段 |
+| `WaitAction` | `Action/Wait` | 什么都不做,只占用 Duration | (无) |
+| `EmitSignalAction` | `Action/Emit Signal` | 在时间轴上向 `BulletSignalBus` 发全局信号(Boss 喊话 / 阶段切换 / modifier 解锁) | `SignalName` + `EmitMode`(OnEnterOnly / EveryTick / OnInterval) + `Interval` |
+| `SelfDestructAction` | `Action/Self Destruct` | 到达时销毁自身(常作 Sequence 收尾) | (无) |
+| `ParallelAction` | `Action/Parallel` | 并行容器,所有 children 同时跑 | `Children` + `StartTrigger`(SR 多态) + 基础 DurationConfig |
+| `SequenceAction` | `Action/Sequence` | 顺序容器,逐个跑完 children,可选 `Loop=true` 在自身 Duration 内循环 | `Children` + `Loop` + 基础 DurationConfig |
+
+**§4.2 关键模式:OneShot 字段(FireAction / FireLaserAction vX 起)**
+
+- 字段定义:`public bool OneShot = false`,默认 `false` → 与历史 100% 等价,不需要迁移逻辑。
+- `OneShot=false`(默认):按 `FireRate` 节流,在每段 `1 / FireRate` 秒开火一次,持续 DurationConfig 抽样时长后进入下一条。
+- `OneShot=true`:**忽略 `FireRate`**,仅在 `OnEnter` 触发时调用一次 `FireGroup`,**剩余时间由 DurationConfig 占用**(`BehaviorFlowRuntime` 照常计时,OnTick 期间不再触发任何 FireGroup)。
+- **典型用法**:
+  - Boss 一次性放 24 颗散弹 + 喘气 2 秒:`OneShot=true` + `DurationConfig=Fixed(2)` → 行为进入时开火一次,然后空跑 2 秒给玩家喘息
+  - 蓄力后放一道激光 + 停顿:`FireLaserAction` OneShot=true + Duration=2
+- **与 Loop 协作**:`Loop=true` 的 BehaviorFlow 每次循环回到本 Action 会再次触发 `OnEnter`,因此 OneShot=true 也会**每次循环再开一次火**(等价于"每波散弹 + 停顿"的节奏,正符合 STG Boss 战常见模式)。
+- **与 DurationConfig 协作**:OneShot 模式下 Duration 仍由 `ActionDurationConfig` 多态策略控制(Fixed 精确值 / Random Range 区间随机),与节流模式完全一致。
+- **实现位置**:`Assets/Scripts/Enemy/AI/Actions/FireAction.cs` 与 `FireLaserAction.cs`,开火逻辑抽取为 `FireOnce(enemy)` 私有方法,被 `OnEnter`(OneShot 路径)与 `OnTick`(节流路径)共用,保证两条路径在 Pattern / AimOffset / ExtraModifier / 阵营透传上行为 100% 一致。
+
+---
+
 
 ## 与其他板块的关系
 

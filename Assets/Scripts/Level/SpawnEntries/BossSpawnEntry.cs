@@ -1,11 +1,11 @@
 using System;
-using SerializeReferenceEditor;
 using UnityEngine;
 
 namespace ShinySTG.Level.SpawnEntries
 {
     /// <summary>
-    /// Boss 出场条目:在指定时间点于指定位置实例化 boss prefab,并触发关卡级 OnBossSpawned 事件。
+    /// 旧版 Boss 直接生成条目。仅保留给已有 SerializeReference 资产反序列化，
+    /// 新关卡统一使用 BossEncounterEntry + BossEncounterDefinition。
     /// 死亡收尾的职责已下沉到 Boss 子树:
     ///   - BossHealth.OnDeath → Boss 总控.HandleDeath → BossController.Stop()
     ///     → phase.OnExit + LevelController.NotifyBossDefeated + Destroy。
@@ -15,7 +15,8 @@ namespace ShinySTG.Level.SpawnEntries
     ///   - BossPrefab 上挂 Boss 总控即可,`[RequireComponent]` 自动加挂 BossHealth + BossHitbox + BossShotCounter + BossController,无需手填。
     ///   - BossController.Start 会自动跑第一阶段,本类不主动驱动。
     /// </summary>
-    [Serializable, SRName("敌人生成/Boss")]
+    [Serializable]
+    [Obsolete("BossSpawnEntry 已弃用。请使用 BossEncounterEntry + BossEncounterDefinition。")]
     public class BossSpawnEntry : SpawnEntry
     {
         [Tooltip("Boss prefab。要求挂 BossController + BossHealth + BossShotCounter。")]

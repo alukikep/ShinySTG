@@ -15,6 +15,7 @@
 5. [可订阅的关卡事件](#可订阅的关卡事件)
 6. [加新条目类型(扩展指南)](#加新条目类型扩展指南)
 7. [持续型条目(Duration)与时间轴堆叠](#持续型条目duration与时间轴堆叠)
+8. [Boss Encounter](#boss-encounter)
 
 ---
 
@@ -62,18 +63,18 @@
 
 点开 `.asset` 的 `Entries` 数组,点 `+` 号新增条目。每个条目**通过下拉菜单选类型**(由项目自带 `SREditor` 插件提供,继承 `SpawnEntry` 的子类会自动出现在下拉里)。
 
-### 内置 5 种条目
+### 内置 5 种正式条目
 
 | 类型 | 下拉路径 | 用途 |
 |---|---|---|
 | **Simple** | `敌人生成/Simple` | 单点生成 — 配 `TriggerTime` / `SpawnPosition` / `EnemyPrefab`,可选 `OverrideFlow` 临时换行为流 |
 | **Wave** | `敌人生成/Wave` | 横排生成 — 配 `Prefabs[]` 数组 + `CenterPosition` + `SpacingX`,自动沿 X 轴等距铺 |
-| **Boss** | `敌人生成/Boss` | Boss 出场 — 配 `BossPrefab` + `SpawnPosition`(当前为留壳,后续接入多阶段) |
+| **Boss 战** | `遭遇/Boss 战` | 启动 `BossEncounterDefinition`:生成 Boss、响应阶段演出,并可阻塞时间轴直到遭遇完成 |
 | **Sustain** | `敌人生成/Sustain` | 在点位持续刷敌 — 配 `Duration` + `SpawnInterval`,期间每 N 秒生成一次(详见 §7) |
 | **Play SFX** | `音效/Play SFX` | 时间点音效 — 配 `Cue` + 可选 `Position`,在 `TriggerTime` 播 SFX(详见[音频集成](#音频集成自动切歌--时间点-sfx)) |
 
 > **下拉分类规则**:Toolbar 的 `+ Add ▾` 菜单按 `[SRName("分类/条目")]` 自动生成子菜单。
-> 第一个 `/` 前是分类名,后面是条目名。当前内置两个分类:`敌人生成` / `音效`。
+> 第一个 `/` 前是分类名,后面是条目名。当前正式分类包含:`敌人生成` / `遭遇` / `音效`。
 > 自定义 SpawnEntry 子类时,**强烈建议**给 SRName 加分类前缀(例如 `自定义/我的条目`),避免菜单扁平化。
 
 ### 典型配法示例
@@ -84,8 +85,10 @@
                      Prefabs=[红小怪, 蓝小怪, 红小怪, 蓝小怪, 红小怪]   ← 5 只横排交错
 时间 = 5.0  → Simple   TriggerTime=5.0, SpawnPosition=(-3, 3), EnemyPrefab=精英怪, OverrideFlow=精英行为.flow
 时间 = 8.0  → Simple   TriggerTime=8.0, SpawnPosition=( 3, 3), EnemyPrefab=精英怪, OverrideFlow=精英行为.flow
-时间 = 12.0 → Boss     TriggerTime=12.0, SpawnPosition=(0, 5), BossPrefab=一阶段boss
-时间 = 60.0 → Simple   TriggerTime=15.0, SpawnPosition=(0, -4), EnemyPrefab=自毁冲锋怪, OverrideFlow=向下冲.flow
+时间 = 12.0 → Boss 战  TriggerTime=12.0, SpawnPosition=(0, 5), Encounter=Stage1BossEncounter,
+                     BlockTimeline=true
+时间 = 15.0 → Simple   SpawnPosition=(0, -4), EnemyPrefab=自毁冲锋怪, OverrideFlow=向下冲.flow
+                     ← 实际等 Boss Encounter 完成后才执行
 ```
 
 > **同 prefab 配不同行为流的小技巧**:`SimpleSpawnEntry` 的 `OverrideFlow` 字段会临时覆盖 prefab 自带的 Flow —— 适合"同一个敌人 prefab,在不同时间点以不同行为出场"。
@@ -125,6 +128,32 @@ LevelController.Instance.OnBossDefeated  += go  => { /* boss 击败时(留口) *
 ```
 
 风格与 `PlayerHealth` 的实例事件一致(`OnLifeLost` / `OnRevive` / `OnAllLivesLost` 同款)。
+
+---
+
+## Boss Encounter
+
+正式 Boss 战统一通过 `BossEncounterEntry + BossEncounterDefinition` 配置。旧 `BossSpawnEntry` 已弃用,不会再出现在新增菜单中;类型仍保留,只用于打开和迁移已有的 SerializeReference 资产。
+
+### 配置步骤
+
+1. Project 窗口右键 → **Create → STG → Boss Encounter**。
+2. 在 Encounter 资产的 `BossPrefab` 中拖入 Boss prefab。
+3. 根据需要配置出场音效、击破音效、击破收尾等待和各阶段进入/退出音效。
+4. 在关卡编辑器中选择 `+ Add → 遭遇 → Boss 战`。
+5. 将 Encounter 资产拖到条目的 `Encounter` 字段,设置生成位置。
+6. 勾选 `BlockTimeline`:Boss 战开始后关卡时间停止推进,但玩家、Boss、子弹、激光与音频仍正常运行。
+
+```text
+BossEncounterEntry 到点
+  → Encounter 生成 BossPrefab
+  → 监听 BossController 阶段进入/退出
+  → 监听 BossHealth.OnDeath
+  → 击破后执行 DefeatOutroDelay
+  → Encounter 完成并解除关卡时间轴阻塞
+```
+
+关卡编辑器只决定“何时开始哪场 Boss 遭遇”。符卡阶段与战斗判定仍在 Boss 配置中;阶段表现映射放在 Encounter 资产中,不需要拆成主关卡时间轴上的绝对时间条目。
 
 ---
 
@@ -178,8 +207,9 @@ Editor Preview 期间也会播(走 `LevelEditorPlayer.TriggerOne` → `OnTrigger
 TriggerTime=0.0   AudioBinding.Playlist = StageTheme          ← 关卡开始
 TriggerTime=2.0   Simple   prefab=小怪                            ← 小怪入场
 TriggerTime=15.0  Play SFX Cue=WarnSound                       ← 警告音
-TriggerTime=30.0  Boss   BossPrefab=Boss1                        ← AudioBinding.BossMusic 自动切
-TriggerTime=60.0  BossDefeated → AudioBinding.DefeatMusic 自动切
+TriggerTime=30.0  Boss 战 Encounter=Boss1Encounter              ← 生成 Boss并自动切 BossMusic
+Boss Encounter 完成前,后续时间轴保持阻塞
+BossDefeated → AudioBinding.DefeatMusic;收尾完成后时间轴恢复
 ```
 
 详见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md) 的「BGM 切换」章节。

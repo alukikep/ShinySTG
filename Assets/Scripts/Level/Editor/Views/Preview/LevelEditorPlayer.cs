@@ -68,6 +68,8 @@ namespace ShinySTG.Level.Editor.Views.Preview
             ResetFired();
             if (_current == this) _current = null;
 
+            _runtime?.ClearPreviewState();
+
             // 销毁所有生成的临时实例
             foreach (var go in _spawned)
                 if (go != null) UnityEngine.Object.DestroyImmediate(go);
@@ -95,7 +97,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
             ResetFired();
 
             // 持续条目列表也清空(Stub 自己持有)
-            _runtime?.ClearSustained();
+            _runtime?.ClearPreviewState();
 
             // 触发 _elapsed 之前所有应触发的条目
             if (_def?.Entries == null) return;
@@ -125,6 +127,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
 
             // 推动持续条目
             _runtime?.TickSustained((float)deltaSeconds);
+            _runtime?.TickTimelineProcesses((float)deltaSeconds);
         }
 
         // ─── 内部 ───────────────────────────────────────────────
@@ -157,6 +160,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
         {
             readonly List<GameObject> _tracked = new();
             readonly List<SpawnEntry> _sustained = new();
+            readonly List<ILevelTimelineProcess> _processes = new();
 
             public StubLevelRuntime(LevelDefinition def) : base(def) { }
 
@@ -176,6 +180,12 @@ namespace ShinySTG.Level.Editor.Views.Preview
             {
                 if (entry == null) return;
                 if (!_sustained.Contains(entry)) _sustained.Add(entry);
+            }
+
+            public override void AddTimelineProcess(ILevelTimelineProcess process)
+            {
+                if (process != null && !process.IsComplete && !_processes.Contains(process))
+                    _processes.Add(process);
             }
 
             /// <summary>Player.Tick 调用:推动持续条目的 OnTick,到 Duration 调 OnEnd + 移除。</summary>
@@ -206,9 +216,24 @@ namespace ShinySTG.Level.Editor.Views.Preview
                 }
             }
 
-            public void ClearSustained()
+            public void TickTimelineProcesses(float dt)
+            {
+                for (int i = _processes.Count - 1; i >= 0; i--)
+                {
+                    var process = _processes[i];
+                    if (process == null) { _processes.RemoveAt(i); continue; }
+                    process.Tick(dt);
+                    if (!process.IsComplete) continue;
+                    process.Dispose();
+                    _processes.RemoveAt(i);
+                }
+            }
+
+            public void ClearPreviewState()
             {
                 _sustained.Clear();
+                foreach (var process in _processes) process?.Dispose();
+                _processes.Clear();
             }
         }
 

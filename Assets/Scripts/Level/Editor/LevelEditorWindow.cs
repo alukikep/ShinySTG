@@ -324,6 +324,7 @@ namespace ShinySTG.Level.Editor
             foreach (var type in TypeCache.GetTypesDerivedFrom<SpawnEntry>())
             {
                 if (type.IsAbstract || type.IsInterface) continue;
+                if (Attribute.IsDefined(type, typeof(ObsoleteAttribute))) continue;
                 var attr = (SRNameAttribute)Attribute.GetCustomAttribute(type, typeof(SRNameAttribute));
                 if (attr == null) continue;  // 没有 SRName 的不进菜单(避免裸字符串污染)
 

@@ -41,7 +41,7 @@ MonoBehaviour:
         Duration: 2
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        Acceleration: 2
+        Acceleration: 3
     - rid: 6177227119395078157
       type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
       data:

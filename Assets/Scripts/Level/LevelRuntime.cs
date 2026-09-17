@@ -22,11 +22,23 @@ namespace ShinySTG.Level
         readonly bool[] _fired;   // 每条是否已触发(OneShot 用)
         readonly List<GameObject> _alive = new();
         readonly List<SpawnEntry> _sustained = new();  // 持续中的条目
+        readonly List<ILevelTimelineProcess> _timelineProcesses = new();
+        readonly List<ILevelTimelineProcess> _pendingTimelineProcesses = new();
 
         public LevelDefinition Definition => _def;
         public float Elapsed { get; private set; }
         public IReadOnlyList<GameObject> ActiveUnits => _alive;
         public IReadOnlyList<SpawnEntry> SustainedEntries => _sustained;
+        public bool IsTimelineBlocked
+        {
+            get
+            {
+                for (int i = 0; i < _timelineProcesses.Count; i++)
+                    if (_timelineProcesses[i] != null && _timelineProcesses[i].BlocksTimeline)
+                        return true;
+                return false;
+            }
+        }
 
         public LevelRuntime(LevelDefinition def)
         {
@@ -40,6 +52,9 @@ namespace ShinySTG.Level
             // 兜底清理:已被外部 Destroy 但没调 Untrack 的 GameObject 会留下 null 引用,
             // 每帧开头顺手清掉,避免 _alive 越长越大、Reset 时残留历史。
             if (_alive.Count > 0) _alive.RemoveAll(g => g == null);
+
+            TickTimelineProcesses(dt);
+            if (IsTimelineBlocked) return;
 
             Elapsed += dt;
             var entries = _def?.Entries;
@@ -89,7 +104,55 @@ namespace ShinySTG.Level
                     }
                 }
             }
+
+            // 条目触发期间申请的 blocker 在本轮扫描完成后才生效。
+            // 因此与 Boss Encounter 同一 TriggerTime 的音效/演出条目仍会全部触发。
+            ActivatePendingTimelineProcesses();
         }
+
+        public virtual void AddTimelineProcess(ILevelTimelineProcess process)
+        {
+            if (process == null || process.IsComplete) return;
+            if (!_pendingTimelineProcesses.Contains(process) && !_timelineProcesses.Contains(process))
+                _pendingTimelineProcesses.Add(process);
+        }
+
+        void TickTimelineProcesses(float dt)
+        {
+            for (int i = _timelineProcesses.Count - 1; i >= 0; i--)
+            {
+                var process = _timelineProcesses[i];
+                if (process == null)
+                {
+                    _timelineProcesses.RemoveAt(i);
+                    continue;
+                }
+
+                process.Tick(dt);
+                if (!process.IsComplete) continue;
+                process.Dispose();
+                _timelineProcesses.RemoveAt(i);
+            }
+        }
+
+        void ActivatePendingTimelineProcesses()
+        {
+            if (_pendingTimelineProcesses.Count == 0) return;
+            foreach (var process in _pendingTimelineProcesses)
+                if (process != null && !process.IsComplete && !_timelineProcesses.Contains(process))
+                    _timelineProcesses.Add(process);
+            _pendingTimelineProcesses.Clear();
+        }
+
+        void ClearTimelineProcesses()
+        {
+            foreach (var process in _timelineProcesses) process?.Dispose();
+            foreach (var process in _pendingTimelineProcesses) process?.Dispose();
+            _timelineProcesses.Clear();
+            _pendingTimelineProcesses.Clear();
+        }
+
+        public void CancelTimelineProcesses() => ClearTimelineProcesses();
 
         /// <summary>
         /// 持续型条目自己调:把自己加进 _sustained 让 LevelRuntime 每帧调 OnTick。
@@ -149,7 +212,17 @@ namespace ShinySTG.Level
             Elapsed = 0f;
             for (int i = 0; i < _fired.Length; i++) _fired[i] = false;
             _sustained.Clear();
+            ClearTimelineProcesses();
             ClearAliveUnits(destroyGameObjects);
         }
+    }
+
+    /// <summary>占用关卡时间轴、但不暂停游戏世界的运行时等待对象。</summary>
+    public interface ILevelTimelineProcess
+    {
+        bool IsComplete { get; }
+        bool BlocksTimeline { get; }
+        void Tick(float dt);
+        void Dispose();
     }
 }

@@ -118,7 +118,7 @@ Assets/Scripts/
     └── SpawnEntries/                         # 3 个内置条目类型
         ├── SimpleSpawnEntry.cs               # [SRName("Entry/Simple")] 时间+位置+单 prefab
         ├── WaveSpawnEntry.cs                 # [SRName("Entry/Wave")]   时间+中心点+多 prefab 自动铺
-        └── BossSpawnEntry.cs                 # [SRName("Entry/Boss")]   时间+位置+boss prefab(留壳)
+        └── BossEncounterEntry.cs             # 启动 BossEncounter,可阻塞时间轴直到整场遭遇完成
 └── Audio/                                   # 音频音乐系统(详见 ARCHITECTURE.md §11;配置方法见 Assets/Scripts/Audio/README.md)
     ├── AudioMix.cs                           # 静态门面(唯一调用入口:PlaySfx/PlayTrack/SetBusVolume/...)
     ├── AudioSystem.cs                        # PersistentSingleton 总控 + AudioHelper
@@ -226,4 +226,3 @@ Project 窗口右键 → Create → STG → FirePattern → Ring/Line/Arc/Compos
 - ✅ 改源码 / 文档 → 用 IDE 编辑器,不要用 sed/awk/PowerShell 在 shell 里就地改
 - `.vscode/settings.json` 已预设 PowerShell 7 + UTF-8 + `PYTHONIOENCODING=utf-8`
 - 文档编辑策略(局部编辑、UTF-8、pathlib、行号校验)见 [`CONTRIBUTING.md` §3.5](./CONTRIBUTING.md)
-

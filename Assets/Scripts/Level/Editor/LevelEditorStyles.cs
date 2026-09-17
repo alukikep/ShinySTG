@@ -72,7 +72,7 @@ namespace ShinySTG.Level.Editor
             {
                 case SimpleSpawnEntry _: return ColorSimple;
                 case WaveSpawnEntry   _: return ColorWave;
-                case BossSpawnEntry   _: return ColorBoss;
+                case BossEncounterEntry _: return ColorBoss;
                 case PlaySfxSpawnEntry _: return ColorSfx;
                 default:                    return ColorOther;
             }

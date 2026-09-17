@@ -61,7 +61,7 @@ namespace ShinySTG.Level.Editor.Gizmos
             {
                 case SpawnEntries.SimpleSpawnEntry s: return s.SpawnPosition;
                 case SpawnEntries.WaveSpawnEntry w:   return w.CenterPosition;
-                case SpawnEntries.BossSpawnEntry b:   return b.SpawnPosition;
+                case SpawnEntries.BossEncounterEntry b: return b.SpawnPosition;
                 default:                              return Vector3.zero;
             }
         }

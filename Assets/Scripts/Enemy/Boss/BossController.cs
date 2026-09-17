@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using SerializeReferenceEditor;
 using ShinySTG.Level;
@@ -31,6 +32,12 @@ namespace ShinySTG.EnemyAI.Boss
     [RequireComponent(typeof(BossHitbox))]
     public class BossController : MonoBehaviour
     {
+        /// <summary>进入阶段后广播。表现层可监听，但 Boss 战斗逻辑不依赖任何表现系统。</summary>
+        public event Action<int, BossPhase> OnPhaseEntered;
+
+        /// <summary>离开阶段前广播。正常切换与 Stop 收尾都会触发。</summary>
+        public event Action<int, BossPhase> OnPhaseExited;
+
         [Header("Required (RequireComponent 自动注入,不要手填)")]
         [HideInInspector]
         [Tooltip("Boss 的 HP 组件。HpSignal 会读它。由 [RequireComponent] 自动注入,不要在 Inspector 手填。")]
@@ -177,6 +184,7 @@ namespace ShinySTG.EnemyAI.Boss
             // 1. 走当前 phase 收尾
             if (_current != null)
             {
+                OnPhaseExited?.Invoke(_phaseIdx, _current);
                 _current.OnExit(transform);
                 _current = null;
             }
@@ -210,6 +218,7 @@ namespace ShinySTG.EnemyAI.Boss
                     if (s is PhaseTimeSignal pts) pts.Reset();
 
             _current?.OnEnter(transform);
+            OnPhaseEntered?.Invoke(_phaseIdx, _current);
         }
 
         void NextPhase()
@@ -217,7 +226,11 @@ namespace ShinySTG.EnemyAI.Boss
             // __BOSSDEBUG__ #3:阶段切走(进 NextPhase 说明 ShouldExit 已为 true)
             Debug.Log($"[__BOSSDEBUG__] NextPhase from idx={_phaseIdx}", this);
 
-            _current?.OnExit(transform);
+            if (_current != null)
+            {
+                OnPhaseExited?.Invoke(_phaseIdx, _current);
+                _current.OnExit(transform);
+            }
 
             int next = _phaseIdx + 1;
             if (next >= Phases.Length)

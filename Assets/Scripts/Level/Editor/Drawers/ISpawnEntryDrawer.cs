@@ -2,6 +2,7 @@ using ShinySTG.Level;
 using ShinySTG.Level.Editor;
 using ShinySTG.Level.SpawnEntries;
 using ShinySTG.Level.SpawnEntries.PositionStrategies;
+using ShinySTG.Level.Encounter;
 using UnityEditor;
 using UnityEngine;
 
@@ -110,7 +111,7 @@ namespace ShinySTG.Level.Editor.Drawers
             {
                 case SimpleSpawnEntry s: pos = s.SpawnPosition; break;
                 case WaveSpawnEntry w:   pos = w.CenterPosition; break;
-                case BossSpawnEntry b:   pos = b.SpawnPosition; break;
+                case BossEncounterEntry be: pos = be.SpawnPosition; break;
                 case SustainSpawnEntry st:
                     pos = st.SpawnPosition;
                     // 偏移轨迹 / 范围框由 strategy 类型决定:
@@ -180,9 +181,9 @@ namespace ShinySTG.Level.Editor.Drawers
                         for (int i = 0; i < w.Prefabs.Length; i++)
                             if (w.Prefabs[i] != null) n++;
                     return $"x{n} @ {w.CenterPosition}";
-                case BossSpawnEntry b:
-                    var bName = b.BossPrefab != null ? b.BossPrefab.name : "<no prefab>";
-                    return $"{bName} @ {b.SpawnPosition}";
+                case BossEncounterEntry be:
+                    var encounterName = be.Encounter != null ? be.Encounter.name : "<no encounter>";
+                    return $"🔒 {encounterName} @ {be.SpawnPosition}";
                 case SustainSpawnEntry st:
                     var sName2 = st.EnemyPrefab != null ? st.EnemyPrefab.name : "<no prefab>";
                     string stratHint = st.SpawnPositionStrategy switch
