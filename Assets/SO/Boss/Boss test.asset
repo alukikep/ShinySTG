@@ -30,7 +30,8 @@ MonoBehaviour:
       - rid: 6177227137434517519
   StartActions:
     WaitForCompletion: 1
-    Actions: []
+    Actions:
+    - rid: 6177227140901109760
   DefeatActions:
     WaitForCompletion: 1
     Actions: []
@@ -52,3 +53,30 @@ MonoBehaviour:
         ClearPlayerProjectiles: 0
         ClearNeutralProjectiles: 0
         IncludeLasers: 1
+    - rid: 6177227140901109760
+      type: {class: InvincibilityScopeAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        ProtectPlayer: 1
+        ProtectOwner: 1
+        Sequence:
+          WaitForCompletion: 1
+          Actions:
+          - rid: 6177227140901109763
+          - rid: 6177227140901109765
+    - rid: 6177227140901109763
+      type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Commands:
+        - rid: 6177227140901109764
+    - rid: 6177227140901109764
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1
+    - rid: 6177227140901109765
+      type: {class: PlayDialogueAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Dialogue: {fileID: 11400000, guid: 9a22af9073286494ca2cfd146e3d0bc4, type: 2}
+        LockPlayerControls: 1

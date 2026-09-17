@@ -30,7 +30,45 @@ namespace ShinySTG.Player
         public bool LoopThroughPatterns = true;
 
         [Tooltip("按键按下时才发射(由 Player.OnAttack 推过来)。")]
-        public bool FireHeld { get; set; }
+        public bool FireHeld
+        {
+            get
+            {
+                ObserveControlLock();
+                return !PlayerControlLock.IsLocked && !_requireFireRelease && _fireHeld;
+            }
+            set
+            {
+                ObserveControlLock();
+                _fireHeld = value;
+                // 解锁当帧不消费旧的松键状态，避免 Update 顺序造成确认键穿透。
+                if (!value && !PlayerControlLock.IsLocked && Time.frameCount > PlayerControlLock.LastReleaseFrame)
+                    _requireFireRelease = false;
+            }
+        }
+
+        bool _fireHeld;
+        bool _requireFireRelease;
+        int _controlRevision;
+
+        void ObserveControlLock()
+        {
+            if (_controlRevision != PlayerControlLock.Revision)
+            {
+                _controlRevision = PlayerControlLock.Revision;
+                _requireFireRelease = true;
+            }
+            if (!_fireHeld && !PlayerControlLock.IsLocked && Time.frameCount > PlayerControlLock.LastReleaseFrame)
+                _requireFireRelease = false;
+        }
+
+        void OnDisable()
+        {
+            _fireHeld = false;
+            _cooldown = 0f;
+            _requireFireRelease = PlayerControlLock.IsLocked;
+            _controlRevision = PlayerControlLock.Revision;
+        }
 
         [Tooltip("每秒发射轮数。LoopThroughPatterns=true 时即\"每秒多少轮\"。" +
         "设大一点(STG 经典 12~20)。")]

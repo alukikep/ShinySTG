@@ -27,9 +27,21 @@ namespace ShinySTG.Player
         public float FocusSpeedMultiplier = 0.5f;
 
         // 由 Player.OnPlayer 写入
-        public Vector2 MoveInput { get; set; }
+        Vector2 _moveInput;
+        public Vector2 MoveInput
+        {
+            get => PlayerControlLock.IsLocked ? Vector2.zero : _moveInput;
+            set => _moveInput = value;
+        }
         // 由 Player.OnFocus 写入
-        public bool FocusHeld { get; set; }
+        bool _focusHeld;
+        public bool FocusHeld
+        {
+            get => !PlayerControlLock.IsLocked && _focusHeld;
+            set => _focusHeld = value;
+        }
+
+        void OnDisable() { _moveInput = Vector2.zero; _focusHeld = false; }
 
         public float CurrentSpeed => Speed * (FocusHeld ? FocusSpeedMultiplier : 1f);
 

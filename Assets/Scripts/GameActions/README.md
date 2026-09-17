@@ -35,3 +35,11 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 若要演出与战斗同时运行，关闭对应外层 WaitForCompletion；动作可能在下一次阶段退出或遭遇结束时被取消。
 
 扩展契约见 [通用游戏动作架构](../../../docs/architecture/arch-game-actions.md)。
+
+## Boss 对话
+
+`Game Action/Play Dialogue` 指定 DialogueDefinition，并默认锁定玩家移动与射击。
+场景需要唯一启用且配置好 UI 的 DialogueService。动作按实际播放完成结束，取消会关闭自己启动的对话。
+在 StartActions 中使用可延迟首阶段，在 DefeatActions 中使用可保留 Boss 等待战后对话，
+仅显示立绘的战后对话也可放入 CompleteActions。外层 WaitForCompletion 与 Entry.BlockTimeline 均应开启。
+无敌和消弹仍需显式配置，完整步骤见 [对话配置](../Dialogue/README.md#boss-战前与战后配置)。
