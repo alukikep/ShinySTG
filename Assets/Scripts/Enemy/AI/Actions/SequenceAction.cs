@@ -97,17 +97,17 @@ namespace ShinySTG.EnemyAI
             // ★ Loop 模式下,如果 Sequence 自己被外层切走(ShooterPhase.OnExit → ForceExit,
             //   或 BehaviorFlowRuntime 自然切到下一条),当前 child 可能还在跑 —— 必须给它
             //   OnExit 收尾,否则 child 的清理会漏。与 ParallelAction.OnExit 同套路。
-            if (Loop && _idx >= 0 && Children != null && _idx < Children.Length)
+            if (_idx >= 0 && Children != null && _idx < Children.Length)
             {
                 Children[_idx]?.OnExit(enemy);
                 _idx = -1;
             }
-            // Loop=false 时:现状 Sequence 没 override OnExit(基类空实现),保持不变,
-            //   children 自身在 OnTick 内已逐个 OnExit,无需额外清理。
+            // 非循环序列也可能被宿主提前中断，必须清理仍在执行的 child。
         }
 
         void Advance(int next, Transform enemy)
         {
+            if (Children == null || Children.Length == 0) { _idx = -1; return; }
             if (next >= Children.Length)
             {
                 // 跑完一轮

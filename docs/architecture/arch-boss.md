@@ -30,13 +30,15 @@
                                     ├─ LevelController.NotifyBossDefeated(_defeated 防重入)
                                     └─ _current = null
                                     ↓
-                              Destroy(gameObject)
+                              无 Encounter：Destroy(gameObject)
+                              有 Encounter：等待击破动作（按配置）后销毁
 ```
 
 **扩展点:**
 - 新增 Boss 阶段:新建 `BossPhase` 子类,加到 `BossController.Phases`(详见 `Assets/Scripts/Enemy/Boss/`)。
 - 新增阶段退出信号源:新建 `BossSignal` 子类,加 `[Serializable, SRName("Signal/<你的名字>")]`,在 `BossController.Signals` 数组里下拉选(详见下文"内置 Signal")。
-- 阶段演出不直接写进 `BossPhase`:正式 Boss 战由 `BossEncounterDefinition` 配置表现映射,监听 `BossController.OnPhaseEntered / OnPhaseExited`。关卡时间轴等待的是 Encounter 完成,而不是仅等待 HP 清零。
+- 阶段演出由 `BossEncounterDefinition` 配置，Encounter 通过 `BossController.PhaseActions` 提供可等待句柄，通过 StartGate 延迟首阶段。OnPhaseEntered / OnPhaseExited 保留为通知事件；关卡时间轴等待 Encounter 完成，而非仅等待 HP 清零。
+- 每个 `BossPhase` 可配置 `EnterCommands / ExitCommands`。进入指令在阶段行为流启动前执行;退出指令在阶段 `OnExit` 后执行,正常切阶段与 Boss 死亡 `Stop()` 共用同一路径。适合配置全屏消弹和阶段过渡无敌。
 
 ### 5.1 内置 Signal(BossSignal 多态信号源)
 
@@ -83,9 +85,9 @@ Phase 3 (暴走)
 
 `TakeDamage` 在 `LateUpdate` 同步上下文里走完整个扣血循环,可能**一帧内**把多管打空(溢出伤害),而 `BossController.Update()` 已经跑过了。下一帧 `Update` 检测时 `CurrentBarPercent` 已经是新 Bar 的满血值,**永远检测不到 `= 0` 的瞬间**。
 
-**解决**:`BossController.OnEnable` 订阅了 `Health.OnBarDepleted`,在 Bar 切管的瞬间同步检查 ExitTrigger。这样无论伤害多大,只要 Bar 切管就会立即切阶段。**正常使用 `CurrentBarPercentSignal + LessOrEqual + 0` 即可正常工作**。
+**处理方式**：OnBarDepleted 在血管清空的瞬间检查 ExitTrigger，记录切换请求；下一次 Update 在伤害结算结束后推进切换。这样可以捕获瞬时零血，并让最终死亡优先于进入下一阶段。同一帧多次满足条件会合并为一次请求，不会逐管回放多个阶段。
 
-**如果伤害极大**(`dmg > 单管 MaxHp`,一发生命同时击穿多管),`CurrentBarIndexSignal + Equal + N` 比 `CurrentBarPercentSignal + LessOrEqual + 0` 更稳 —— 因为 int 信号不会被"瞬时跳过",下一帧 Update 一定能看到新值。
+溢出伤害仍可能打穿多管。需要表达“已经进入或越过第 N 管”时使用 CurrentBarIndexSignal + GreaterOrEqual；Equal 可能被跳过。阶段动作提供无敌并不撤销此前已经结算的伤害。
 
 ### 5.2 多管血(BossHealth.Bars)
 
@@ -105,6 +107,14 @@ Phase 3 (暴走)
 
 
 ## 与其他板块的关系
+
+- [game-actions](./arch-game-actions.md) — 通用动作的运行、取消与扩展契约。
+
+阶段顺序为：旧阶段通知及 OnExit/ExitCommands → Encounter ExitActions → Encounter EnterActions → 新阶段 EnterCommands/OnEnter → OnPhaseEntered。
+只有配置等待时才延迟后续步骤；等待期间不推进阶段行为与信号计时，但不会自动无敌。
+死亡取消尚未完成的开场和阶段附加动作，运行 DefeatActions；死亡不启动 Encounter ExitActions，旧 ExitSfx 仍保留。
+BossPhase 自身的 ExitCommands 仍在 Stop 时执行。需要尸体或 Transform 的动画放入等待式 DefeatActions，
+CompleteActions 必须允许 Boss 已销毁。无 Encounter 时保持直接销毁路径。
 
 本板块与其他板块的依赖 / 协作关系(简单文字说明):
 

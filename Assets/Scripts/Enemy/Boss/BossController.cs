@@ -2,6 +2,8 @@ using System;
 using UnityEngine;
 using SerializeReferenceEditor;
 using ShinySTG.Level;
+using ShinySTG.GameplayCommands;
+using ShinySTG.GameActions;
 
 namespace ShinySTG.EnemyAI.Boss
 {
@@ -37,6 +39,16 @@ namespace ShinySTG.EnemyAI.Boss
 
         /// <summary>离开阶段前广播。正常切换与 Stop 收尾都会触发。</summary>
         public event Action<int, BossPhase> OnPhaseExited;
+
+        // Encounter 在 Start 前绑定；返回 null 表示不阻塞阶段推进。
+        public Func<int, bool, GameActionHandle> PhaseActions { get; set; }
+        public GameActionHandle StartGate { get; set; }
+        public int CurrentPhaseIndex => _phaseIdx;
+        GameActionHandle _phaseGate;
+        int _pendingPhase = -1;
+        bool _enterPrepared;
+        bool _barTransitionRequested;
+        public bool IsTransitioning => _pendingPhase >= 0;
 
         [Header("Required (RequireComponent 自动注入,不要手填)")]
         [HideInInspector]
@@ -94,7 +106,8 @@ namespace ShinySTG.EnemyAI.Boss
         {
             if (_stopped || _current == null) return;
             Debug.Log($"[__BOSSDEBUG__] OnBarDepletedHandler idx={barIdx} phase={_phaseIdx} curHp%={(Health != null ? Health.CurrentBarPercent.ToString("F1") : "?")}", this);
-            if (_current.ShouldExit(this)) NextPhase();
+            // 在 Update 处理，等待本次 TakeDamage 完成后再决定是否仍应进入下一阶段。
+            if (_current.ShouldExit(this)) _barTransitionRequested = true;
         }
 
         void Start()
@@ -126,7 +139,7 @@ namespace ShinySTG.EnemyAI.Boss
                 foreach (var s in Signals) s?.OnAttach(this);
 
             // 进入第一个阶段
-            if (Phases != null && Phases.Length > 0) EnterPhase(0);
+            if (!_stopped && Phases != null && Phases.Length > 0) RequestPhase(0);
             else Debug.LogError($"[__BOSSDEBUG__] Phases is empty! BossController will not enter any phase.", this);
         }
 
@@ -134,6 +147,14 @@ namespace ShinySTG.EnemyAI.Boss
         {
             // 已 stopped → 不再跑 phase / signal tick,直到 GameObject 被 Boss 总控销毁。
             if (_stopped) return;
+            if (Health != null && Health.IsDead) return;
+            if (_barTransitionRequested)
+            {
+                _barTransitionRequested = false;
+                NextPhase();
+            }
+            if (_stopped) return;
+            if (_pendingPhase >= 0) { AdvanceTransition(); return; }
 
             // 1. tick 所有 signals(累加内部计数等)
             if (Signals != null)
@@ -144,6 +165,7 @@ namespace ShinySTG.EnemyAI.Boss
             if (_current == null) return;
 
             _current.OnTick(transform, Time.deltaTime);
+            if (_stopped || _current == null) return;
 
             // 3. 判定是否该切走
             bool shouldExit = _current.ShouldExit(this);
@@ -180,14 +202,12 @@ namespace ShinySTG.EnemyAI.Boss
         {
             if (_stopped) return;
             _stopped = true;
+            _pendingPhase = -1;
+            _phaseGate?.Cancel();
+            StartGate?.Cancel();
 
             // 1. 走当前 phase 收尾
-            if (_current != null)
-            {
-                OnPhaseExited?.Invoke(_phaseIdx, _current);
-                _current.OnExit(transform);
-                _current = null;
-            }
+            ExitCurrentPhase();
 
             // 2. 一次性广播 Defeated(给"解锁下一关 / UI 提示"等订阅)
             if (!_defeated)
@@ -217,22 +237,22 @@ namespace ShinySTG.EnemyAI.Boss
                 foreach (var s in Signals)
                     if (s is PhaseTimeSignal pts) pts.Reset();
 
+            GlobalCommandExecutor.Execute(_current?.EnterCommands, new GlobalCommandContext(transform, this));
             _current?.OnEnter(transform);
+            if (_stopped) return;
             OnPhaseEntered?.Invoke(_phaseIdx, _current);
         }
 
         void NextPhase()
         {
+            if (_stopped) return;
             // __BOSSDEBUG__ #3:阶段切走(进 NextPhase 说明 ShouldExit 已为 true)
             Debug.Log($"[__BOSSDEBUG__] NextPhase from idx={_phaseIdx}", this);
 
-            if (_current != null)
-            {
-                OnPhaseExited?.Invoke(_phaseIdx, _current);
-                _current.OnExit(transform);
-            }
+            ExitCurrentPhase();
 
             int next = _phaseIdx + 1;
+            if (_stopped) return;
             if (next >= Phases.Length)
             {
                 if (Loop && Phases.Length > 0) next = 0;
@@ -246,7 +266,42 @@ namespace ShinySTG.EnemyAI.Boss
                 // 需要"切完所有阶段强制死亡"的效果,要么在最后阶段配一个 HP 阈值 ExitTrigger,
                 // 要么在 LevelController.OnLevelComplete 兜底处理。
             }
-            EnterPhase(next);
+            if (next < Phases.Length) RequestPhase(next);
+        }
+
+        void ExitCurrentPhase()
+        {
+            if (_current == null) return;
+            var exiting = _current;
+            _current = null;
+            OnPhaseExited?.Invoke(_phaseIdx, exiting);
+            exiting.OnExit(transform);
+            GlobalCommandExecutor.Execute(exiting.ExitCommands, new GlobalCommandContext(transform, this));
+            if (!_stopped || (Health != null && Health.IsDead))
+                _phaseGate = PhaseActions?.Invoke(_phaseIdx, false);
+        }
+
+        void RequestPhase(int index)
+        {
+            _pendingPhase = index;
+            _enterPrepared = false;
+            AdvanceTransition();
+        }
+
+        void AdvanceTransition()
+        {
+            if (_stopped || _pendingPhase < 0) return;
+            if (StartGate != null && !StartGate.IsComplete) return;
+            if (_phaseGate != null && !_phaseGate.IsComplete) return;
+            if (!_enterPrepared)
+            {
+                _enterPrepared = true;
+                _phaseGate = PhaseActions?.Invoke(_pendingPhase, true);
+                if (_stopped || (_phaseGate != null && !_phaseGate.IsComplete)) return;
+            }
+            int index = _pendingPhase;
+            _pendingPhase = -1;
+            EnterPhase(index);
         }
     }
 }

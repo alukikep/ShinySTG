@@ -17,6 +17,7 @@
 **协作边界:**
 - 调用方通过 `BulletPool` 拿弹或一步触发一个 FirePattern;`FireGroup` 接收 `ownerHitbox` 透传阵营。
 - 子弹不会自动回收 —— 出界 / 命中后由调用方或 modifier 决定 `Return` 时机。
+- 全屏消弹统一调用 `BulletPool.ReturnAll`，它先快照活跃集合再逐颗走标准 `Return`，因此会正确解除信号订阅、清理 modifier 并按 prefab 回池；不要由外部直接禁用子弹 GameObject。
 
 **阵营语义:**
 - 子弹阵营由**发射者**透传,prefab 不需要手动配 `Hitbox.Team`。

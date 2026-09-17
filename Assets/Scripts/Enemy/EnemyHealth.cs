@@ -39,6 +39,8 @@ namespace ShinySTG.EnemyAI
         public float CurrentHp => _currentHp;
         public float HpPercent  => MaxHp > 0 ? Mathf.Clamp01(_currentHp / MaxHp) * 100f : 0f;
         public bool  IsDead     => _currentHp <= 0f;
+        readonly HashSet<string> _invincibilityLocks = new();
+        public bool IsInvincible => _invincibilityLocks.Count > 0;
 
         [Header("Audio (optional — 留空则不播放)")]
         [Tooltip("敌人受击时播放的 SFX cue(留空 = 不播)。")]
@@ -78,7 +80,7 @@ namespace ShinySTG.EnemyAI
         /// </summary>
         public void TakeDamage(float dmg)
         {
-            if (IsDead || dmg <= 0f) return;
+            if (IsDead || IsInvincible || dmg <= 0f) return;
 
             _currentHp = Mathf.Max(0f, _currentHp - dmg);
             // 受击音(每次扣血都播;若太密,在 cue 上设 Cooldown / MaxVoices 节流)
@@ -91,6 +93,16 @@ namespace ShinySTG.EnemyAI
                 OnDeath?.Invoke();
                 OnAnyDeath?.Invoke(this);
             }
+        }
+
+        public void AddInvincibility(string sourceKey)
+        {
+            if (!string.IsNullOrWhiteSpace(sourceKey)) _invincibilityLocks.Add(sourceKey);
+        }
+
+        public void RemoveInvincibility(string sourceKey)
+        {
+            if (!string.IsNullOrWhiteSpace(sourceKey)) _invincibilityLocks.Remove(sourceKey);
         }
     }
 }

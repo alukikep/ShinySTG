@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stage test
   m_EditorClassIdentifier: 
   Entries:
-  - rid: 6177227000708333568
+  - rid: 6177227137434517512
   Duration: 60
   Pool: {fileID: 0}
   AutoSwitchBgm: 1
@@ -21,20 +21,13 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 6177227000708333568
-      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+    - rid: 6177227137434517512
+      type: {class: BossEncounterEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
         TriggerTime: 0
         OneShot: 1
-        Duration: 1
-        SpawnInterval: 1
-        EnemyPrefab: {fileID: 3322077835522038162, guid: d2303041f257c1f41a7c9fc8664540de, type: 3}
-        SpawnPosition: {x: -0.5, y: 5.5}
-        SpawnPositionStrategy:
-          rid: 6177227073745846277
+        Duration: 0
+        Encounter: {fileID: 11400000, guid: 0565d4896c423b047928942d426c8a87, type: 2}
+        SpawnPosition: {x: -0.5, y: 6}
         InitialRotation: 0
-        OverrideFlow: {fileID: 0}
-    - rid: 6177227073745846277
-      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
-      data:
-        Offset: {x: 0, y: 0}
+        BlockTimeline: 1

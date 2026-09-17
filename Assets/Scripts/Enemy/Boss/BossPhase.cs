@@ -1,6 +1,7 @@
 using System;
 using SerializeReferenceEditor;
 using UnityEngine;
+using ShinySTG.GameplayCommands;
 
 namespace ShinySTG.EnemyAI.Boss
 {
@@ -11,6 +12,14 @@ namespace ShinySTG.EnemyAI.Boss
     [Serializable]
     public abstract class BossPhase
     {
+        [SerializeReference, SR]
+        [Tooltip("进入该阶段、启动阶段行为流之前执行的全局指令。")]
+        public GlobalCommand[] EnterCommands;
+
+        [SerializeReference, SR]
+        [Tooltip("阶段行为流退出之后执行的全局指令。正常切阶段与 Boss 死亡收尾都会执行。")]
+        public GlobalCommand[] ExitCommands;
+
         [SerializeReference, SR]
         [Tooltip("该阶段的退出条件。任意一条满足即切到下一阶段。每个 PhaseTrigger 通过 SignalIndex 引用 BossController.Signals 数组。")]
         public PhaseTrigger[] ExitTriggers;

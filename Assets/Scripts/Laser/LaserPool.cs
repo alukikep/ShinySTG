@@ -123,6 +123,23 @@ namespace ShinySTG.Laser
             // 若 key 也为 null,则直接丢弃(极端兜底,不让池逻辑崩溃)。
         }
 
+        /// <summary>批量回收符合阵营条件的活跃激光。filter 为空时回收全部。</summary>
+        public int ReturnAll(System.Predicate<CollisionTeam> filter = null)
+        {
+            if (_active.Count == 0) return 0;
+            var snapshot = new List<LaserEntity>(_active);
+            int returned = 0;
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                var laser = snapshot[i];
+                if (laser == null) continue;
+                if (filter != null && !filter(laser.Team)) continue;
+                Return(laser);
+                returned++;
+            }
+            return returned;
+        }
+
         // ═══════════════════════════════════════════════════════════
         // 中心化开火入口(对齐 BulletPool.FireGroup)
         // ═══════════════════════════════════════════════════════════

@@ -29,10 +29,9 @@ namespace ShinySTG.Level.SpawnEntries
                 Quaternion.Euler(0f, 0f, InitialRotation));
 
             runtime.Track(go);
-            LevelController.Instance?.NotifyBossSpawned(go);
-
             var encounterRuntime = new BossEncounterRuntime(Encounter, go, BlockTimeline);
             runtime.AddTimelineProcess(encounterRuntime);
+            LevelController.Instance?.NotifyBossSpawned(go);
         }
     }
 }

@@ -17,6 +17,7 @@ namespace ShinySTG.EnemyAI
         float _elapsedInCurrent;
         float _delayLeft;
         bool  _started;
+        public bool IsComplete => _flow == null || _flow.Actions == null || _flow.Actions.Length == 0 || (_started && _index < 0);
 
         public BehaviorFlowRuntime(BehaviorFlow flow)
         {
@@ -36,7 +37,7 @@ namespace ShinySTG.EnemyAI
         /// <summary>每帧由外部调用(owner 是行为作用的目标 transform)。</summary>
         public void Tick(Transform owner, float dt)
         {
-            if (_flow == null) return;
+            if (IsComplete) return;
             var actions = _flow.Actions;
             if (actions == null || actions.Length == 0) return;
 
@@ -49,6 +50,8 @@ namespace ShinySTG.EnemyAI
                 AdvanceTo(0, owner);
             }
 
+            if (IsComplete) return;
+
             var current = actions[_index];
             if (current == null)
             {
@@ -57,6 +60,7 @@ namespace ShinySTG.EnemyAI
             }
 
             current.OnTick(owner, dt);
+            if (IsComplete) return;
             _elapsedInCurrent += dt;
 
             // 2. 到时间,切下一条
@@ -79,7 +83,16 @@ namespace ShinySTG.EnemyAI
             if (_flow == null) return;
             var actions = _flow.Actions;
             if (actions == null || _index < 0 || _index >= actions.Length) return;
-            actions[_index]?.OnExit(owner);
+            var action = actions[_index];
+            _index = -1;
+            _started = true;
+            action?.OnExit(owner);
+        }
+
+        public void Dispose(Transform owner)
+        {
+            ForceExit(owner);
+            if (_flow != null) Object.Destroy(_flow);
         }
 
         void AdvanceTo(int next, Transform owner)

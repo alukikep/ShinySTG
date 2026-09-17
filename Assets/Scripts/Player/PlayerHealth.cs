@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using ShinySTG.Hitbox;  // CollisionService / Bullet (擦弹事件订阅)
 
@@ -68,7 +69,9 @@ namespace ShinySTG.Player
         [field: Tooltip("累计擦弹数(被敌人弹擦过判定外圈的次数)。由 CollisionService.OnPlayerGrazeByEnemyBullet 自动累加。\n经典 STG 用法:高分元素、徽章成就、UI 飘字。")]
         [field: SerializeField] public int GrazeCount { get; private set; }
 
-        public bool IsInvincible => InvincibleRemaining > 0f;
+        readonly HashSet<string> _invincibilityLocks = new();
+
+        public bool IsInvincible => InvincibleRemaining > 0f || _invincibilityLocks.Count > 0;
         public bool IsDead       => Lives <= 0;
 
         // ---- 事件(供 UI / 动画 / 子机响应)----
@@ -146,9 +149,25 @@ namespace ShinySTG.Player
                 if (InvincibleRemaining <= 0f)
                 {
                     InvincibleRemaining = 0f;
-                    OnInvincibleEnd?.Invoke();
+                    if (_invincibilityLocks.Count == 0) OnInvincibleEnd?.Invoke();
                 }
             }
+        }
+
+        public void AddInvincibility(string sourceKey)
+        {
+            if (string.IsNullOrWhiteSpace(sourceKey)) return;
+            bool wasInvincible = IsInvincible;
+            _invincibilityLocks.Add(sourceKey);
+            if (!wasInvincible && IsInvincible) OnInvincibleStart?.Invoke();
+        }
+
+        public void RemoveInvincibility(string sourceKey)
+        {
+            if (string.IsNullOrWhiteSpace(sourceKey)) return;
+            bool wasInvincible = IsInvincible;
+            _invincibilityLocks.Remove(sourceKey);
+            if (wasInvincible && !IsInvincible) OnInvincibleEnd?.Invoke();
         }
 
         /// <summary>被敌弹 / 敌人命中时调用。无敌时直接吞掉。</summary>
@@ -171,8 +190,9 @@ namespace ShinySTG.Player
             }
 
             // 复活:开启无敌 + 触发事件
+            bool wasInvincible = IsInvincible;
             InvincibleRemaining = ReviveInvincibleDuration;
-            OnInvincibleStart?.Invoke();
+            if (!wasInvincible && IsInvincible) OnInvincibleStart?.Invoke();
             OnRevive?.Invoke();
         }
 

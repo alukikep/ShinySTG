@@ -109,8 +109,9 @@
 **OnExit 收尾:**
 
 Sequence override 了 `OnExit`(基类原本是空实现):
-- `Loop=true` 且当前有 child 在跑 → 调 `Children[_idx].OnExit(enemy)` 收尾,避免外层 `ForceExit`(ShooterPhase 切走)时漏清理
-- `Loop=false` → 不 override 行为,children 自身在 OnTick 内已逐个 OnExit,与旧行为等价
+- 无论 Loop 是否开启，退出时都会清理仍在运行的 child；已结束或空序列不重复退出。
+- BehaviorFlowRuntime 非循环完成后 IsComplete 为 true，后续 Tick 不再访问动作数组；ForceExit 先置为完成再执行清理。
+- RunBehaviorFlowAction 负责释放自己创建的运行时克隆；普通行为宿主仍负责自己的生命周期。
 
 **典型用法:**
 
@@ -160,6 +161,7 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 | `MoveAction` | `Action/Move` | 用 `MoveBehaviour` 多态驱动位移 | `Move`(SR 多态) + 视 MoveBehaviour 类型的内部字段 |
 | `WaitAction` | `Action/Wait` | 什么都不做,只占用 Duration | (无) |
 | `EmitSignalAction` | `Action/Emit Signal` | 在时间轴上向 `BulletSignalBus` 发全局信号(Boss 喊话 / 阶段切换 / modifier 解锁) | `SignalName` + `EmitMode`(OnEnterOnly / EveryTick / OnInterval) + `Interval` |
+| `ExecuteGlobalCommandsAction` | `Action/Execute Global Commands` | 进入 Action 时执行一组场景级游戏指令 | `Commands`(`Clear Projectiles` / `Set Invincibility` 等) |
 | `SelfDestructAction` | `Action/Self Destruct` | 到达时销毁自身(常作 Sequence 收尾) | (无) |
 | `ParallelAction` | `Action/Parallel` | 并行容器,所有 children 同时跑 | `Children` + `StartTrigger`(SR 多态) + 基础 DurationConfig |
 | `SequenceAction` | `Action/Sequence` | 顺序容器,逐个跑完 children,可选 `Loop=true` 在自身 Duration 内循环 | `Children` + `Loop` + 基础 DurationConfig |
@@ -180,6 +182,8 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 
 
 ## 与其他板块的关系
+
+- [game-actions](./arch-game-actions.md) — RunBehaviorFlowAction 复用战斗行为；GameAction 通过实际完成状态支持跨帧演出，不替换 EnemyAction 的 Duration 契约。
 
 本板块与其他板块的依赖 / 协作关系(简单文字说明):
 

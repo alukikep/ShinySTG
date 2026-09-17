@@ -16,4 +16,26 @@ MonoBehaviour:
   DefeatOutroDelay: 1
   EncounterStartSfx: {fileID: 0}
   DefeatSfx: {fileID: 0}
-  PhasePresentations: []
+  PhasePresentations:
+  - PhaseIndex: 0
+    DisplayName: 
+    EnterSfx: {fileID: 0}
+    ExitSfx: {fileID: 0}
+    EnterActions:
+      WaitForCompletion: 1
+      Actions: []
+    ExitActions:
+      WaitForCompletion: 1
+      Actions: []
+  StartActions:
+    WaitForCompletion: 1
+    Actions: []
+  DefeatActions:
+    WaitForCompletion: 1
+    Actions: []
+  CompleteActions:
+    WaitForCompletion: 1
+    Actions: []
+  references:
+    version: 2
+    RefIds: []

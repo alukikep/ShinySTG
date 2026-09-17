@@ -1,6 +1,7 @@
 using System;
 using ShinySTG.Audio;
 using UnityEngine;
+using ShinySTG.GameActions;
 
 namespace ShinySTG.Level.Encounter
 {
@@ -21,6 +22,13 @@ namespace ShinySTG.Level.Encounter
 
         [Tooltip("按 BossController 阶段索引配置进入阶段时的最小演出。")]
         public PhasePresentation[] PhasePresentations;
+
+        [Tooltip("开场动作；等待完成时暂不启动首阶段。")]
+        public ActionSequence StartActions = new();
+        [Tooltip("击破动作；等待完成时保留 Boss 对象供演出使用。")]
+        public ActionSequence DefeatActions = new();
+        [Tooltip("收尾延迟结束后的动作；等待完成后释放关卡时间轴。")]
+        public ActionSequence CompleteActions = new();
     }
 
     [Serializable]
@@ -30,5 +38,9 @@ namespace ShinySTG.Level.Encounter
         public string DisplayName;
         public SfxCue EnterSfx;
         public SfxCue ExitSfx;
+        [Tooltip("在本阶段战斗启动前执行。")]
+        public ActionSequence EnterActions = new();
+        [Tooltip("在本阶段战斗退出后执行。")]
+        public ActionSequence ExitActions = new();
     }
 }

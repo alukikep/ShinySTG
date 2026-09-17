@@ -12,8 +12,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c09c7ede91304b87a122d01ada3f0487, type: 3}
   m_Name: Boss test
   m_EditorClassIdentifier: 
-  BossPrefab: {fileID: 0}
+  BossPrefab: {fileID: 7202559043894379566, guid: 23c7bc2a30223ce4ea7d17244b39f6eb, type: 3}
   DefeatOutroDelay: 1
-  EncounterStartSfx: {fileID: 0}
-  DefeatSfx: {fileID: 0}
-  PhasePresentations: []
+  EncounterStartSfx: {fileID: 11400000, guid: eb4faee07b77d6349842b0c1e723fc30, type: 2}
+  DefeatSfx: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
+  PhasePresentations:
+  - PhaseIndex: 0
+    DisplayName: 111
+    EnterSfx: {fileID: 11400000, guid: eb4faee07b77d6349842b0c1e723fc30, type: 2}
+    ExitSfx: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
+    EnterActions:
+      WaitForCompletion: 1
+      Actions: []
+    ExitActions:
+      WaitForCompletion: 1
+      Actions:
+      - rid: 6177227137434517519
+  StartActions:
+    WaitForCompletion: 1
+    Actions: []
+  DefeatActions:
+    WaitForCompletion: 1
+    Actions: []
+  CompleteActions:
+    WaitForCompletion: 1
+    Actions: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177227137434517519
+      type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Commands:
+        - rid: 6177227137434517520
+    - rid: 6177227137434517520
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1

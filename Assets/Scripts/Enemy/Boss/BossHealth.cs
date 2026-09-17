@@ -79,6 +79,8 @@ namespace ShinySTG.EnemyAI.Boss
 
         // OnDeath 防重入:TakeDamage 每次进入只触发一次。
         bool _deathFired;
+        readonly HashSet<string> _invincibilityLocks = new();
+        public bool IsInvincible => _invincibilityLocks.Count > 0;
 
         /// <summary>某管被打空事件(int = 被清空的 BarIndex)。</summary>
         public event Action<int> OnBarDepleted;
@@ -169,7 +171,7 @@ namespace ShinySTG.EnemyAI.Boss
         /// </summary>
         public void TakeDamage(float dmg)
         {
-            if (dmg <= 0f || IsDead) return;
+            if (dmg <= 0f || IsDead || IsInvincible) return;
 
             if (Bars == null || Bars.Length == 0)
             {
@@ -219,6 +221,16 @@ namespace ShinySTG.EnemyAI.Boss
                 OnDeath?.Invoke();        // 实例事件:供 Boss 总控订阅做收尾
                 OnAnyDeath?.Invoke(this); // 静态事件:供全局订阅
             }
+        }
+
+        public void AddInvincibility(string sourceKey)
+        {
+            if (!string.IsNullOrWhiteSpace(sourceKey)) _invincibilityLocks.Add(sourceKey);
+        }
+
+        public void RemoveInvincibility(string sourceKey)
+        {
+            if (!string.IsNullOrWhiteSpace(sourceKey)) _invincibilityLocks.Remove(sourceKey);
         }
     }
 }

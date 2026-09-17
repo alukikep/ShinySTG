@@ -155,6 +155,29 @@ public class BulletPool : MonoBehaviour
         // 若 key 也为 null，则直接丢弃该子弹实例（极端兜底，不让池逻辑崩溃）。
     }
 
+    /// <summary>
+    /// 批量回收符合阵营条件的活跃子弹。先复制集合再回收，避免遍历 HashSet 时修改集合。
+    /// filter 为空时回收全部活跃子弹。
+    /// </summary>
+    public int ReturnAll(System.Predicate<ShinySTG.Hitbox.CollisionTeam> filter = null)
+    {
+        if (_active.Count == 0) return 0;
+        var snapshot = new List<Bullet>(_active);
+        int returned = 0;
+        for (int i = 0; i < snapshot.Count; i++)
+        {
+            var bullet = snapshot[i];
+            if (bullet == null) continue;
+            var team = bullet.Hitbox != null
+                ? bullet.Hitbox.Team
+                : ShinySTG.Hitbox.CollisionTeam.Neutral;
+            if (filter != null && !filter(team)) continue;
+            Return(bullet);
+            returned++;
+        }
+        return returned;
+    }
+
     /// 提供给 Enemy / Player 调用:发射一组 bullets(通过 FirePattern)。
     /// BulletPrefab 由 Pattern 自身携带,无需再传入。
     /// </summary>

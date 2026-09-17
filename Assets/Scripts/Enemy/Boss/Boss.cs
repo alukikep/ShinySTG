@@ -38,6 +38,7 @@ namespace ShinySTG.EnemyAI.Boss
         public BossController  Controller{ get; private set; }
 
         bool _dead;
+        public bool RetainForDefeatActions { get; set; }
 
         void Awake()
         {
@@ -71,7 +72,7 @@ namespace ShinySTG.EnemyAI.Boss
             if (Controller != null) Controller.Stop();
 
             // 2. 兜底:本版本直接销毁。后续要做死亡动画/撒豆,在这里替换成协程即可。
-            Destroy(gameObject);
+            if (!RetainForDefeatActions) Destroy(gameObject);
         }
     }
 }
