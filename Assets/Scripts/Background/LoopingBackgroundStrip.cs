@@ -23,6 +23,8 @@ namespace ShinySTG.Background
         double _distance;
         float _runtimeLength;
         float _runtimeRear;
+        double _visualElapsed;
+        BackgroundUvPlayback _uvPlayback;
 
         public float Speed
         {
@@ -31,6 +33,8 @@ namespace ShinySTG.Background
         }
 
         public bool IsPaused => _paused;
+        public bool IsLayoutValid => transform.childCount >= 2 && IsFinite(_segmentLength)
+            && _segmentLength > 0f && IsFinite(_rearEdge);
 
         void Awake() => Initialize();
 
@@ -59,6 +63,8 @@ namespace ShinySTG.Background
                 _rotations[i] = segment.localRotation;
                 _scales[i] = segment.localScale;
             }
+            _uvPlayback = new BackgroundUvPlayback(transform);
+            _uvPlayback.Apply(0d);
             ApplyPositions();
             return true;
         }
@@ -68,8 +74,10 @@ namespace ShinySTG.Background
         // 使用总路程取模，单帧跨越多个路段甚至整个循环也不会产生间隙。
         public void Advance(float deltaTime)
         {
-            if (!isActiveAndEnabled || _paused || !IsFinite(deltaTime) || deltaTime <= 0f
-                || !IsFinite(_speed) || _speed <= 0f || !Initialize()) return;
+            if (!isActiveAndEnabled || _paused || !IsFinite(deltaTime) || deltaTime <= 0f || !Initialize()) return;
+            _visualElapsed += deltaTime;
+            _uvPlayback.Apply(_visualElapsed);
+            if (!IsFinite(_speed) || _speed <= 0f) return;
             double cycle = (double)_runtimeLength * _segments.Length;
             _distance = (_distance + (double)_speed * deltaTime) % cycle;
             ApplyPositions();
@@ -108,6 +116,8 @@ namespace ShinySTG.Background
         {
             if (!Application.isPlaying || !Initialize()) return;
             _distance = 0d;
+            _visualElapsed = 0d;
+            _uvPlayback.Apply(0d);
             for (int i = 0; i < _segments.Length; i++)
             {
                 if (_segments[i] == null) continue;
@@ -118,5 +128,7 @@ namespace ShinySTG.Background
         }
 
         static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
+        void OnDestroy() => _uvPlayback?.Restore();
     }
 }

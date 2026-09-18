@@ -6,9 +6,9 @@ namespace ShinySTG.Audio
     /// <summary>
     /// SFX 路由 + 限流器 —— 由 AudioSystem 持有,处理一次 SfxCue 调用:
     ///   1. 检查 cue 是否空(无 clip)→ 直接返回
-    ///   2. 检查 cue.MaxVoices 同 cue 限流(超出丢最老的低优先级 voice)
-    ///   3. 检查 cue.Cooldown 全局最小间隔
-    ///   4. 构造 SfxRequest,按 Rules 数组串行 Pipeline 处理
+    ///   2. 检查 cue.Cooldown 全局最小间隔
+    ///   3. 构造请求并执行规则，拒绝的请求不抢占旧声音
+    ///   4. 按 cue.MaxVoices 与 Overflow 处理满额请求
     ///   5. 从池取一个 SfxPlayer,Play(request)
     ///
     /// 对齐项目惯例:
@@ -41,26 +41,6 @@ namespace ShinySTG.Audio
             float now = Time.unscaledTime;
             if (_cooldownUntil.TryGetValue(cueId, out float cdUntil) && now < cdUntil)
                 return;
-            _cooldownUntil[cueId] = now + Mathf.Max(0f, cue.Cooldown);
-
-            // 2. 同 cue 限流:超出 MaxVoices → 丢最老且优先级最低的 voice
-            if (cue.MaxVoices > 0)
-            {
-                if (!_activeByCue.TryGetValue(cueId, out var activeList))
-                {
-                    activeList = new List<SfxPlayer>(cue.MaxVoices);
-                    _activeByCue[cueId] = activeList;
-                }
-                if (activeList.Count >= cue.MaxVoices)
-                {
-                    // 找到最老的 voice 释放(SfxRouter.Return 会从 activeList 移除)
-                    SfxPlayer oldest = activeList[0];
-                    // 简化:如果 oldest 优先级比新请求低(或相同)才丢 —— 否则直接吞掉本次请求
-                    // 但新请求的优先级就是 cue.Priority,固定。所以策略 = 直接丢最老的。
-                    oldest.StopImmediate();
-                }
-            }
-
             // 3. 构造 request,跑 Pipeline
             var req = new SfxRequest
             {
@@ -82,15 +62,27 @@ namespace ShinySTG.Audio
                     if (req == null || req.Volume <= 0f) return;  // 规则要求跳过播放
                 }
             }
-            if (req.Clip == null) return;  // 没 clip(可能规则清掉了)
+            if (req.Clip == null || req.Volume <= 0f) return;  // 没 clip(可能规则清掉了)
 
-            // 4. 从池取 SfxPlayer 并播放
+            // 规则可以改播放参数，但所属 cue 始终由本次路由请求决定。
+            req.Cue = cue;
+            if (!_activeByCue.TryGetValue(cueId, out var activeList))
+            {
+                activeList = new List<SfxPlayer>();
+                _activeByCue[cueId] = activeList;
+            }
+            activeList.RemoveAll(p => p == null);
+            if (cue.MaxVoices > 0 && activeList.Count >= cue.MaxVoices)
+            {
+                if (cue.Overflow == SfxCue.VoiceOverflow.DropNewest) return;
+                while (activeList.Count >= cue.MaxVoices)
+                    activeList[0].StopImmediate();
+            }
+
             var player = AcquirePlayer();
             player.Play(this, req);
-
-            // 5. 登记到 active 列表(供后续限流检查)
-            if (cue.MaxVoices > 0)
-                _activeByCue[cueId].Add(player);
+            activeList.Add(player);
+            _cooldownUntil[cueId] = now + Mathf.Max(0f, cue.Cooldown);
         }
 
         /// <summary>
@@ -103,7 +95,7 @@ namespace ShinySTG.Audio
             // 拷贝一份,避免 StopImmediate 中途修改列表
             var snapshot = new List<SfxPlayer>(list);
             for (int i = 0; i < snapshot.Count; i++)
-                snapshot[i].StopImmediate();
+                if (snapshot[i] != null) snapshot[i].StopImmediate();
         }
 
         /// <summary>停止所有 SFX(场景切换、暂停菜单用)。</summary>
@@ -133,17 +125,15 @@ namespace ShinySTG.Audio
             return player;
         }
 
-        /// <summary>由 SfxPlayer.Release 调用 —— 归还到池,从 active 列表摘除。</summary>
+        internal void Unregister(SfxPlayer player)
+        {
+            if (_activeByCue.TryGetValue(player.ActiveCueId, out var list))
+                list.Remove(player);
+        }
+
+        /// <summary>仅在注销和状态重置完成后归还；Release 保证只调用一次。</summary>
         internal void Return(SfxPlayer player)
         {
-            if (player == null) return;
-            // 从 active 列表里摘除
-            if (player.ActiveCue != null)
-            {
-                int key = player.ActiveCue.GetInstanceID();
-                if (_activeByCue.TryGetValue(key, out var list))
-                    list.Remove(player);
-            }
             _available.Push(player);
         }
     }

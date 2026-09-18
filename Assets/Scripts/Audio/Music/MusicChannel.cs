@@ -23,11 +23,13 @@ namespace ShinySTG.Audio
             _source.playOnAwake = false;
             _source.loop = true;
             _source.spatialBlend = 0f;
+            _source.priority = 32;  // BGM 优先于默认 SFX，减少声部不足时的虚拟化。
         }
 
         /// <summary>开始播放指定 track(立即切到目标音量)。</summary>
         public void Play(BgmTrack track, float volume)
         {
+            _source.Stop();
             CurrentTrack = track;
             TargetVolume = volume;
             _source.loop = track != null && track.Loop;
@@ -37,7 +39,7 @@ namespace ShinySTG.Audio
             _source.volume = volume;
             if (_source.clip != null)
             {
-                _source.time = track != null ? Mathf.Max(0f, track.StartTime) : 0f;
+                _source.time = track != null ? Mathf.Clamp(track.StartTime, 0f, Mathf.Max(0f, _source.clip.length - 0.001f)) : 0f;
                 _source.Play();
             }
         }

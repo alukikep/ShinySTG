@@ -5,7 +5,7 @@ namespace ShinySTG.Background
     /// <summary>仅控制背景镜头与速度；不修改战斗相机，不推进循环组件的时间。</summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-100)]
-    public sealed class StageBackgroundController : MonoBehaviour
+    public sealed partial class StageBackgroundController : MonoBehaviour
     {
         [SerializeField, Tooltip("本背景根节点之下的 CameraRig，不可指定本物体。")]
         Transform _cameraRig;
@@ -48,6 +48,10 @@ namespace ShinySTG.Background
             _initialFov = _backgroundCamera.fieldOfView;
             _initialSpeed = _strip.Speed;
             _initialPaused = _strip.IsPaused;
+            _initialStrip = _strip;
+            _initialContentActive = _strip.gameObject.activeSelf;
+            _initialClearColor = _backgroundCamera.backgroundColor;
+            _initialClearFlags = _backgroundCamera.clearFlags;
             _hasInitialState = true;
             return true;
         }
@@ -71,7 +75,7 @@ namespace ShinySTG.Background
             }
 
             CaptureInitialState();
-            CurrentPlayback?.Cancel();
+            CancelPlayback();
             CurrentPlayback = new BackgroundPlaybackHandle();
             _startPosition = _cameraRig.localPosition;
             _startRotation = _cameraRig.localRotation;
@@ -102,6 +106,7 @@ namespace ShinySTG.Background
 
         void Update()
         {
+            if (_switching) { TickSwitch(); return; }
             if (!IsTransitioning) return;
             if (!HasValidBindings())
             {
@@ -110,6 +115,7 @@ namespace ShinySTG.Background
                 return;
             }
             if (!_strip.isActiveAndEnabled || _strip.IsPaused || Time.deltaTime <= 0f) return;
+            if (_loopNodes != null) { TickLoop(Time.deltaTime); return; }
             _elapsed = Mathf.Min(_elapsed + Time.deltaTime, _duration);
             float progress = _elapsed >= _duration ? 1f : _curve.Evaluate(_elapsed / _duration);
             if (!Finite(progress))
@@ -140,12 +146,22 @@ namespace ShinySTG.Background
             if (Application.isPlaying && HasValidBindings() && CaptureInitialState()) _strip.Resume();
         }
 
-        public void CancelPlayback() => CurrentPlayback?.Cancel();
+        public void CancelPlayback()
+        {
+            CurrentPlayback?.Cancel();
+            _loopNodes = null;
+            _loopTime = 0;
+            _loopDuration = 0;
+            _loopEntering = false;
+            _switching = false;
+            SetFade(0f);
+        }
 
         public void ResetBackground()
         {
             if (!Application.isPlaying) return;
             CancelPlayback();
+            RestoreInitialContent();
             if (!HasValidBindings() || !CaptureInitialState())
             {
                 Debug.LogWarning("[Background] 引用无效，无法恢复初始状态。", this);
@@ -161,7 +177,12 @@ namespace ShinySTG.Background
         }
 
         void OnDisable() => CancelPlayback();
-        void OnDestroy() => CancelPlayback();
+        void OnDestroy()
+        {
+            CancelPlayback();
+            RestoreInitialContent();
+            if (_fadeCanvas != null) Destroy(_fadeCanvas.gameObject);
+        }
 
         bool HasValidBindings()
         {

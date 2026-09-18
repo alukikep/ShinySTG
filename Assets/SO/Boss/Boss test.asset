@@ -32,9 +32,11 @@ MonoBehaviour:
     WaitForCompletion: 1
     Actions:
     - rid: 6177227140901109760
+    - rid: 6177227161091440641
   DefeatActions:
     WaitForCompletion: 1
-    Actions: []
+    Actions:
+    - rid: 6177227147636375553
   CompleteActions:
     WaitForCompletion: 1
     Actions: []
@@ -91,3 +93,11 @@ MonoBehaviour:
     - rid: 6177227145319809029
       type: {class: ClearEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
       data: 
+    - rid: 6177227147636375553
+      type: {class: PlayBackgroundCueAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: fa3fa37bc1664014888346ed10715666, type: 2}
+    - rid: 6177227161091440641
+      type: {class: StartBackgroundLoopAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: c5749634185e694438ae0a27781c4c7a, type: 2}

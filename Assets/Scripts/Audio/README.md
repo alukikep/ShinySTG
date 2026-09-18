@@ -51,7 +51,13 @@
 - `Rule/Pitch Variation`：在指定范围内随机改变音高。
 - `Rule/Cooldown`：限制同一 cue 的最小触发间隔。
 
-高频命中或擦弹可从 `Cooldown=0.02~0.05`、`MaxVoices=2~4` 开始试听调整。
+### 高频声音合并
+
+使用 Cue 的 `Cooldown` 设置固定合并窗口：第一次有效请求立即播放，窗口内同一 Cue 的后续请求不再创建声部，也不会延长窗口、重启已有声音或在窗口结束后补播。多个敌人共用同一 Cue 时会一起合并；不同 Cue 互不影响。窗口使用不受游戏时间缩放影响的时间。
+
+目前敌机射击 `EenmyShot1` 使用 30 毫秒窗口，`Damage` 和 `Graze` 使用 40 毫秒窗口。这三个 Cue 同时使用 `Overflow=DropNewest`，并发满额时保留已有尾音。合并不会随事件数量提高音量，避免密集事件产生音量尖峰。
+
+试听时从 `Cooldown=0.02~0.05` 开始调整；设为 `0` 可关闭时间窗口合并。窗口越长，声音越稀疏；`MaxVoices` 太小时，即使窗口已结束，也可能因尾音仍占用声部而忽略新请求。单次重要提示和循环音不要直接套用这组配置，也无需额外添加 `Rule/Cooldown`。
 
 ### BgmTrack / BgmPlaylist
 
@@ -115,7 +121,7 @@ AudioMix.MuteAll(true);
 
 ### 高频音效糊成一片
 
-降低 `MaxVoices`，增加 `Cooldown`，必要时再添加 `Rule/Cooldown`。不要同时设置多个含义重复、数值差异很大的冷却配置。
+优先按上面的高频声音合并配置调整 `Cooldown`，需要保留尾音时使用 `Overflow=DropNewest`。不要同时叠加含义重复的 `Rule/Cooldown`，也不要仅靠降低 `MaxVoices` 反复截断声音。
 
 ### BGM 切换有咔哒声
 

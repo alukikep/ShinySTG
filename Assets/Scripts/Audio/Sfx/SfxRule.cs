@@ -129,6 +129,9 @@ namespace ShinySTG.Audio
         // key = SfxCue instance id,value = 下次允许播放的 Time.time
         static readonly Dictionary<int, float> _nextAllowedTime = new();
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetCooldowns() => _nextAllowedTime.Clear();
+
         public override SfxRequest Process(SfxRequest request)
         {
             if (request.Cue == null || MinInterval <= 0f) return request;
@@ -136,9 +139,8 @@ namespace ShinySTG.Audio
             float now = Time.unscaledTime;  // unscaledTime —— 不受 timeScale=0 暂停影响(暂停菜单不应继续节流)
             if (_nextAllowedTime.TryGetValue(key, out float next) && now < next)
             {
-                // 还在冷却 —— 不阻止播放(由 Pipeline 行为不合适),而是标记为 muted
-                // (Volume=0 是最简实现,AudioSource.PlayOneShot 会播但听不见)。
-                request.Volume = 0f;
+                // 拒绝的请求不能推迟下次允许播放的时间。
+                return null;
             }
             _nextAllowedTime[key] = now + MinInterval;
             return request;

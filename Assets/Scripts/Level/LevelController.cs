@@ -34,6 +34,31 @@ namespace ShinySTG.Level
         public event Action<LevelDefinition> OnLevelComplete;
         /// <summary>关卡时间点请求背景演出，由可选的背景绑定接收。</summary>
         public event Action<ShinySTG.Background.BackgroundCue> OnBackgroundCueRequested;
+        public event Action<ShinySTG.Background.BackgroundLoopCue> OnBackgroundLoopRequested;
+
+        public void RequestBackgroundLoop(LevelRuntime runtime, ShinySTG.Background.BackgroundLoopCue cue)
+        {
+            if (!Application.isPlaying || !_running || runtime == null || runtime != _runtime) return;
+            if (OnBackgroundLoopRequested == null)
+            {
+                Debug.LogWarning("[Level] 循环镜头条目未找到启用的 LevelBackgroundBinding。", this);
+                return;
+            }
+            OnBackgroundLoopRequested.Invoke(cue);
+        }
+        public event Action<ShinySTG.Background.BackgroundDefinition, float, float> OnBackgroundSwitchRequested;
+
+        public void RequestBackgroundSwitch(LevelRuntime runtime, ShinySTG.Background.BackgroundDefinition definition,
+            float fadeOut, float fadeIn)
+        {
+            if (!Application.isPlaying || !_running || runtime == null || runtime != _runtime) return;
+            if (OnBackgroundSwitchRequested == null)
+            {
+                Debug.LogWarning("[Level] 换景条目未找到启用的 LevelBackgroundBinding。", this);
+                return;
+            }
+            OnBackgroundSwitchRequested.Invoke(definition, fadeOut, fadeIn);
+        }
 
         public void RequestBackgroundCue(LevelRuntime runtime, ShinySTG.Background.BackgroundCue cue)
         {

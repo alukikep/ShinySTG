@@ -1,6 +1,6 @@
 # 背景系统
 
-背景与战斗分别由透视相机和固定正交相机绘制，通过 Background3D 层隔离。背景镜头和布景不能修改战斗坐标、BoundsService 或判定。当前支持内置渲染管线的双相机叠加、静态路段循环、Cue 过渡与关卡事件绑定。
+背景与战斗分别由透视相机和固定正交相机绘制，通过 Background3D 层隔离。背景镜头和布景不能修改战斗坐标、BoundsService 或判定。当前支持内置渲染管线的双相机叠加、静态路段循环、Cue 过渡、背景专属材质效果、Prefab 换景与关卡事件绑定。
 
 ## 职责与控制权
 
@@ -17,6 +17,10 @@
 
 禁用 Controller 取消当前播放，但不停止独立的循环组件；禁用整个背景根节点才会同时停止滚动。引用失效使正在播放的句柄失败。运行时引用保持稳定，不支持中途改绑后继续沿用原快照。
 
+## 换景生命周期
+
+BackgroundDefinition 描述完整循环布景 Prefab 与初始镜头。StageBackgroundController.SwitchBackground 使用背景相机独立遮罩执行淡出、替换运行时实例、应用新镜头和淡入；战斗相机随后绘制，因此换景遮罩不影响战斗画面。取消保留已切换状态，重置销毁临时实例并恢复初始背景。配置和实例不写回共享 Prefab，Prefab 必须符合静态几何、Background3D 层和唯一循环组件约束。
+
 ## 关卡接入
 
 PlayBackgroundCueEntry 是一次性时间点指令，经 LevelController.RequestBackgroundCue 广播，由同物体上的 LevelBackgroundBinding 转发给显式绑定的背景。请求校验真实 Runtime，编辑器预览、旧 Runtime 和已结束关卡不会触发背景。
@@ -30,3 +34,11 @@ PlayBackgroundCueEntry 是一次性时间点指令，经 LevelController.Request
 - [level](./arch-level.md)：负责时间点触发与关卡生命周期，不逐帧驱动背景动画。
 - [game-actions](./arch-game-actions.md)：背景动作沿用可等待、可取消的契约，外层 WaitForCompletion 控制宿主等待。
 - [操作说明](../../Assets/Scripts/Background/README.md)：场景搭建、Cue 配置、关卡绑定与验收步骤。
+
+## 循环镜头序列
+
+BackgroundLoopCue 保存有序姿态节点，StageBackgroundController.PlayLoop 深复制节点与曲线后接管播放。首次进入节点 0 使用独立进入时间与曲线，随后依次停留、过渡至下一节点，末尾回到节点 0；各节点的过渡时间属于目标节点。循环使用取模时间定位，每帧最多扫描一轮，避免短节点和长帧导致无界追帧。单节点进入后保持姿态；空列表、非法参数或整轮总时长为零的请求失败且不替换已有播放。
+
+循环与 Cue、换景共享唯一播放句柄和控制权，遵循相同暂停、取消、重置与引用失效规则。循环不自然完成，被接管时旧句柄取消，新请求从实际镜头状态继续。循环目标滚动速度在首次进入期间应用，随后保持。
+
+PlayBackgroundLoopEntry 经关卡请求事件和 LevelBackgroundBinding 启动循环。StartBackgroundLoopAction 是启动命令，成功后立即完成，背景控制器继续持有播放；动作 Dispose 不取消已交付的循环，后续镜头请求或关卡生命周期负责结束它。启动失败仍走 GameActionRunner 的失败路径；持续播放期间的失败由背景句柄与控制器日志报告，不回传已完成动作。

@@ -20,8 +20,8 @@ namespace ShinySTG.Audio
     ///   - DefaultPitch    : 默认 pitch(可被调用方 pitch 临时覆盖)
     ///   - Loop            : 是否循环(用于"机枪持续声"、"引擎轰鸣"这类长音)
     ///   - Bus             : 路由到哪个总线(Master/Bgm/Sfx/UI/...);空 = Master
-    ///   - Priority        : 路由优先级(数值越大越优先,池满时低优先级先丢;默认 128)
-    ///   - MaxVoices       : 同 cue 同时最多 voice 数,0 = 不限;超出时丢最老
+    ///   - Priority        : 路由优先级(数值越小越优先，Unity 声部不足时低优先级先虚拟化;默认 128)
+    ///   - MaxVoices       : 同 cue 同时最多 voice 数,0 = 不限;超出时按 Overflow 处理
     ///   - Cooldown        : 同 cue 全局最小间隔(秒);0 = 无冷却(防"哒哒哒哒"一片)
     ///   - Rules           : 处理规则数组(随机抽 clip / pitch 抖动 / ...),按数组顺序串行执行
     /// </summary>
@@ -42,7 +42,7 @@ namespace ShinySTG.Audio
         public float DefaultPitch = 1f;
 
         [Tooltip("是否循环(用于「机枪持续声」「引擎轰鸣」这类长音)。\n" +
-                 "循环音调用方需自己调 AudioMix.StopLooped(handle) 停止。")]
+                 "循环音调用方需自己调 AudioMix.StopSfx(cue) 停止。")]
         public bool Loop = false;
 
         [Header("Routing")]
@@ -50,15 +50,20 @@ namespace ShinySTG.Audio
         public AudioBus Bus;
 
         [Range(0, 255)]
-        [Tooltip("路由优先级(数值越大越优先,池满时低优先级先丢)。\n" +
-                 "默认 128。建议:UI=200,玩家射击=160,敌人爆炸=140,环境音=80。")]
+        [Tooltip("路由优先级(数值越小越优先，Unity 声部不足时低优先级先虚拟化)。\n" +
+                 "默认 128。建议:UI=64,玩家射击=96,敌人爆炸=128,环境音=192。")]
         public int Priority = 128;
 
         [Header("Throttling")]
         [Tooltip("同 cue 同时最多 voice 数。0 = 不限。\n" +
                  "STG 高弹量场景必备 —— 默认 4 可防止「哒哒哒哒」一片。\n" +
-                 "超出时丢最老的 voice(保持最新一次播放)。")]
+                 "超出时按 Overflow 策略处理。")]
         public int MaxVoices = 4;
+
+        public enum VoiceOverflow { ReplaceOldest = 0, DropNewest = 1 }
+
+        [Tooltip("ReplaceOldest：停止最老声音；DropNewest：忽略新请求，保留已有声音的尾音。")]
+        public VoiceOverflow Overflow = VoiceOverflow.ReplaceOldest;
 
         [Tooltip("同 cue 全局最小播放间隔(秒)。0 = 无冷却。\n" +
                  "适合「密集小事件」(子弹命中、连击)防止声音糊成一片。")]

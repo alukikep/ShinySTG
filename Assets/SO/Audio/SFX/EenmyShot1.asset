@@ -20,7 +20,8 @@ MonoBehaviour:
   Bus: {fileID: 0}
   Priority: 128
   MaxVoices: 4
-  Cooldown: 0
+  Overflow: 1
+  Cooldown: 0.03
   Rules: []
   references:
     version: 2

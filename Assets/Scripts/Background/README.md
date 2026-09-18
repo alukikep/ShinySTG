@@ -1,5 +1,20 @@
 # 3D 背景系统
 
+## 多姿态循环镜头
+
+Project 右键 `Create > STG > Background > Loop Cue` 创建循环配置。在 Nodes 中增删、拖动排序镜头节点；各节点的 Duration 表示从前一节点到达此节点的时间，Hold Duration 表示到达后停留时间。Entry Duration / Entry Easing 仅用于首次从当前镜头进入节点 0，同时将背景滚动速度过渡到 Scroll Speed。
+
+播放顺序为“当前镜头 → A → B → C → A → …”。末尾回到 A 使用 A 自身的 Duration / Easing。左右摆动用两个节点；需要原路返回时可排列为 A、B、C、B。位置、角度和 FOV 都按节点过渡，旋转走最短路径。时间允许为 0，但整轮总时长必须大于 0；单节点进入后保持该姿态。空列表或非法参数不会打断已有播放。
+
+- 关卡时间轴添加 `背景/Play Background Loop` 并指定 Cue，触发一次即可持续播放。
+- Boss 动作序列添加 `Game Action/Start Background Loop`。动作启动成功即完成，循环由控制器持有；如果紧接另一条镜头动作，它会立即接管。需要持续一段时间时，在后续时间点或阶段再调用新镜头。
+- 直接代码调用 `StageBackgroundController.PlayLoop(cue)`，返回的句柄持续 Playing，直到取消或失败。句柄 Cancel 仅终止本次播放。
+- Play 模式下，在控制器 Inspector 指定 Loop Cue，点击 Play Loop；Playback Kind 显示当前是 Cue、Loop 还是 Switch。
+
+普通 Cue、另一段循环或换景都会取消旧循环，从当前画面接管。暂停冻结进度，恢复后继续；Boss 阻塞时间轴不暂停镜头。关卡结束停止播放并暂停背景，重开恢复初始状态。配置在启动时深复制，运行中编辑资产不改变已启动循环。
+
+验收建议：使用三个不同位置/角度的节点，分别设置不同过渡时间和停留时间，观察完整循环及末尾回首节点；在进入、移动、停留时分别测试暂停和接管；检查 Boss 后续动作继续执行、关卡重开复位、零时长节点和长帧不锁死。通过 Unity 默认序列化 Inspector 编辑列表，支持 Undo 和资产保存。镜头最大范围仍需在 Game 视图检查，避免露出布景边缘。
+
 提供独立于战斗相机的三维背景、直线循环布景、Cue 过渡、播放句柄与关卡绑定。Boss Encounter 可通过 Play Background Cue 动作等待背景过渡。
 
 职责和扩展边界见 [背景架构](../../../docs/architecture/arch-background.md)。首次配置按下列章节顺序操作。
@@ -54,7 +69,7 @@
 
 路段保留 Prefab 连接，生成实例的所有子物体覆盖为 Background3D 层并取消 Static 标记，因为运行时会移动。源 Prefab 不被修改。造型更新可直接修改源 Prefab；若增添新子物体，需再次生成以统一层与 Static 标记，改变长度也需重新生成。禁止后续给这些循环 Prefab 添加本版不支持的可变状态组件。
 
-长度由明确的拼接约定决定，不从树枝等装饰物包围盒自动估算。工具校验结构和数值，但不能判定美术接缝是否吻合或镜头是否露出边缘；需在 Game 视图检查。起始中心为 Rear Edge 减半段长度，后续每段相隔一段长度；增加数量主要扩展前方覆盖，Rear Edge 用于保证回收发生在视野后方。目标循环组件须为普通场景对象，不能直接修改 Prefab 实例中的循环容器。
+长度由明确的拼接约定决定，不从树枝等装饰物包围盒自动估算。工具校验结构和数值，但不能判定美术接缝是否吻合或镜头是否露出边缘；需在 Game 视图检查。起始中心为 Rear Edge 减半段长度，后续每段相隔一段长度；增加数量主要扩展前方覆盖，Rear Edge 用于保证回收发生在视野后方。目标支持普通场景对象，以及 Prefab 编辑模式中的本地循环容器。场景实例、嵌套实例和 Variant 的继承容器需打开原始 Prefab 编辑，避免删除继承内容。
 
 源码：[BackgroundPrefabBuilder.cs](./Editor/BackgroundPrefabBuilder.cs)。
 
@@ -128,3 +143,64 @@
 验收：开场镜头完成后才开始战斗；阶段恢复镜头后再进入战斗；阻塞时间轴时背景正常运动；中途重开恢复初始状态；手动 Cue 打断时旧序列报告失败且新 Cue 继续；禁用背景或移除绑定后不无限等待；CompleteActions 在 Boss 销毁后仍可播放。失败测试会有预期的 Console 异常日志。运行时配置不应在播放中修改。
 
 源码：[PlayBackgroundCueAction.cs](../GameActions/PlayBackgroundCueAction.cs)。
+
+## 背景专属距离雾
+
+在 Project 右键 Create > Material，命名 BackgroundFog，Shader 选择 `ShinySTG/Background/Distance Fog Unlit`。先以 Fog Start=35、Fog End=100、Fog Strength=1 测试；Fog Color 与 BackgroundCamera 的 Background 颜色设为相同（默认原型约为 RGB 0.06/0.08/0.12），相机使用 Solid Color。Fog End 必须大于 Fog Start；Shader 对错误范围有防除零保护，但不代表错误配置能产生自然过渡。
+
+选中 LoopingBackgroundContent，打开 `STG > Background > Apply Fog Material`，指定新材质，点击 Apply To Background Meshes。工具替换所选层级下 Background3D 层的所有 MeshRenderer 材质槽（包含非激活对象），保存场景。应用前可通过缩小选择范围只处理道路或方柱；多贴图场景应分别制作材质并手动赋值。旧材质资产不会改变，批量赋值可一次 Undo；Prefab 实例记录材质覆盖，源 Prefab 未被修改。若之后重新从路段 Prefab 生成布景，请在源 Prefab 手动配置雾材质，或重新执行批量赋值。
+
+距离按当前绘制相机到像素世界位置计算，远处渐变为雾色。Shader 不读取全局雾，工具不写 RenderSettings、战斗材质或相机。隔离依赖只把材质赋给背景；手动将此材质赋给玩家也会产生雾。无需给循环段添加脚本或每帧更新材质，循环复用无新增可变状态。
+
+当前为不透明无光照材质，支持主贴图、Tint、UV Tiling/Offset；不保留 Standard 材质的灯光、法线、金属度、阴影效果，不支持透明云、树叶裁切或 SpriteRenderer。它不是屏幕后处理，不会给天空空白区域叠雾，也不能自动隐藏尚在近处回收的路段。Fog Strength=0 用于对照；不同雾色需要同步背景相机底色，当前 Cue 不驱动雾参数。
+
+验收：近处清楚、远处渐隐；将 Strength 设为 0/1 对比，并确认玩家、弹幕、UI 不变；播放转向 Cue 检查露边；检查循环接缝、重开和暂停；编辑模式检查 Undo/Redo、保存重开后的材质与 Prefab 覆盖。最终需在 Unity Console 检查 Shader 编译无错误且模型不呈粉色。Play 模式修改材质资产会保存，请在退出后确认参数。
+
+源码：[BackgroundDistanceFog.shader](../../Shaders/BackgroundDistanceFog.shader)、[BackgroundFogMaterialWindow.cs](./Editor/BackgroundFogMaterialWindow.cs)。
+
+## 背景纹理 UV 滚动
+
+现有背景雾材质新增 UV Speed：X/Y 分别为每秒偏移的贴图周期，Z/W 不使用，默认 0 保持静止。设置 Texture 为有明显纹理的无缝贴图，在纹理导入设置中将 Wrap Mode 设为 Repeat 并 Apply。建议先设 X=0、Y=0.1；负值反向。方向取决于模型 UV，白色贴图看不出运动。材质的原始 Tiling/Offset 仍然有效。
+
+无需新增组件。LoopingBackgroundStrip 初始化时收集自身层级下 Background3D 层 MeshRenderer 的背景雾材质槽。纹理时间由循环组件推进，通过 MaterialPropertyBlock 更新每槽偏移，不修改共享材质，不使用 Shader 全局时间。所有路段共享播放相位，回收路段不会单独归零；不同材质可设置不同速度。速度采用“累计时间 × 材质速度”，Play 中改变 UV Speed 会重新计算相位，可能跳变；建议退出 Play 后配置，它不是平滑变速接口。
+
+道路 Speed=0 时 UV 仍播放。背景 Pause、禁用循环组件、禁用背景根节点以及 Time.timeScale=0 均冻结纹理；Resume 从原相位继续；循环组件 Reset、控制器完整 Reset 和关卡重开均恢复基础材质 Offset。关卡结束的 Pause 同时停止纹理。单独禁用镜头控制器仍允许道路和纹理继续。
+
+使用 Repeat 是必要条件：运行时以完整周期取模避免长时间浮点精度下降，不适合 Clamp/Mirror。每个材质槽由本系统维护 UV 偏移；保留读取到的其它属性，但不要同时用其它脚本驱动同一网格的属性块，尤其 Renderer 级动画属性可能被每槽覆盖遮蔽。运行中不支持替换材质、增删网格或改变 Layer；修改后退出并重新进入 Play 以重新收集。范围只覆盖循环组件下的背景网格，外部远景和 SpriteRenderer 不自动滚动。
+
+验收：Y=0.1 可见持续流动，负值反向，两个材质速度不同仍各自运动；Speed=0 时纹理继续；暂停、恢复、Cue 过渡、关卡结束和重开均按上述规则工作；保持初始材质 Offset，重开第一帧恢复同一图案位置；雾效、玩家和弹幕不变。材质参数在 Play 中修改会持久保存。需在 Unity 确认 Shader 无编译错误且渲染正常。
+
+## 背景切换与淡入淡出
+
+BackgroundDefinition 的“覆盖背景底色”默认关闭：换景保留当前相机底色和清屏模式，旧配置中保存的 Clear Color 不会自动应用。需要改变底色时显式开启，换景将应用该颜色并设为 Solid Color。Inspector 提示与材质雾色的差异，不自动修改材质。完整重置仍恢复启动时的底色与清屏模式。修改配置后需重新触发换景。
+
+已验收的 Prefab 生成工具可用于制作换景布景：每个换景 Prefab 根节点必须包含唯一且启用的 `LoopingBackgroundStrip`，至少两个路段，所有物体使用 Background3D 层；不能包含相机、灯光、其它脚本、粒子或碰撞体。Project 中右键 `Create > STG > Background > Definition` 创建配置，指定 Content Prefab、镜头位置/角度、FOV、滚动速度和相机底色。
+
+在 `StageBackgroundController` Inspector 的 Play 模式中拖入 `Next Background`，填写 Fade Out/Fade In 秒数，点击 Switch Background。背景相机先淡到黑色，再实例化新布景、应用镜头/FOV/速度和底色，最后淡入；遮罩由背景相机绘制，战斗相机随后绘制，因此玩家、弹幕和 UI 不会被遮住。淡出和淡入各为非负秒数，设为 0 可立即完成对应阶段；建议先使用 1 秒。
+
+切换时新布景为运行时实例，不写回 Prefab 或场景。旧初始布景暂时隐藏，旧的临时布景在下一次换景或重置时销毁；Reset Entire Background 恢复初始布景、镜头、FOV、速度、相机底色及路段状态。Cancel Playback 会终止遮罩并保留已切换的布景/镜头，不回滚到旧场景。暂停时切换计时停止，Time.timeScale=0 同样停止；切换中的新/旧播放仍遵循当前独立句柄规则。
+
+配置资产被修改时保留字段快照；运行时不替换材质或修改共享 Prefab。换入布景的 LoopingBackgroundStrip 会自行收集 UV 播放状态；换景前确保其材质、层和循环布局已在 Prefab 内配置。换景 Prefab 不应包含 `StageBackgroundController`、背景相机或过渡 Canvas。工具会拒绝层级、组件和布局不符合要求的配置。
+
+验收：玩家/弹幕/UI 在淡出、全黑、淡入全程可见；切换后新道路循环、UV 滚动、雾效和 Cue 可用；暂停/恢复保持进度；取消不留下遮罩；完整重置回到初始布景；重复切换不增长场景对象；关卡重开恢复初始背景。请在 Play 后观察 Hierarchy 的运行时实例，退出 Play 后确认 Prefab 和场景无意外持久化。当前仅支持单背景相机和单遮罩，不支持两套背景交叉溶解、透明云层；关卡与 Boss 自动换景配置见下文。
+
+源码：[BackgroundDefinition.cs](./BackgroundDefinition.cs)、[StageBackgroundController.Transition.cs](./StageBackgroundController.Transition.cs)。
+
+
+### 在 Prefab 编辑模式替换路段
+
+双击 Project 中的完整背景 Prefab，在 Prefab Mode 的 Hierarchy 选中包含 LoopingBackgroundStrip 的物体，打开 Build Loop From Prefab。窗口已打开时点击 Use Selected Strip 更新目标，再选择路段并生成。保存 Prefab 后返回场景；已有背景实例及 BackgroundDefinition 引用继续使用同一个资产。
+
+工具修改当前 Prefab Stage 的内容并标记 dirty，不直接覆盖 Project 资产。Auto Save 开启时由 Unity 自动保存；建议关闭 Auto Save 后测试生成、一次 Undo、Redo，再保存并重新打开确认路段数量、布局和嵌套 Prefab 连接。路段源 Prefab 不会被修改。工具禁止修改其它场景残留目标，并拒绝当前背景自身或依赖当前背景的路段，避免循环 Prefab 引用。
+
+## 关卡与 Boss 自动换景
+
+保持当前 LevelBackgroundBinding 配置。关卡 Entries 添加 `背景/Switch Background`，指定 BackgroundDefinition、TriggerTime、FadeOut、FadeIn；Duration 保持 0。条目始终只触发一次，不等待、不阻塞刷怪；相同时间按条目数组顺序执行，后发起的换景/Cue 接管前者。
+
+BossEncounter 的 StartActions 或阶段 EnterActions 中添加 `Game Action/Switch Background`，指定背景及淡出淡入时间，开启外层 WaitForCompletion 才会在淡入完成后继续阶段战斗。BlockTimeline 可开启，已启动换景仍随背景缩放时间推进。动作本身按实际句柄等待，不用淡出加淡入时长猜测；换景保留全遮罩帧，时长为 0 也非同步完成。
+
+缺绑定、无效配置、外部接管或取消将使动作序列记录 Failure 并终止后续动作；Encounter 按原规则将失败视为等待结束，不自动终止整场遭遇。Dispose 只取消自身句柄，不能取消新播放。取消后遮罩由控制器下次 Update 清除；关卡结束或重开直接调用统一取消/重置。编辑模式预览跳过，Play 中预览 Runtime 被拒绝。旧场景/资产无需迁移，新功能需显式添加条目或动作。
+
+验收：第 5 秒自动换景且敌人继续生成；Boss 等淡入完成后开战；换景中暂停/恢复、重开、结束均正常；Cue 接管后旧动作失败但新播放继续；重复重开不重复订阅。测试无效配置时 Console 记录失败属于预期。背景底色覆盖开关仍默认关闭。
+
+源码：[SwitchBackgroundEntry.cs](../Level/SpawnEntries/SwitchBackgroundEntry.cs)、[SwitchBackgroundAction.cs](../GameActions/SwitchBackgroundAction.cs)。

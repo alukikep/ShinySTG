@@ -19,6 +19,8 @@ namespace ShinySTG.Audio
         float _endTime;        // PlayOneShot 不支持时长查询,用 clip.length / pitch 估算
         Transform _followTarget;
         Vector3 _followOffset;
+        bool _isActive;
+        internal int ActiveCueId { get; private set; }
 
         /// <summary>当前正在播放的 cue(供 SfxRouter 做同 cue voice 数限制)。</summary>
         public SfxCue ActiveCue => _activeRequest?.Cue;
@@ -40,6 +42,8 @@ namespace ShinySTG.Audio
         {
             _owner = owner;
             _activeRequest = req;
+            ActiveCueId = req.Cue.GetInstanceID();
+            _isActive = true;
             gameObject.SetActive(true);
 
             _source.clip = req.Clip;
@@ -59,7 +63,7 @@ namespace ShinySTG.Audio
             if (req.Parent != null)
             {
                 _followTarget = req.Parent;
-                _followOffset = transform.position - req.Parent.position;
+                _followOffset = req.Position.HasValue ? (Vector3)req.Position.Value - req.Parent.position : Vector3.zero;
                 transform.position = req.Parent.position + _followOffset;
             }
             else if (req.Position.HasValue)
@@ -70,7 +74,7 @@ namespace ShinySTG.Audio
             else
             {
                 _followTarget = null;
-                // 保持当前位置(通常是 AudioSystem 根位置)
+                transform.localPosition = Vector3.zero;
             }
 
             _source.Play();
@@ -82,12 +86,12 @@ namespace ShinySTG.Audio
         /// <summary>由外部调用:停止这个 voice(供循环音停止用)。</summary>
         public void StopImmediate()
         {
-            _source.Stop();
             Release();
         }
 
         void Update()
         {
+            if (!_isActive || AudioListener.pause) return;
             // 跟随 Parent(敌人死亡音等需要跟随移动的场景)
             if (_followTarget != null)
                 transform.position = _followTarget.position + _followOffset;
@@ -99,12 +103,26 @@ namespace ShinySTG.Audio
 
         void Release()
         {
+            if (!_isActive) return;
+            _isActive = false;
+            var owner = _owner;
+            owner?.Unregister(this);
             _source.Stop();
             _source.clip = null;
+            _source.loop = false;
+            _source.volume = 1f;
+            _source.pitch = 1f;
+            _source.priority = 128;
+            _source.outputAudioMixerGroup = null;
             _followTarget = null;
+            _followOffset = Vector3.zero;
+            _endTime = 0f;
             _activeRequest = null;
+            ActiveCueId = 0;
+            _owner = null;
+            transform.localPosition = Vector3.zero;
             gameObject.SetActive(false);
-            _owner?.Return(this);
+            owner?.Return(this);
         }
     }
 }

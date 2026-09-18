@@ -7,7 +7,11 @@ namespace ShinySTG.Background.Editor
     internal sealed class StageBackgroundControllerEditor : UnityEditor.Editor
     {
         BackgroundCue _previewCue;
+        BackgroundLoopCue _previewLoop;
         BackgroundPlaybackHandle _lastAttempt;
+        BackgroundDefinition _previewBackground;
+        float _fadeOut = 1f;
+        float _fadeIn = 1f;
 
         public override bool RequiresConstantRepaint() => Application.isPlaying;
 
@@ -20,6 +24,17 @@ namespace ShinySTG.Background.Editor
             var controller = (StageBackgroundController)target;
             using (new EditorGUI.DisabledScope(!Application.isPlaying || !controller.isActiveAndEnabled || _previewCue == null))
                 if (GUILayout.Button("Play Cue")) _lastAttempt = controller.Play(_previewCue);
+            EditorGUILayout.Space();
+            _previewLoop = (BackgroundLoopCue)EditorGUILayout.ObjectField("Loop Cue", _previewLoop, typeof(BackgroundLoopCue), false);
+            using (new EditorGUI.DisabledScope(!Application.isPlaying || !controller.isActiveAndEnabled || _previewLoop == null))
+                if (GUILayout.Button("Play Loop")) _lastAttempt = controller.PlayLoop(_previewLoop);
+            EditorGUILayout.Space();
+            _previewBackground = (BackgroundDefinition)EditorGUILayout.ObjectField("Next Background", _previewBackground, typeof(BackgroundDefinition), false);
+            _fadeOut = EditorGUILayout.FloatField("Fade Out Seconds", _fadeOut);
+            _fadeIn = EditorGUILayout.FloatField("Fade In Seconds", _fadeIn);
+            using (new EditorGUI.DisabledScope(!Application.isPlaying || !controller.isActiveAndEnabled || _previewBackground == null))
+                if (GUILayout.Button("Switch Background"))
+                    _lastAttempt = controller.SwitchBackground(_previewBackground, _fadeOut, _fadeIn);
             using (new EditorGUI.DisabledScope(!Application.isPlaying))
             {
                 if (GUILayout.Button(controller.IsPaused ? "Resume Background" : "Pause Background"))
@@ -30,6 +45,7 @@ namespace ShinySTG.Background.Editor
                 if (GUILayout.Button("Reset Entire Background")) controller.ResetBackground();
             }
             EditorGUILayout.LabelField("Playback", controller.CurrentPlayback?.Status.ToString() ?? "Idle");
+            EditorGUILayout.LabelField("Playback Kind", controller.PlaybackKind);
             EditorGUILayout.LabelField("Paused", controller.IsPaused ? "Yes" : "No");
             if (_lastAttempt?.Failure != null)
                 EditorGUILayout.HelpBox(_lastAttempt.Failure, MessageType.Warning);

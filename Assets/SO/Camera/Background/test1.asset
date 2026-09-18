@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42a383fdd7564da4aaa236f2a0e0a024, type: 3}
+  m_Name: test1
+  m_EditorClassIdentifier: 
+  ContentPrefab: {fileID: 2323440422328612082, guid: eedc046dbed8a4942af5d91752da8361, type: 3}
+  CameraPosition: {x: 0, y: 8, z: -10}
+  CameraEulerAngles: {x: 30, y: 0, z: 0}
+  FieldOfView: 50
+  ScrollSpeed: 8
+  OverrideClearColor: 0
+  ClearColor: {r: 1, g: 1, b: 1, a: 1}
