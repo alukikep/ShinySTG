@@ -108,15 +108,16 @@ namespace ShinySTG.Player
                 t.position = Vector3.Lerp(t.position, target, FollowLerp);
 
                 // 开火:仅在按住时 tick cooldown + FireGroup
-                if (fireHeld
+                if (fireHeld && BulletPool.Instance != null
                     && OptionFirePatterns != null && i < OptionFirePatterns.Length
                     && OptionFirePatterns[i] != null)
                 {
                     if (i >= _fireCooldowns.Count) _fireCooldowns.Add(0f);
-                    _fireCooldowns[i] -= Time.deltaTime;
-                    if (_fireCooldowns[i] <= 0f)
+                    float cooldown = _fireCooldowns[i];
+                    int bursts = FireCadence.Tick(ref cooldown, OptionFireRate, Time.deltaTime);
+                    _fireCooldowns[i] = cooldown;
+                    for (int burst = 0; burst < bursts; burst++)
                     {
-                        _fireCooldowns[i] = 1f / Mathf.Max(0.0001f, OptionFireRate);
                         // 子机弹阵营 = 玩家阵营(共用 Player.Instance.Hitbox.Team)
                         var ownerHb = Player.Instance?.Hitbox;
                         BulletPool.Instance.FireGroup(OptionFirePatterns[i], t.position, 0f, ownerHb);

@@ -12,12 +12,14 @@ public class ArcFirePattern : FirePattern
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
+        if (pool == null || Count <= 0) return;
         // position 转本地变量再传 ref,让 Base.PositionOffset 在 Resolver 入口处叠加。
         Vector2 from = position;
         // 中线方向由 FireExtensions pipeline 解析(空数组 → fallback 270° + rotationRad,等价旧版 normal)
         // 取 BulletPool 维护的 per-FireExtension fireCount 字典 → 让累加型模块拿到本批开火序号。
-        var fireCountMap = pool?.GetFireExtensionFireCounts();
-        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(FireExtensions, ref from, rotationRad, fireCountMap);
+        var extensions = pool.GetRuntimeFireExtensions(FireExtensions);
+        var fireCountMap = pool?.GetRuntimeFireCounts(FireExtensions);
+        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(extensions, ref from, rotationRad, fireCountMap);
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
 
         if (Count <= 1)
@@ -43,5 +45,5 @@ public class ArcFirePattern : FirePattern
         SpawnBullet(pool, pos, rad, Speed, AngularSpeed, Damage, team, extraModifiers);
     }
 
-    public override int GetFireCount() => Count;
+    public override int GetFireCount() => Mathf.Max(0, Count);
 }

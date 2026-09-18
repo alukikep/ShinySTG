@@ -15,6 +15,7 @@ public class CompositeFirePattern : FirePattern
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
+        if (pool == null || Children == null) return;
         // 透传 extras 给所有子 pattern;每个 child 自己会跟自己的 ModifierPrefabs 合并。
         foreach (var c in Children)
         {

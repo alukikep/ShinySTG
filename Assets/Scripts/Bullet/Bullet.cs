@@ -28,8 +28,13 @@ public class Bullet : MonoBehaviour
     [HideInInspector] public float FogDuration;         // 雾化总时长(0 = 不雾化)
     [HideInInspector] public SpawnFogConfig FogCfg;     // 雾化配置引用(只读,SO 不需 Clone)
     [HideInInspector] public bool  IsFogged => FogDuration > 0f && FogElapsed < FogDuration;
-    [HideInInspector] public Vector3 _baseLocalScale;   // prefab 美术缩放基准(Init 时从 transform 读一次,典型 0.28)
+    [HideInInspector] public Vector3 _baseLocalScale;   // prefab 美术缩放基准（首次初始化时捕获）
     MaterialPropertyBlock _fogMpb;                      // 雾化期 MPB(懒分配,与 BulletColorModifier 不冲突)
+
+    MaterialPropertyBlock _initialPropertyBlock;
+    bool _baselineCaptured;
+    bool _fogActive;
+    public uint SpawnVersion { get; private set; }
 
     [Header("Combat")]
     [Tooltip("子弹命中敌人时的伤害值。由 FirePattern.Damage 在 pool.Get 时写入。\n" +
@@ -72,6 +77,42 @@ public class Bullet : MonoBehaviour
         //   ★ 不会破坏 batching:STG/BulletTint 的 _TintColor 走 [PerRendererData],MPB 友好。
         //   ★ 不会污染 prefab:这里改的是 runtime 实例的 sharedMaterial,prefab 源资产不动。
         EnsureTintCompatibleMaterial();
+        CaptureBaseline();
+    }
+
+    void CaptureBaseline()
+    {
+        if (_baselineCaptured) return;
+        if (Hitbox == null) Hitbox = GetComponent<HitboxComponent>();
+        if (Renderer == null) Renderer = GetComponentInChildren<SpriteRenderer>(true);
+        _baselineCaptured = true;
+        _baseLocalScale = transform.localScale;
+        if (Renderer != null)
+        {
+            _initialPropertyBlock = new MaterialPropertyBlock();
+            Renderer.GetPropertyBlock(_initialPropertyBlock);
+        }
+    }
+
+    /// <summary>回收和初始化共用，恢复出生前视觉配置并解除订阅。</summary>
+    public void ResetForPool()
+    {
+        CaptureBaseline();
+        DetachSignalTriggers();
+        ClearModifiers();
+        if (_fogActive) ClearFogVisual();
+        _fogActive = false;
+        transform.localScale = _baseLocalScale;
+        if (Renderer != null) Renderer.SetPropertyBlock(_initialPropertyBlock);
+        FogCfg = null;
+        FogElapsed = FogDuration = Lifetime = 0f;
+        Speed = AngularSpeed = SteerAngle = Damage = 0f;
+        HasGrazed = false;
+        if (Hitbox != null)
+        {
+            Hitbox.IsFogged = false;
+            Hitbox.Team = CollisionTeam.Neutral;
+        }
     }
 
     /// <summary>
@@ -191,6 +232,8 @@ public class Bullet : MonoBehaviour
     public void Init(Vector2 position, float fireAngleRad, float speed, float angularSpeed,
                      float damage, CollisionTeam ownerTeam, SpawnFogConfig spawnFog = null)
     {
+        ResetForPool();
+        unchecked { SpawnVersion++; }
         transform.position = position;
         // 视觉补偿:美术贴图默认尖头朝 +Y(朝上),代码约定 SteerAngle=0 指向 +X(朝右)。
         // 因此需要 -90° 的旋转偏移,才能让贴图尖头对齐飞行方向(否则向下发射时子弹会变横)。
@@ -220,12 +263,9 @@ public class Bullet : MonoBehaviour
         FogElapsed  = 0f;
         FogCfg      = spawnFog;
         FogDuration = (spawnFog != null) ? Mathf.Max(0f, spawnFog.Duration) : 0f;
-        // ★ 缓存 prefab 美术缩放基准(从 transform 读,首次 spawn 时是 prefab 里的 0.28;
-        //   池复用时是上次的 _baseLocalScale,保证不受之前雾化期 * fogScale 的影响)。
-        _baseLocalScale = transform.localScale;
-        // 兜底:以防 prefab 美术缩放本身不是 (0.28, 0.28, 0.28),统一用 prefab 实际值。
-        // Init 时刻 transform.localScale 来自 prefab 实例,完全反映 prefab 美术基准。
+        transform.localScale = _baseLocalScale;
         if (Hitbox != null) Hitbox.IsFogged = FogDuration > 0f;
+        _fogActive = FogDuration > 0f;
         if (Renderer != null && FogDuration > 0f) ApplyFogVisual();  // 立刻调子类 ApplyVisual(t=0):_FogAmount=1 + localScale *= fogScale
         else if (Renderer != null && FogCfg != null) FogCfg.ClearVisual(this, _baseLocalScale);  // FogCfg 在但 Duration=0 时也走一次复位(兜底)
         else if (Renderer != null) ClearFogVisual();                  // 兜底:FogCfg 为 null,直接清 _FogAmount=0 + localScale = _baseLocalScale
@@ -237,6 +277,7 @@ public class Bullet : MonoBehaviour
     void Update()
     {
         float dt = Time.deltaTime;
+        if (!(dt > 0f)) return;
         Lifetime += dt;
 
         // ═══════════════════════════════════════════════════════════
@@ -248,8 +289,9 @@ public class Bullet : MonoBehaviour
         //     - 视觉:STG/BulletTintFog shader 走 _FogAmount=1→0 的连续过渡
         //   雾化结束那一帧:清除 IsFogged + 视觉复位,modifier 从 0 开始计时
         // ═══════════════════════════════════════════════════════════
-        if (FogDuration > 0f)
+        if (_fogActive)
         {
+            float remainingFog = Mathf.Max(0f, FogDuration - FogElapsed);
             FogElapsed += dt;
 
             if (IsFogged)
@@ -266,6 +308,9 @@ public class Bullet : MonoBehaviour
                 //   让 BulletColorModifier 在下一帧正常接管 tint 渲染,Hitbox 判定盒大小恢复正常。
                 if (Hitbox != null) Hitbox.IsFogged = false;
                 ClearFogVisual();
+                _fogActive = false;
+                dt = Mathf.Max(0f, dt - remainingFog);
+                if (dt <= 0f) return;
                 // 不 return:继续走下面的"清晰后"逻辑
             }
         }
@@ -296,7 +341,7 @@ public class Bullet : MonoBehaviour
         {
             if (!TryBounceModifiers())
             {
-                BulletPool.Instance.Return(this);
+                BulletPool.Instance?.Return(this);
             }
         }
     }

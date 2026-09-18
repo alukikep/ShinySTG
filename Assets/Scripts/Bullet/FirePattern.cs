@@ -134,6 +134,7 @@ public abstract class FirePattern : ScriptableObject
     /// 便捷方法：基于某颗子弹（敌人自身）的位置发射。
     public void FireFromOwner(Bullet owner, float rotationRad, BulletPool pool)
     {
+        if (owner == null || pool == null) return;
         // 旧 API 兼容:从子弹 GameObject 上读 Hitbox。
         var hb = owner != null ? owner.GetComponent<ShinySTG.Hitbox.HitboxComponent>() : null;
         Fire(owner.transform.position, rotationRad, pool, hb);

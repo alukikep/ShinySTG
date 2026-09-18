@@ -376,6 +376,7 @@ public abstract class FirePatternBulletModifier : BulletModifier
     /// </summary>
     protected void FireOnce(Bullet b)
     {
+        if (b == null) return;
         if (Pattern == null || BulletPool.Instance == null) return;
 
         // ownerHitbox 取值:
@@ -421,7 +422,9 @@ public abstract class FirePatternBulletModifier : BulletModifier
     //   但数组本身被共享会污染「增删元素」语义)。STG 高弹量场景下需要明确深拷。
     public override BulletModifier Clone()
     {
-        var copy = (FirePatternBulletModifier)MemberwiseClone();
+        var copy = (FirePatternBulletModifier)base.Clone();
+        copy._accumulator = 0f;
+        copy._shotsFired = 0;
         if (ExtraModifiers != null)
         {
             copy.ExtraModifiers = new BulletModifier[ExtraModifiers.Length];
@@ -430,12 +433,8 @@ public abstract class FirePatternBulletModifier : BulletModifier
                 copy.ExtraModifiers[i] = ExtraModifiers[i]?.Clone();
             }
         }
-        // Extra 是 FirePatternBulletExtra,标了 [NonSerialized] 的 per-instance 累加字段
-        // (如 AngleOffset 的 _fireCount)会随 MemberwiseClone 自动归零(每颗子弹从 0 开始累加),
-        // 只需要把 Extra 自身深拷出来。
+        // Extra 自己决定如何复制批次抽样；本 modifier 的计时和次数已显式归零。
         copy.Extra = Extra?.Clone();
-        // _accumulator / _shotsFired 标了 [NonSerialized],MemberwiseClone 后自然为 0 / 0,
-        // 每颗子弹重新计时,符合预期。
         return copy;
     }
 }
@@ -515,11 +514,21 @@ public class FireOnDurationBulletModifier : FirePatternBulletModifier
     public override void ModifyCore(Bullet b, float dt)
     {
         // 累加到 Interval 后触发一次,扣减余数继续累加(允许实际周期有 jitter)
+        if (!(dt > 0f) || float.IsInfinity(dt) || b == null || Pattern == null || BulletPool.Instance == null) return;
+        if (MaxShots > 0 && _shotsFired >= MaxShots) return;
+        if (!(Interval > 0f))
+        {
+            _accumulator = 0f;
+            FireOnce(b);
+            return;
+        }
         _accumulator += dt;
         // 防御:Interval=0 时(用户在 Inspector 填 0)不要进死循环,直接退化为「每帧触发一次」
         float step = Interval > 0f ? Interval : dt;
-        while (_accumulator >= step)
+        int bursts = 0;
+        while (_accumulator >= step && bursts < FireCadence.MaxBurstsPerTick)
         {
+            bursts++;
             _accumulator -= step;
             if (MaxShots > 0 && _shotsFired >= MaxShots)
             {
@@ -530,5 +539,6 @@ public class FireOnDurationBulletModifier : FirePatternBulletModifier
             // 安全保险:FireOnce 失败时(Pattern 留空 / BulletPool 消失),不要死循环
             if (Pattern == null) return;
         }
+        if (_accumulator >= step) _accumulator %= step;
     }
 }

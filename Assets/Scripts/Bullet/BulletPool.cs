@@ -134,16 +134,14 @@ public class BulletPool : MonoBehaviour
     /// 回收一颗。
     public void Return(Bullet bullet)
     {
-        if (bullet == null) return;
+        if (bullet == null || !_active.Remove(bullet)) return;
         // ★ 先摘 BulletSignalBus 订阅(必须在 ClearModifiers 之前,因为 DetachSignalTriggers
         //   需要遍历 _modifiers 列表)。顺序:
         //     1) DetachSignalTriggers → 摘订阅(订阅型 StartTrigger.OnDetach 调 Unsubscribe)
         //     2) ClearModifiers       → 清空 _modifiers 列表
         //   防「弹已回池但 StartTrigger 还在 _subs 字典里挂着 handler」导致下次 Emit 时 NRE。
-        bullet.DetachSignalTriggers();
-        bullet.ClearModifiers();
+        bullet.ResetForPool();
         bullet.gameObject.SetActive(false);
-        _active.Remove(bullet);
 
         // 按该弹自己的 SourcePrefab 路由到正确的桶，保证不同 prefab 的子弹不会互相污染。
         var key = bullet.SourcePrefab != null ? bullet.SourcePrefab : DefaultPrefab;
@@ -196,7 +194,13 @@ public class BulletPool : MonoBehaviour
     public void FireGroup(FirePattern pattern, Vector2 pos, float rotationRad,
                           ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                           BulletModifier[] extraModifiers = null)
+        => FireGroup(pattern, pos, rotationRad, ownerHitbox, extraModifiers, null);
+
+    public void FireGroup(FirePattern pattern, Vector2 pos, float rotationRad,
+                          ShinySTG.Hitbox.HitboxComponent ownerHitbox,
+                          BulletModifier[] extraModifiers, FirePatternRuntimeState state)
     {
+        if (pattern == null) return;
         // 触发 FirePattern 的开火音(FireSounds 数组)。
         // 在 pattern.Fire(...) 之前调 —— 每次"开火组"触发一次。
         // CompositeFirePattern 内部递归 Fire() 不走本入口,所以子 pattern 的 FireSounds 不重复触发。
@@ -245,18 +249,19 @@ public class BulletPool : MonoBehaviour
         //   字典随之释放,无泄漏风险)。若未来要支持"关卡重置后累加清零",加一个 ResetFireCounts() 公共方法。
         //
         // ★ 空数组 / null → 不累加,行为 100% 等价历史。
-        if (pattern.FireExtensions != null)
+        var previousState = _currentRuntimeState;
+        _currentRuntimeState = state;
+        if (state != null) state.Advance(pattern.FireExtensions);
+        else if (pattern.FireExtensions != null)
         {
             for (int i = 0; i < pattern.FireExtensions.Length; i++)
             {
-                var ext = pattern.FireExtensions[i];
-                if (ext == null) continue;
-                _fireCounts.TryGetValue(ext, out int prev);
-                _fireCounts[ext] = prev + 1;
+                var ext = pattern.FireExtensions[i]; if (ext == null) continue;
+                _fireCounts.TryGetValue(ext, out int prev); _fireCounts[ext] = prev + 1;
             }
         }
-
-        pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers);
+        try { pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers); }
+        finally { _currentRuntimeState = previousState; }
         // Boss 系统钩子:每发一弹自动累计,供 ShotsFiredSignal 读取。
         // 没有挂 BossShotCounter 时(BossShotCounter.Instance == null)直接跳过,不影响普通敌人。
         ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(pattern);
@@ -272,11 +277,20 @@ public class BulletPool : MonoBehaviour
     /// 不存在 key → 不返回该元素(Resolver 走默认值 0,不调 OnFireGroupTriggered)。
     /// </summary>
     public System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> GetFireExtensionFireCounts()
-        => _fireCounts;
+        => _currentRuntimeState != null ? _currentRuntimeState.FireCounts : _fireCounts;
+
+    public FireExtension[] GetRuntimeFireExtensions(FireExtension[] source)
+        => _currentRuntimeState != null ? _currentRuntimeState.GetRuntimeExtensions(source) : source;
+
+    public System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> GetRuntimeFireCounts(FireExtension[] source)
+        => _currentRuntimeState != null ? _currentRuntimeState.GetRuntimeFireCounts(source) : _fireCounts;
+
+    public void ResetFireCounts() => _fireCounts.Clear();
 
     /// <summary>
     /// per-FireExtension 累加计数(由 FireGroup 入口维护,key = pattern.FireExtensions 数组里的具体元素 ref)。
     /// 详见 FireGroup 内注释。
     /// </summary>
     readonly Dictionary<FireExtension, int> _fireCounts = new();
+    FirePatternRuntimeState _currentRuntimeState;
 }

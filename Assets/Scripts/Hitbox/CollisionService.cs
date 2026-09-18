@@ -87,7 +87,9 @@ namespace ShinySTG.Hitbox
         readonly Dictionary<int, EnemyHealth> _enemyByHitboxID = new(64);
         /// <summary>HitboxComponent.GetInstanceID() → BossHealth 反查表,每帧从 BossHealth.Alive 重建。Boss 走相同阵营配对。</summary>
         readonly Dictionary<int, BossHealth> _bossByHitboxID = new(16);
-        readonly List<Bullet> _toReturn = new(64);
+        readonly List<(Bullet Bullet, uint Version)> _toReturn = new(64);
+        readonly List<(Bullet Bullet, uint Version)> _bulletSnapshot = new(256);
+        readonly HashSet<Bullet> _pendingReturn = new();
 
         Rect _playerCachedBounds;
         ShinySTG.Player.PlayerHitbox _playerHitbox;
@@ -113,9 +115,14 @@ namespace ShinySTG.Hitbox
                 return;
             }
 
+            _bulletSnapshot.Clear();
+            foreach (var bullet in BulletPool.Instance.ActiveBullets)
+                if (bullet != null) _bulletSnapshot.Add((bullet, bullet.SpawnVersion));
+
             // 1. 清网格,准备重建
             _grid.Clear();
             _enemyByHitboxID.Clear();
+            _bossByHitboxID.Clear();
 
             // 2. 敌人 → 网格 + ID 缓存
             var alive = EnemyHealth.Alive;
@@ -142,9 +149,11 @@ namespace ShinySTG.Hitbox
             }
 
             // 3. 子弹 → 网格(玩家弹 + 敌人弹都进网格,由查询侧的阵营过滤来配对)
-            foreach (var b in BulletPool.Instance.ActiveBullets)
+            foreach (var entry in _bulletSnapshot)
             {
-                if (b == null || b.Hitbox == null) continue;
+                var b = entry.Bullet;
+                if (b == null || !b.isActiveAndEnabled || b.SpawnVersion != entry.Version || _pendingReturn.Contains(b)) continue;
+                if (b.Hitbox == null) continue;
                 b.Hitbox.RefreshCachedBounds();
                 _grid.Insert(b.Hitbox);
             }
@@ -198,16 +207,23 @@ namespace ShinySTG.Hitbox
             service.FlushCollected();
         }
 
+        void QueueReturn(Bullet bullet)
+        {
+            if (_pendingReturn.Add(bullet)) _toReturn.Add((bullet, bullet.SpawnVersion));
+        }
+
         void FlushReturns()
         {
             if (_toReturn.Count == 0) return;
             var pool = BulletPool.Instance;
             for (int i = 0; i < _toReturn.Count; i++)
             {
-                var b = _toReturn[i];
-                if (b != null) pool.Return(b);
+                var entry = _toReturn[i];
+                if (pool != null && entry.Bullet != null && entry.Bullet.SpawnVersion == entry.Version)
+                    pool.Return(entry.Bullet);
             }
             _toReturn.Clear();
+            _pendingReturn.Clear();
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -216,12 +232,14 @@ namespace ShinySTG.Hitbox
         // ═══════════════════════════════════════════════════════════
         void TickPlayerBulletsVsEnemies()
         {
-            // 注意:不要在这里 Clear _toReturn,LateUpdate 开头已经 Clear 过一次。
+            // 回收队列由帧末 FlushReturns 清空；各碰撞阶段只追加。
             // 这里只是 Append,本帧末统一 FlushReturns(避免 HashSet 迭代中调用 pool.Return)。
 
-            foreach (var b in BulletPool.Instance.ActiveBullets)
+            foreach (var entry in _bulletSnapshot)
             {
-                if (b == null || b.Hitbox == null) continue;
+                var b = entry.Bullet;
+                if (b == null || !b.isActiveAndEnabled || b.SpawnVersion != entry.Version || _pendingReturn.Contains(b)) continue;
+                if (b.Hitbox == null) continue;
                 if (b.Hitbox.Team != CollisionTeam.Player) continue;  // 阵营过滤
                 if (b.Hitbox.IsFogged) continue;                       // 出生雾化期:不参与碰撞/伤害
 
@@ -243,9 +261,9 @@ namespace ShinySTG.Hitbox
                     if (HitboxMath.AABBOverlap(bRect, hb._cachedBounds))
                     {
                         // 玩家弹伤害由 b.Damage 决定(由 FirePattern.Damage 经 pool.Get 写入)。
+                        QueueReturn(b);
                         enemy.TakeDamage(b.Damage);
                         OnPlayerBulletHitEnemy?.Invoke(b, enemy);
-                        _toReturn.Add(b);
                         hit = true;
                     }
                 }
@@ -259,9 +277,11 @@ namespace ShinySTG.Hitbox
         // ═══════════════════════════════════════════════════════════
         void TickPlayerBulletsVsBoss()
         {
-            foreach (var b in BulletPool.Instance.ActiveBullets)
+            foreach (var entry in _bulletSnapshot)
             {
-                if (b == null || b.Hitbox == null) continue;
+                var b = entry.Bullet;
+                if (b == null || !b.isActiveAndEnabled || b.SpawnVersion != entry.Version || _pendingReturn.Contains(b)) continue;
+                if (b.Hitbox == null) continue;
                 if (b.Hitbox.Team != CollisionTeam.Player) continue;
                 if (b.Hitbox.IsFogged) continue;                       // 出生雾化期:不参与碰撞/伤害
 
@@ -282,11 +302,11 @@ namespace ShinySTG.Hitbox
 
                     if (HitboxMath.AABBOverlap(bRect, hb._cachedBounds))
                     {
+                        QueueReturn(b);
                         boss.TakeDamage(b.Damage);
                         // OnPlayerBulletHitEnemy 事件签名是 (Bullet, EnemyHealth),这里不触发 —
                         //   Boss 命中后通过 BossHealth.OnAnyDeath 广播死亡,Boss 总控再广播 OnBossDefeated。
                         //   未来若要 Boss 命中特效/计分,可单独加 OnPlayerBulletHitBoss(Bullet, BossHealth)。
-                        _toReturn.Add(b);
                         hit = true;
                     }
                 }
@@ -300,7 +320,7 @@ namespace ShinySTG.Hitbox
         // ═══════════════════════════════════════════════════════════
         void TickEnemyBulletsVsPlayer()
         {
-            // 注意:不要在这里 Clear _toReturn,LateUpdate 开头已经 Clear 过一次。
+            // 回收队列由帧末 FlushReturns 清空；各碰撞阶段只追加。
             // 这里只是 Append,本帧末统一 FlushReturns。
             var player = ShinySTG.Player.Player.Instance;
             var health = player.Health;
@@ -311,9 +331,11 @@ namespace ShinySTG.Hitbox
                 ? InflateRect(_playerCachedBounds, GrazePadding)
                 : default;
 
-            foreach (var b in BulletPool.Instance.ActiveBullets)
+            foreach (var entry in _bulletSnapshot)
             {
-                if (b == null || b.Hitbox == null) continue;
+                var b = entry.Bullet;
+                if (b == null || !b.isActiveAndEnabled || b.SpawnVersion != entry.Version || _pendingReturn.Contains(b)) continue;
+                if (b.Hitbox == null) continue;
                 if (b.Hitbox.Team != CollisionTeam.Enemy) continue;  // 阵营过滤
                 if (b.Hitbox.IsFogged) continue;                       // 出生雾化期:不参与碰撞/伤害(包含擦弹)
 
@@ -337,14 +359,14 @@ namespace ShinySTG.Hitbox
                     {
                         if (!invincible)
                         {
+                            QueueReturn(b);
                             player.OnHit(1f);
                             OnEnemyBulletHitPlayer?.Invoke(b, health);
-                            _toReturn.Add(b);
                         }
                         else if (consumeWhenInvincible)
                         {
                             // 无敌期擦弹:吞掉弹(后续可触发擦弹加分事件)
-                            _toReturn.Add(b);
+                            QueueReturn(b);
                         }
                         // 否则:无敌且不吞噬 → 弹继续飞行,下一帧自然移出玩家范围
                         processed = true;

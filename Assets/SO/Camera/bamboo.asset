@@ -12,15 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b8532241045d2e449975f6e393fdf49, type: 3}
   m_Name: bamboo
   m_EditorClassIdentifier: 
-  EntryDuration: 0
+  EntryDuration: 2
   EntryEasing:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 2
-      outSlope: 2
+      inSlope: 0
+      outSlope: 0
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
@@ -40,7 +40,7 @@ MonoBehaviour:
   ScrollSpeed: 8
   Nodes:
   - LocalPosition: {x: 0, y: 8, z: -10}
-    LocalEulerAngles: {x: 20, y: 10, z: 0}
+    LocalEulerAngles: {x: 20, y: 5, z: 0}
     FieldOfView: 50
     Duration: 2
     HoldDuration: 0
@@ -50,8 +50,8 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 2
-        outSlope: 2
+        inSlope: 0
+        outSlope: 0
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -79,8 +79,8 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 2
-        outSlope: 2
+        inSlope: 0
+        outSlope: 0
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -98,7 +98,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   - LocalPosition: {x: 0, y: 8, z: -10}
-    LocalEulerAngles: {x: 20, y: -10, z: 0}
+    LocalEulerAngles: {x: 20, y: -5, z: 0}
     FieldOfView: 50
     Duration: 2
     HoldDuration: 0
@@ -108,8 +108,8 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 2
-        outSlope: 2
+        inSlope: 0
+        outSlope: 0
         tangentMode: 0
         weightedMode: 0
         inWeight: 0
@@ -137,8 +137,8 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 0
         value: 0
-        inSlope: 2
-        outSlope: 2
+        inSlope: 0
+        outSlope: 0
         tangentMode: 0
         weightedMode: 0
         inWeight: 0

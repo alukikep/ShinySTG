@@ -73,6 +73,16 @@ public class AccumulatingOffsetAngleFireExtension : FireExtension
              "与 fireCount 累加正交叠加:totalOffset = BaseOffset + (fireCount-1)*StepOffset + bulletIndex*OffsetPerBullet")]
     public float OffsetPerBullet = 0f;
 
+    public override FireExtension Clone()
+    {
+        var copy = (AccumulatingOffsetAngleFireExtension)MemberwiseClone();
+        copy.BaseOffset = BaseOffset?.Clone();
+        copy._currentFireCount = 0;
+        copy._sampledBaseOffset = 0f;
+        copy._baseOffsetSampled = false;
+        return copy;
+    }
+
     // per-instance 累加 / 抽样状态([NonSerialized],Clone 时自然归零)
     [NonSerialized] int   _currentFireCount;       // 最新 OnFireGroupTriggered 写入的 fireCount(本批次序号,1 起)
     [NonSerialized] float _sampledBaseOffset;      // 本批次抽样的 BaseOffset(度)

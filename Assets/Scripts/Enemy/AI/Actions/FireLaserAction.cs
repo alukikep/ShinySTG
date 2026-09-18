@@ -71,11 +71,8 @@ namespace ShinySTG.EnemyAI
             if (OneShot) return;
             if (Pattern == null || LaserPool.Instance == null) return;
 
-            _timer -= dt;
-            if (_timer > 0f) return;
-            _timer = 1f / Mathf.Max(0.0001f, FireRate);
-
-            FireOnce(enemy);
+            int bursts = FireCadence.Tick(ref _timer, FireRate, dt);
+            for (int i = 0; i < bursts; i++) FireOnce(enemy);
         }
 
         public override void OnExit(Transform enemy)
@@ -89,6 +86,7 @@ namespace ShinySTG.EnemyAI
         /// </summary>
         void FireOnce(Transform enemy)
         {
+            if (enemy == null) return;
             if (Pattern == null || LaserPool.Instance == null) return;
 
             float angleRad = AimOffsetDeg * Mathf.Deg2Rad;

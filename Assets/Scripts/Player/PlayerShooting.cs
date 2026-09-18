@@ -81,9 +81,13 @@ namespace ShinySTG.Player
             if (!FireHeld) return;
             if (MainPatterns == null || MainPatterns.Length == 0) return;
 
-            _cooldown -= Time.deltaTime;
-            if (_cooldown > 0f) return;
-            _cooldown = 1f / Mathf.Max(0.0001f, FireRate);
+            if (BulletPool.Instance == null) return;
+            int bursts = FireCadence.Tick(ref _cooldown, FireRate, Time.deltaTime);
+            for (int i = 0; i < bursts; i++) FireOnce();
+        }
+
+        void FireOnce()
+        {
 
             if (LoopThroughPatterns)
             {

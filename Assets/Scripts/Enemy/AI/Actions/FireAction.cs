@@ -46,11 +46,14 @@ namespace ShinySTG.EnemyAI
 
         float _timer;
         bool _running;
+        FirePatternRuntimeState _runtimeState;
 
         public override void OnEnter(Transform enemy)
         {
             _timer = 0f;
             _running = true;
+            _runtimeState ??= new FirePatternRuntimeState();
+            _runtimeState.Reset();
 
             // OneShot 模式:进入时立刻开一次火,剩余时间由 Duration 占用(由 BehaviorFlowRuntime 计时)
             if (OneShot) FireOnce(enemy);
@@ -63,16 +66,14 @@ namespace ShinySTG.EnemyAI
             if (OneShot) return;
             if (Pattern == null || BulletPool.Instance == null) return;
 
-            _timer -= dt;
-            if (_timer > 0f) return;
-            _timer = 1f / Mathf.Max(0.0001f, FireRate);
-
-            FireOnce(enemy);
+            int bursts = FireCadence.Tick(ref _timer, FireRate, dt);
+            for (int i = 0; i < bursts; i++) FireOnce(enemy);
         }
 
         public override void OnExit(Transform enemy)
         {
             _running = false;
+            _runtimeState?.Reset();
         }
 
         /// <summary>
@@ -81,6 +82,7 @@ namespace ShinySTG.EnemyAI
         /// </summary>
         void FireOnce(Transform enemy)
         {
+            if (enemy == null) return;
             if (Pattern == null || BulletPool.Instance == null) return;
 
             float rotationRad = AimOffsetDeg * Mathf.Deg2Rad;
@@ -89,7 +91,7 @@ namespace ShinySTG.EnemyAI
             var ownerHitbox = enemy != null
                 ? enemy.GetComponent<ShinySTG.Hitbox.HitboxComponent>()
                 : null;
-            BulletPool.Instance.FireGroup(Pattern, enemy.position, rotationRad, ownerHitbox, ExtraModifierPrefabs);
+            BulletPool.Instance.FireGroup(Pattern, enemy.position, rotationRad, ownerHitbox, ExtraModifierPrefabs, _runtimeState);
         }
     }
 }

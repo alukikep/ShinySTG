@@ -37,6 +37,8 @@ using UnityEngine;
 [Serializable]
 public abstract class FireExtension
 {
+    /// <summary>创建发射器专属运行实例，避免扩展内部状态写回 Pattern 资产。</summary>
+    public virtual FireExtension Clone() => (FireExtension)MemberwiseClone();
     /// <summary>
     /// Pipeline 核心:处理当前角度,产出下一步角度。
     /// </summary>

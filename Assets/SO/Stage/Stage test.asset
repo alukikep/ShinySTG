@@ -54,14 +54,14 @@ MonoBehaviour:
     - rid: 6177227147044978688
       type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 2.7866664
+        TriggerTime: 8.840001
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: ae2148d9e49ce4e41a2fc36956c0f75c, type: 2}
     - rid: 6177227147044978689
       type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 5.7066665
+        TriggerTime: 11.919999
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: fa3fa37bc1664014888346ed10715666, type: 2}

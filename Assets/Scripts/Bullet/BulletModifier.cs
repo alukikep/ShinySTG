@@ -146,6 +146,7 @@ public abstract class BulletModifier
     /// </summary>
     public void Modify(Bullet bullet, float deltaTime)
     {
+        if (!(deltaTime > 0f) || float.IsInfinity(deltaTime)) return;
         _elapsed += deltaTime;     // 时钟 A:出生至今,一直累加(供 trigger.ShouldActivate 用)
 
         // 1. 启动触发器判断(默认 DelayStartTrigger,与旧 Delay 字段行为一致)
@@ -299,7 +300,7 @@ public abstract class BulletModifier
     /// 深拷贝。子类若持有引用类型字段(List/数组/自定义类),必须 override 本方法手动深拷。
     /// 默认实现 MemberwiseClone 对值类型字段足够 —— STG modifier 通常只有 float/int/Vector2,
     /// 性能开销约 10~30ns/次,STG 高弹量场景(< 1000 颗/秒)完全可忽略。
-    /// ★ 计时器字段标了 [NonSerialized],Clone 出来自然为 0/false,符合预期(每颗子弹重新计时)。
+    /// MemberwiseClone 会复制运行状态；挂载时必须调用 ResetWindow 重置基类计时。
     /// </summary>
     public virtual BulletModifier Clone()
     {

@@ -12,13 +12,15 @@ public class RingFirePattern : FirePattern
                               ShinySTG.Hitbox.HitboxComponent ownerHitbox = null,
                               BulletModifier[] extraModifiers = null)
     {
+        if (pool == null || Count <= 0) return;
         // position 转本地变量再传 ref,这样 Resolver 不会污染 FirePattern 调用栈的形参;
         // 同时让 Base.PositionOffset 在 Resolver 入口处叠加(后续模块包括 PlayerAim 都基于修正后的 from 工作)。
         Vector2 from = position;
         // 取 BulletPool 维护的 per-FireExtension fireCount 字典 → 让累加型模块拿到本批开火序号。
         // pool 可能为 null(防御:用户没配 BulletPool 时),不传字典走默认 0 → 不调 OnFireGroupTriggered。
-        var fireCountMap = pool?.GetFireExtensionFireCounts();
-        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(FireExtensions, ref from, rotationRad, fireCountMap);
+        var extensions = pool.GetRuntimeFireExtensions(FireExtensions);
+        var fireCountMap = pool?.GetRuntimeFireCounts(FireExtensions);
+        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(extensions, ref from, rotationRad, fireCountMap);
         float step = 360f / Count;
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)
@@ -31,5 +33,5 @@ public class RingFirePattern : FirePattern
         }
     }
 
-    public override int GetFireCount() => Count;
+    public override int GetFireCount() => Mathf.Max(0, Count);
 }

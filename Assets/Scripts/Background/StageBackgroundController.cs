@@ -65,13 +65,12 @@ namespace ShinySTG.Background
                 Debug.LogWarning("[Background] 请在背景根节点绑定其子 CameraRig、透视背景相机和循环布景。相机须排除战斗层，仅渲染 Background3D。", this);
                 return FailedPlayback("背景引用无效。");
             }
-            if (!Finite(cue.LocalPosition) || !Finite(cue.LocalEulerAngles)
-                || !Finite(cue.FieldOfView) || cue.FieldOfView < 1f || cue.FieldOfView > 179f
-                || !Finite(cue.ScrollSpeed) || cue.ScrollSpeed < 0f
-                || !Finite(cue.Duration) || cue.Duration < 0f || !ValidCurve(cue.Easing))
+            string error = CueValidationError(cue);
+            if (error != null)
             {
-                Debug.LogWarning("[Background] Cue 参数无效。曲线需至少两个关键帧，并从 (0,0) 到 (1,1)。", cue);
-                return FailedPlayback("Cue 参数或曲线无效。");
+                string reason = $"Cue '{cue.name}'：{error}";
+                Debug.LogWarning($"[Background] {reason}", cue);
+                return FailedPlayback(reason);
             }
 
             CaptureInitialState();
@@ -193,6 +192,26 @@ namespace ShinySTG.Background
                 && !_backgroundCamera.orthographic && !_backgroundCamera.CompareTag("MainCamera")
                 && _backgroundCamera.cullingMask == (1 << layer)
                 && _strip != null && _strip.transform.IsChildOf(transform);
+        }
+
+        static string CueValidationError(BackgroundCue cue)
+        {
+            if (!Finite(cue.LocalPosition)) return "LocalPosition 含非有限数值。";
+            if (!Finite(cue.LocalEulerAngles)) return "LocalEulerAngles 含非有限数值。";
+            if (!Finite(cue.FieldOfView) || cue.FieldOfView < 1f || cue.FieldOfView > 179f)
+                return $"FieldOfView 必须在 1~179 之间，当前为 {cue.FieldOfView}。";
+            if (!Finite(cue.ScrollSpeed) || cue.ScrollSpeed < 0f)
+                return $"ScrollSpeed 必须是非负有限数值，当前为 {cue.ScrollSpeed}。";
+            if (!Finite(cue.Duration) || cue.Duration < 0f)
+                return $"Duration 必须是非负有限数值，当前为 {cue.Duration}。";
+            if (ValidCurve(cue.Easing)) return null;
+            if (cue.Easing == null || cue.Easing.length < 2)
+                return "Easing 至少需要两个关键帧，起点 (0,0)，终点 (1,1)。";
+            var keys = cue.Easing.keys;
+            var first = keys[0];
+            var last = keys[keys.Length - 1];
+            return $"Easing 关键帧数值无效或端点不符合要求：起点应为 (0,0)，实际 ({first.time},{first.value})；"
+                + $"终点应为 (1,1)，实际 ({last.time},{last.value})。";
         }
 
         static bool ValidCurve(AnimationCurve curve)
