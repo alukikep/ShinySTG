@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stage test_AudioBinding
   m_EditorClassIdentifier: 
   Level: {fileID: 11400000, guid: 34cfcc19c0648af4a95739b38f7d081c, type: 2}
-  Playlist: {fileID: 0}
+  Playlist: {fileID: 11400000, guid: f7dc6ba21aca8694491596078af2405a, type: 2}
   BossMusic: {fileID: 0}
   DefeatMusic: {fileID: 0}
   ToBossCrossfade: 2

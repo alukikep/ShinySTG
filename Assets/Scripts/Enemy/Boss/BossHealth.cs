@@ -88,6 +88,9 @@ namespace ShinySTG.EnemyAI.Boss
         /// <summary>整个 Boss 被打空(所有管清零 / LegacyCurrentHp 归零)时触发一次。由 BossController 订阅做收尾。</summary>
         public event Action OnDeath;
 
+        /// <summary>一次伤害完整结算（包括死亡通知）后触发，不受 TriggerOnEmpty 控制。</summary>
+        public event Action OnHealthChanged;
+
         void Awake()
         {
             InitBars();
@@ -118,25 +121,38 @@ namespace ShinySTG.EnemyAI.Boss
             for (int i = 0; i < Bars.Length; i++)
                 if (Bars[i] != null) Bars[i].CurrentHp = Bars[i].MaxHp;
             CurrentBarIndex = 0;
+            SkipInvalidBars();
         }
 
-        // ─── 兼容属性(老 HpSignal 仍可用)──────────────────
-        public float MaxHp =>
-            (Bars != null && Bars.Length > 0 && Bars[CurrentBarIndex] != null)
-                ? Bars[CurrentBarIndex].MaxHp : LegacyMaxHp;
+        bool HasBars => Bars != null && Bars.Length > 0;
+        HealthBar CurrentBar => HasBars && CurrentBarIndex >= 0 && CurrentBarIndex < Bars.Length
+            ? Bars[CurrentBarIndex] : null;
 
-        public float CurrentHp =>
-            (Bars != null && Bars.Length > 0 && Bars[CurrentBarIndex] != null)
-                ? Bars[CurrentBarIndex].CurrentHp : LegacyCurrentHp;
+        public float MaxHp => HasBars ? Mathf.Max(0f, CurrentBar?.MaxHp ?? 0f) : Mathf.Max(0f, LegacyMaxHp);
+        public float CurrentHp => HasBars ? Mathf.Max(0f, CurrentBar?.CurrentHp ?? 0f) : Mathf.Max(0f, LegacyCurrentHp);
+        public float CurrentHpNormalized => MaxHp > 0f ? Mathf.Clamp01(CurrentHp / MaxHp) : 0f;
+        public float HpPercent => CurrentHpNormalized * 100f;
+        public float CurrentBarPercent => HpPercent;
 
-        public float HpPercent =>
-            MaxHp > 0 ? Mathf.Clamp01(CurrentHp / MaxHp) * 100f : 0f;
+        /// <summary>只计非空且上限为正的管；空数组使用 Legacy 单管。</summary>
+        public int TotalBarCount => HasBars ? CountBars(0) : (LegacyMaxHp > 0f ? 1 : 0);
+        /// <summary>包含当前正在消耗的血管；死亡时为零。</summary>
+        public int RemainingBarCount => IsDead ? 0 : HasBars ? CountBars(CurrentBarIndex) : TotalBarCount;
 
-        // ─── 新属性(供新 Signal 读)─────────────────────
-        public float CurrentBarPercent =>
-            (Bars != null && Bars.Length > 0 && Bars[CurrentBarIndex] != null && Bars[CurrentBarIndex].MaxHp > 0)
-                ? Mathf.Clamp01(Bars[CurrentBarIndex].CurrentHp / Bars[CurrentBarIndex].MaxHp) * 100f
-                : 0f;
+        int CountBars(int start)
+        {
+            int count = 0;
+            for (int i = Mathf.Max(0, start); i < Bars.Length; i++)
+                if (Bars[i] != null && Bars[i].MaxHp > 0f) count++;
+            return count;
+        }
+
+        void SkipInvalidBars()
+        {
+            while (HasBars && CurrentBarIndex < Bars.Length &&
+                   (Bars[CurrentBarIndex] == null || Bars[CurrentBarIndex].MaxHp <= 0f))
+                CurrentBarIndex++;
+        }
 
         public float TotalHpPercent
         {
@@ -184,7 +200,7 @@ namespace ShinySTG.EnemyAI.Boss
                 while (remaining > 0f && CurrentBarIndex < Bars.Length)
                 {
                     var bar = Bars[CurrentBarIndex];
-                    if (bar == null) { CurrentBarIndex++; continue; }
+                    if (bar == null || bar.MaxHp <= 0f) { CurrentBarIndex++; continue; }
 
                     int oldBarIdx = CurrentBarIndex;
                     bar.CurrentHp -= remaining;
@@ -200,6 +216,7 @@ namespace ShinySTG.EnemyAI.Boss
                             OnBarDepleted?.Invoke(oldBarIdx);
                         }
                         CurrentBarIndex++;
+                        SkipInvalidBars();
                     }
                     else
                     {
@@ -221,6 +238,7 @@ namespace ShinySTG.EnemyAI.Boss
                 OnDeath?.Invoke();        // 实例事件:供 Boss 总控订阅做收尾
                 OnAnyDeath?.Invoke(this); // 静态事件:供全局订阅
             }
+            OnHealthChanged?.Invoke();
         }
 
         public void AddInvincibility(string sourceKey)

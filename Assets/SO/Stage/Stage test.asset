@@ -37,7 +37,7 @@ MonoBehaviour:
     - rid: 6177227145319809027
       type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 2.6933331
+        TriggerTime: 2.973333
         OneShot: 1
         Duration: 6
         SpawnInterval: 0.5
@@ -54,14 +54,14 @@ MonoBehaviour:
     - rid: 6177227147044978688
       type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 8.840001
+        TriggerTime: 9.360001
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: ae2148d9e49ce4e41a2fc36956c0f75c, type: 2}
     - rid: 6177227147044978689
       type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 11.919999
+        TriggerTime: 12.413332
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: fa3fa37bc1664014888346ed10715666, type: 2}

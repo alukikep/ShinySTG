@@ -105,6 +105,18 @@ Phase 3 (暴走)
 ---
 
 
+## 血量 UI 边界
+
+BossHealth 提供安全的当前管比例和血管计数，死亡后读取当前管数据返回零。
+空血管数组沿用 Legacy 单管；非空数组中的空元素与非正上限血管不计入有效管数。
+OnHealthChanged 在一次伤害完整结算及死亡通知后发送，不受 TriggerOnEmpty 控制；
+OnBarDepleted 仍保留阶段检测需要的瞬时零血时序。
+
+数据层剩余管数包含当前管，HUD 仅显示后续管数，最后一管显示 0。
+UI 不使用行为阶段数推算血管数，不通过显示更新触发阶段或恢复血量。
+绑定、显隐和动画边界见 [HUD 架构](./arch-hud.md)，配置见
+[HUD 操作说明](../../Assets/Scripts/UI/README.md)。
+
 ## 阶段掉落
 
 在 BossPhase.ExitCommands 配置 SpawnDropsCommand，复用阶段退出的单一路径。

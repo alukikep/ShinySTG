@@ -19,6 +19,7 @@
 | [extension-guide](./docs/architecture/arch-extension-guide.md) | 加新功能统一套路 / 反模式 / 数据 vs 逻辑边界 | §6 |
 | [items](./docs/architecture/arch-items.md) | 可配置掉落、撒出与吸附、拾取结算和对象池 | — |
 | [player](./docs/architecture/arch-player.md) | `Player` 主控 + 子机 + `OptionPositionForm` | §7 |
+| [hud](./docs/architecture/arch-hud.md) | 玩家状态只读显示、事件绑定与纯 UI 布局编辑 | — |
 | [hitbox](./docs/architecture/arch-hitbox.md) | 统一 AABB + 阵营 + 网格空间索引 | §8 |
 | [level](./docs/architecture/arch-level.md) | `LevelDefinition` + `SpawnEntry` 多态 | §9 |
 | [level-editor](./docs/architecture/arch-level-editor.md) | `EditorWindow` / 时间轴 / Preview / Gizmo | §10 |
@@ -37,6 +38,7 @@
 游戏场景 (Scene)
 ├── Player (主控 + Movement + Shooting + Options + Health + Resources)
 │     → 引用 FirePattern 资产、读 BoundsService.PlayableArea
+├── GameplayHudPresenter ─► GameplayHudView（读取玩家状态，更新 UI）
 ├── Boss / 普通敌人 (总控 + Health + Hitbox + BehaviorFlow)
 │     → AI 层: BehaviorFlow SO 持有 EnemyAction[] / MoveBehaviour[]
 │     → 通过 BulletPool.FireGroup / LaserPool.Fire 触发弹 / 激光
@@ -63,6 +65,8 @@
 - **items**：敌人死亡与 Boss 阶段指令读取 DropProfile 生成道具；CollisionService 检测拾取，奖励通过 PlayerHealth / PlayerResources 结算。
 
 - **background ↔ level**：关卡广播 Cue 请求及生命周期事件，显式背景绑定负责转发；背景独立推进，不改变战斗视角。
+
+- **hud → player**：Presenter 读取资源并订阅事件，View 只负责显示；布局编辑只修改 UI，不控制相机、世界边界或游戏流程。
 
 **运行时支撑层**:
 
