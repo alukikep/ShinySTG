@@ -12,8 +12,8 @@ namespace ShinySTG.Player
     ///   - 影响 PlayerShooting 喷射形态
     ///   - 影响 PlayerOptions 解锁多少子机(每 +1 火力解锁下一档)
     /// 残机 (Lives):
-    ///   - 0 = 死透了,触发 OnAllLivesLost,默认让 PlayerShooting / PlayerMovement 停摆
-    ///   - >0 = 死亡时扣 1,触发 OnLifeLost;若 Lives > 0 自动触发 OnRevive 倒计时复活无敌
+    ///   - 0 = 死透了,触发 OnAllLivesLost,禁止移动、射击和拾取
+    ///   - >0 = 死亡时扣 1,触发 OnLifeLost;由死亡演出完成后触发 OnRevive 和复活无敌
     ///
     /// 无敌阶段 (Invincibility):
     ///   - 默认从出生 / 复活开始给一段无敌,撞弹不扣命
@@ -75,9 +75,12 @@ namespace ShinySTG.Player
         [field: SerializeField] public int GrazeCount { get; private set; }
 
         readonly HashSet<string> _invincibilityLocks = new();
+        bool _settlingHit;
 
         public bool IsInvincible => InvincibleRemaining > 0f || _invincibilityLocks.Count > 0;
         public bool IsDead       => Lives <= 0;
+        public bool IsDying { get; private set; }
+        public bool CanInteract => isActiveAndEnabled && !IsDead && !IsDying;
 
         // ---- 事件(供 UI / 动画 / 子机响应)----
         public event Action OnLifeLost;       // 死亡瞬间(扣命前)
@@ -179,28 +182,41 @@ namespace ShinySTG.Player
         /// <summary>被敌弹 / 敌人命中时调用。无敌时直接吞掉。</summary>
         public void TakeHit(float damage = 1f)
         {
-            if (IsInvincible) return;
+            if (!CanInteract || IsInvincible) return;
             if (damage <= 0f) return;
             if (Lives <= 0) return;
 
-            OnLifeLost?.Invoke();
-            if (_hitSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_hitSfx, position: (Vector2)transform.position);
-
-            Lives -= 1;
-            OnLivesChanged?.Invoke(Lives);
-            if (Lives <= 0)
+            _settlingHit = true;
+            IsDying = true; // 在任何外部回调前防止重入。
+            try
             {
-                Lives = 0;
-                if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: (Vector2)transform.position);
-                OnAllLivesLost?.Invoke();
-                return;
-            }
+                OnLifeLost?.Invoke();
+                if (_hitSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_hitSfx, position: (Vector2)transform.position);
 
-            // 复活:开启无敌 + 触发事件
+                Lives -= 1;
+                OnLivesChanged?.Invoke(Lives);
+                if (Lives <= 0)
+                {
+                    Lives = 0;
+                    if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: (Vector2)transform.position);
+                    OnAllLivesLost?.Invoke();
+                    return;
+                }
+            }
+            finally { _settlingHit = false; }
+        }
+
+        /// <summary>由死亡演出结束或续关流程调用；加命本身不恢复控制。</summary>
+        public bool CompleteRevive()
+        {
+            if (_settlingHit || !IsDying || Lives <= 0 || !isActiveAndEnabled) return false;
+            IsDying = false;
+            // 玩家实际出现时才开始复活无敌。
             bool wasInvincible = IsInvincible;
             InvincibleRemaining = ReviveInvincibleDuration;
             if (!wasInvincible && IsInvincible) OnInvincibleStart?.Invoke();
             OnRevive?.Invoke();
+            return true;
         }
 
         /// <summary>吃火力道具时调用。clamp 到 [0, MaxPower]。</summary>
@@ -225,7 +241,7 @@ namespace ShinySTG.Player
             if (_powerUpSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_powerUpSfx, position: (Vector2)transform.position);
         }
 
-        /// <summary>强制复活 / 加命(给续命道具用)。</summary>
+        /// <summary>修改生命总数；终局续关还需调用 PlayerDeathController.Respawn。</summary>
         public void AddLife(int delta = 1)
         {
             int next = (int)Math.Max(0L, Math.Min(int.MaxValue, (long)Lives + delta));

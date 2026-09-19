@@ -117,6 +117,9 @@ namespace ShinySTG.Laser
                     continue;
                 }
 
+                if (!player.CanInteract) continue;
+                invincible = player.IsInvincible;
+
                 // ── 命中检测 ──
                 bool hit = laser.CheckStraightHit(pPos, PlayerRadius);
 

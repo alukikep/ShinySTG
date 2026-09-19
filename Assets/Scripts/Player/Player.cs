@@ -62,6 +62,10 @@ namespace ShinySTG.Player
             Options  = GetComponent<PlayerOptions>();
             Hitbox   = GetComponent<PlayerHitbox>();
             Resources = GetComponent<PlayerResources>();
+            if (GetComponent<PlayerHitboxIndicator>() == null)
+                gameObject.AddComponent<PlayerHitboxIndicator>();
+            if (GetComponent<PlayerDeathController>() == null)
+                gameObject.AddComponent<PlayerDeathController>();
             // 旧 prefab 无需重新挂组件；新增组件也可预先配置初始 Bomb 库存。
             if (Resources == null) Resources = gameObject.AddComponent<PlayerResources>();
         }

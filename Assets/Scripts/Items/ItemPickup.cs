@@ -65,7 +65,7 @@ namespace ShinySTG.Items
         }
 
         public static bool CanCollect(ShinySTG.Player.Player player) => player != null && player.isActiveAndEnabled &&
-            player.Health != null && player.Health.isActiveAndEnabled && !player.Health.IsDead &&
+            player.Health != null && player.Health.isActiveAndEnabled && player.Health.CanInteract &&
             player.Hitbox != null && player.Hitbox.isActiveAndEnabled;
 
         public bool TryCollect(ShinySTG.Player.Player player)

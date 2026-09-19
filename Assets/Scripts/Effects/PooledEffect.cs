@@ -13,10 +13,13 @@ namespace ShinySTG.Effects
         EffectPool _pool;
         GameObject _prefab;
         bool _playing;
+        public uint PlaybackVersion { get; private set; }
+        public bool IsPlaybackActive(uint version) => this != null && isActiveAndEnabled && _playing && PlaybackVersion == version;
         protected float Elapsed { get; private set; }
 
         internal void Prepare(EffectPool pool, GameObject prefab, Bullet source)
         {
+            PlaybackVersion++;
             _pool = pool;
             _prefab = prefab;
             Elapsed = 0f;

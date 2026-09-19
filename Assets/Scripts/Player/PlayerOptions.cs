@@ -61,6 +61,23 @@ namespace ShinySTG.Player
         readonly List<FirePatternRuntimeState> _fireStates = new();
 
         int _lastPowerLevel = -1;
+        bool _visible = true;
+
+        public void SetVisible(bool visible, bool snap = false)
+        {
+            _visible = visible;
+            for (int i = 0; i < _spawned.Count; i++)
+            {
+                var option = _spawned[i];
+                if (option == null) continue;
+                if (snap)
+                {
+                    Vector2 offset = PositionForm?.GetOffset(i, false, _spawned.Count) ?? Vector2.zero;
+                    option.position = transform.position + (Vector3)offset;
+                }
+                option.gameObject.SetActive(visible);
+            }
+        }
 
         void Start()
         {
@@ -94,6 +111,8 @@ namespace ShinySTG.Player
                 _lastPowerLevel = power;
                 Rebresh();
             }
+
+            if (!_visible) return;
 
             // 2. 跟随 + 开火
             bool focus = Player.Instance != null && Player.Instance.Movement != null
@@ -163,6 +182,7 @@ namespace ShinySTG.Player
                 _fireStates.Add(new FirePatternRuntimeState());
                 if (OptionPrefab == null) { _spawned.Add(null); _fireCooldowns.Add(0f); continue; }
                 var t = Instantiate(OptionPrefab, transform.position, Quaternion.identity);
+                t.gameObject.SetActive(_visible);
                 _spawned.Add(t);
                 _fireCooldowns.Add(0f);
             }

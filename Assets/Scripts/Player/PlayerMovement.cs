@@ -47,6 +47,8 @@ namespace ShinySTG.Player
 
         void Update()
         {
+            var health = GetComponent<PlayerHealth>();
+            if (health != null && !health.CanInteract) return;
             Vector2 m = MoveInput;
             if (m.sqrMagnitude > 1f) m.Normalize(); // 八方向圆死区:超过 1 也按 1
 

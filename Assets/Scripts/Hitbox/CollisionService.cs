@@ -164,7 +164,7 @@ namespace ShinySTG.Hitbox
             if (player != null
                 && player.Hitbox != null
                 && player.Health != null
-                && !player.Health.IsDead)
+                && player.Health.CanInteract)
             {
                 player.Hitbox.RefreshCachedBounds();
                 _grid.Insert(player.Hitbox);
@@ -335,6 +335,8 @@ namespace ShinySTG.Hitbox
 
             foreach (var entry in _bulletSnapshot)
             {
+                if (!health.CanInteract) break;
+                invincible = health.IsInvincible;
                 var b = entry.Bullet;
                 if (b == null || !b.isActiveAndEnabled || b.SpawnVersion != entry.Version || _pendingReturn.Contains(b)) continue;
                 if (b.Hitbox == null) continue;

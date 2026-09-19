@@ -8,6 +8,41 @@ namespace ShinySTG.UI.Editor
     public sealed class GameplayHudTests
     {
         [Test]
+        public void DeathBlocksReentryAndStartsInvincibilityOnlyWhenRevived()
+        {
+            var go = new GameObject("death state test");
+            try
+            {
+                var health = go.AddComponent<PlayerHealth>();
+                health.AddLife(-int.MaxValue);
+                health.AddLife(2);
+                health.ReviveInvincibleDuration = 3f;
+                int revived = 0;
+                health.OnRevive += () => revived++;
+                health.OnLifeLost += () =>
+                {
+                    health.TakeHit();
+                    Assert.IsFalse(health.CompleteRevive());
+                };
+                health.TakeHit();
+                health.TakeHit();
+                Assert.AreEqual(1, health.Lives);
+                Assert.IsTrue(health.IsDying);
+                Assert.IsFalse(health.CanInteract);
+                Assert.AreEqual(0, revived);
+                Assert.AreEqual(0f, health.InvincibleRemaining);
+                Assert.IsTrue(health.CompleteRevive());
+                Assert.AreEqual(1, revived);
+                Assert.AreEqual(3f, health.InvincibleRemaining);
+                Assert.IsTrue(health.CanInteract);
+                Assert.IsFalse(health.CompleteRevive());
+                health.TakeHit();
+                Assert.AreEqual(1, health.Lives);
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test]
         public void LifeNotificationsObserveNewValueAndKeepPreHitEventOrder()
         {
             var go = new GameObject("HUD health test");
@@ -27,8 +62,11 @@ namespace ShinySTG.UI.Editor
                 };
                 health.OnAllLivesLost += () => observed.Add("dead");
                 health.TakeHit();
+                health.TakeHit(); // 死亡演出期间重复受击不能再次扣命。
+                Assert.That(health.Lives, Is.EqualTo(1));
+                Assert.That(health.CompleteRevive(), Is.True);
                 health.TakeHit();
-                health.TakeHit();
+                Assert.That(health.CompleteRevive(), Is.False);
                 health.AddLife();
                 CollectionAssert.AreEqual(new[] { "before:2", "after:1", "before:1", "after:0", "dead", "after:1" }, observed);
             }

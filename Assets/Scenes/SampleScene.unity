@@ -489,7 +489,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 10022, guid: 52f1397121e1475e8825d73dfd0836ec, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 42.105286
+      value: 42.105225
       objectReference: {fileID: 0}
     - target: {fileID: 10022, guid: 52f1397121e1475e8825d73dfd0836ec, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -1848,6 +1848,8 @@ GameObject:
   - component: {fileID: 547702073}
   - component: {fileID: 547702080}
   - component: {fileID: 547702081}
+  - component: {fileID: 547702082}
+  - component: {fileID: 547702083}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -2064,6 +2066,52 @@ MonoBehaviour:
   AttractionEnabled: 1
   FastAttractionSize: {x: 1.5, y: 1.5}
   SlowAttractionSize: {x: 3, y: 3}
+--- !u!114 &547702082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 547702072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3221720fc84a40943a4bc892c42ed43b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _deathCommands:
+  - rid: 6177227192554225664
+  _deathEffectPrefab: {fileID: 8445010616754556486, guid: 234b2213d1cc4eb3bff14b488f1b5627, type: 3}
+  _respawnDelay: 0.3
+  _respawnPoint: {fileID: 0}
+  _blinkInterval: 0.08
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177227192554225664
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1
+--- !u!114 &547702083
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 547702072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c57bf875a122bbf42b11c76daf4fee82, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _sprite: {fileID: 21300000, guid: c70709555f95d4f49aa17ae7cd424ca2, type: 3}
+  _size: 0.6
+  _color: {r: 1, g: 1, b: 1, a: 1}
+  _fadeDuration: 0.08
+  _sortingLayer: Default
+  _sortingOrder: 30
 --- !u!1 &565188260
 GameObject:
   m_ObjectHideFlags: 0

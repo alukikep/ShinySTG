@@ -26,11 +26,16 @@ namespace ShinySTG.Effects.Editor
             var scene = SceneManager.GetActiveScene();
             var first = EffectPool.Play(_prefab, Vector3.one, scene);
             _poolObject = first.transform.parent.gameObject;
+            uint version = first.PlaybackVersion;
+            Assert.IsTrue(first.IsPlaybackActive(version));
             first.Release();
+            Assert.IsFalse(first.IsPlaybackActive(version));
             first.Release();
             var reused = EffectPool.Play(_prefab, Vector3.right, scene);
             var simultaneous = EffectPool.Play(_prefab, Vector3.left, scene);
             Assert.AreSame(first, reused);
+            Assert.IsFalse(first.IsPlaybackActive(version));
+            Assert.IsTrue(reused.IsPlaybackActive(reused.PlaybackVersion));
             Assert.AreNotSame(reused, simultaneous);
             Assert.AreEqual(Vector3.right, reused.transform.position);
         }

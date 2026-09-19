@@ -55,11 +55,21 @@ ClearEnemiesCommand 对执行时已登记的普通敌人发起无奖励自毁，
 
 SpawnDropsCommand 是瞬时生成指令；通过 ExecuteCommandsAction 或 ExecuteGlobalCommandsAction
 可复用，不等待道具下落或拾取，也不会在取消动作时撤销已生成道具。
-GlobalCommandContext.Invocation 由 BossController 的阶段退出入口传入结束原因；
-普通显式调用为 Direct，不受指令的阶段退出开关限制。
+GlobalCommandContext.Invocation 由调用宿主提供：BossController 传入阶段退出原因，
+PlayerDeathController 传入 PlayerDeath，普通显式调用为 Direct。
+Direct 和 PlayerDeath 不受 SpawnDropsCommand 的 Boss 阶段完成或死亡开关限制。
 
 当前撒道具指令需要有效 Owner，使用其执行时位置；ExecuteCommandsAction 不将 GameActionContext.Position
 快照传给指令。需要 Boss 位置时应在其销毁前执行，不能依赖 CompleteActions 中已失效的 Owner。
+
+## 玩家死亡指令
+
+PlayerDeathController 直接执行 SR 指令数组，不通过 GameActionRunner 等待指令。
+每次失去一命（包含最后一命）执行一次，Owner 是玩家 Transform；特效和重生等待由玩家协调组件负责。
+执行延后到受击的下一帧，避开子弹和激光碰撞遍历。指令按数组顺序同步执行，空项跳过；
+异常会中断余下指令，由玩家宿主记录并继续死亡演出，不回滚已执行的指令。
+取消演出不会撤销已清除弹幕、已生成道具或命名无敌锁。
+配置见 [玩家操作说明](../../Assets/Scripts/Player/README.md)。
 
 ## 与其他板块的关系
 

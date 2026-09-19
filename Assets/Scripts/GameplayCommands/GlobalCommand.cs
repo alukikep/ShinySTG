@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace ShinySTG.GameplayCommands
 {
-    public enum CommandInvocation { Direct, PhaseCompleted, BossDeath, Stopped }
+    public enum CommandInvocation { Direct, PhaseCompleted, BossDeath, Stopped, PlayerDeath }
     /// <summary>全局游戏指令的执行上下文。指令按需读取场景服务，不持有跨场景状态。</summary>
     public readonly struct GlobalCommandContext
     {

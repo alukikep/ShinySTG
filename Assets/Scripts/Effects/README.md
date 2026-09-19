@@ -26,6 +26,17 @@
 不要挂自动 Destroy/Disable 脚本；ParticleSystem 的 Stop Action 由池接管。
 池保证粒子的停止和清空；自定义动画脚本的可变状态需自行实现复用重置。
 
+## 玩家死亡
+
+玩家通过 PlayerDeathController 配置 Death Effect Prefab，同样复用本目录的一次性特效。
+本体和子机先隐藏，特效独立播放；协调组件等待本次特效结束及额外延时后才重生。
+最后一命也播放特效，但不会自动重生。不要通过禁用玩家根对象来实现消失，否则会取消演出。
+配置步骤与 Game Over 接入见 [玩家说明](../Player/README.md)。
+
+外部等待特效时保存 Play 返回的实例及其 PlaybackVersion，使用 IsPlaybackActive(version)
+判断是否仍是原来的那次播放；不要仅凭 GameObject 是否激活判断，池可能已经复用该实例。
+正常完成、提前 Release、实例禁用或销毁都会结束等待；回收自有特效前也应检查版本。
+
 ## 玩家弹命中残影
 
 普通敌人和 Boss 命中共用 Bullet.PlayHitAfterimage，在伤害回调之前复制外观。
