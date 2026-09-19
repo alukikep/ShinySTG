@@ -1,5 +1,9 @@
 # 通用游戏动作
 
+符卡宣言使用 `Game Action/Play Spell Declaration`。战斗场景共用一个宣言 prefab，
+各阶段的 Declaration 引用不同符卡配置即可置换内容；配置与场景接入见
+[符卡宣言操作说明](../Presentation/SpellDeclaration/README.md)。
+
 BossEncounter 资产的 StartActions、DefeatActions、CompleteActions，以及每个
 PhasePresentations 条目的 EnterActions、ExitActions 均使用相同的 ActionSequence。
 在 Actions 数组使用 SR 下拉选择动作。默认按顺序执行，Parallel 同时启动子动作。
