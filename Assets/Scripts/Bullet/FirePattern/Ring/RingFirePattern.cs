@@ -20,12 +20,12 @@ public class RingFirePattern : FirePattern
         // pool 可能为 null(防御:用户没配 BulletPool 时),不传字典走默认 0 → 不调 OnFireGroupTriggered。
         var extensions = pool.GetRuntimeFireExtensions(FireExtensions);
         var fireCountMap = pool?.GetRuntimeFireCounts(FireExtensions);
-        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(extensions, ref from, rotationRad, fireCountMap);
+        FireExtensionResolver.PrepareBatch(extensions, ref from, fireCountMap);
         float step = 360f / Count;
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)
         {
-            float rad = centerRad + step * i * Mathf.Deg2Rad;
+            float rad = FireExtensionResolver.ResolveBulletPipeline(extensions, from, i, Count, rotationRad) + step * i * Mathf.Deg2Rad;
             // Radius 是环形起始偏移(本地,沿每发子弹方向),与 Base.PositionOffset 正交叠加。
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
             // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers

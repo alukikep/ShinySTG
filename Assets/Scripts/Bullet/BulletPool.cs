@@ -94,6 +94,7 @@ public class BulletPool : MonoBehaviour
         b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, spawnFog);
         AttachModifiers(b, modifiersToAttach);
         _active.Add(b);
+        _groupSpawnCount++;
         return b;
     }
 
@@ -233,38 +234,44 @@ public class BulletPool : MonoBehaviour
             }
         }
 
-        // ─── 本批 FireExtension 累加计数 ───
-        // 遍历 pattern.FireExtensions 数组,对每个非 null 元素在 _fireCounts 字典里 ++,
-        // 得到的 fireCount(从 1 起)会在 pattern.Fire 内部被 Resolver 入口调 OnFireGroupTriggered。
-        //
-        // ★ per-instance 隔离 ★
-        //   key = FireExtensions 数组里的具体元素引用(不是 SO 资产本身)。
-        //   - 同一份 FirePattern SO 被敌人 A / B 共用 → 它们 FireExtensions 数组里的元素是同一引用,
-        //     字典累加会跨敌人 —— 这是项目想要的行为("Boss 散弹母弹开火 60 次旋转 300°" 跨多次开火累加)。
-        //   - 用户复制一份 FirePattern 资产(Ctrl+D)→ 新资产的 FireExtensions 数组是新元素,字典独立累加。
-        //   - 用户手动给同一资产在多处挂不同 FireExtension 子类实例 → 字典按 ref 区分,各自累加。
-        //
-        // ★ 字典清理 ★
-        //   累加计数随 pattern 资产整个生命周期保留(场景切换时 BulletPool.OnDestroy 清 Instance,
-        //   字典随之释放,无泄漏风险)。若未来要支持"关卡重置后累加清零",加一个 ResetFireCounts() 公共方法。
-        //
-        // ★ 空数组 / null → 不累加,行为 100% 等价历史。
         var previousState = _currentRuntimeState;
         _currentRuntimeState = state;
-        if (state != null) state.Advance(pattern.FireExtensions);
-        else if (pattern.FireExtensions != null)
+        int previousCount = _groupSpawnCount;
+        _groupSpawnCount = 0;
+        try
         {
-            for (int i = 0; i < pattern.FireExtensions.Length; i++)
-            {
-                var ext = pattern.FireExtensions[i]; if (ext == null) continue;
-                _fireCounts.TryGetValue(ext, out int prev); _fireCounts[ext] = prev + 1;
-            }
+            FireChild(pattern, pos, rotationRad, ownerHitbox, extraModifiers);
+            ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(_groupSpawnCount);
         }
-        try { pattern.Fire(pos, rotationRad, this, ownerHitbox, extraModifiers); }
-        finally { _currentRuntimeState = previousState; }
-        // Boss 系统钩子:每发一弹自动累计,供 ShotsFiredSignal 读取。
-        // 没有挂 BossShotCounter 时(BossShotCounter.Instance == null)直接跳过,不影响普通敌人。
-        ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(pattern);
+        finally
+        {
+            _groupSpawnCount = previousCount;
+            _currentRuntimeState = previousState;
+        }
+    }
+
+    readonly HashSet<FirePattern> _firePath = new();
+    int _groupSpawnCount;
+    public const int MaxPatternDepth = 64;
+
+    // 子项共用上下文，不重复播放根音效或提交统计；路径集合只阻止循环，不阻止兄弟重复引用。
+    public void FireChild(FirePattern pattern, Vector2 pos, float rotationRad,
+        ShinySTG.Hitbox.HitboxComponent owner, BulletModifier[] extras)
+    {
+        if (pattern == null || _firePath.Count >= MaxPatternDepth || !_firePath.Add(pattern)) return;
+        try
+        {
+            if (_currentRuntimeState != null) _currentRuntimeState.Advance(pattern.FireExtensions);
+            else if (pattern.FireExtensions != null)
+                foreach (var ext in pattern.FireExtensions)
+                {
+                    if (ext == null) continue;
+                    _fireCounts.TryGetValue(ext, out int count);
+                    _fireCounts[ext] = count + 1;
+                }
+            pattern.Fire(pos, rotationRad, this, owner, extras);
+        }
+        finally { _firePath.Remove(pattern); }
     }
 
     /// <summary>

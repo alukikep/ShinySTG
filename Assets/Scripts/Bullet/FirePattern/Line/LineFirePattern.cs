@@ -20,11 +20,12 @@ public class LineFirePattern : FirePattern
         // (累加型 OffsetAngle / 未来其他累加型模块)。
         var extensions = pool.GetRuntimeFireExtensions(FireExtensions);
         var fireCountMap = pool?.GetRuntimeFireCounts(FireExtensions);
-        float rad = FireExtensionResolver.ResolvePipelineWithOffset(extensions, ref from, rotationRad, fireCountMap);
+        FireExtensionResolver.PrepareBatch(extensions, ref from, fireCountMap);
         float speed = Speed; // 起点使用基类 Speed
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
         for (int i = 0; i < Count; i++)
         {
+            float rad = FireExtensionResolver.ResolveBulletPipeline(extensions, from, i, Count, rotationRad);
             // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
             SpawnBullet(pool, from, rad, speed, AngularSpeed, Damage, team, extraModifiers);
             speed += DeltaSpeed;

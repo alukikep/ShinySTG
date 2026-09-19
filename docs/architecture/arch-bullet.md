@@ -16,7 +16,7 @@
 
 **协作边界:**
 - 调用方通过 `BulletPool` 拿弹或一步触发一个 FirePattern;`FireGroup` 接收 `ownerHitbox` 透传阵营。
-- 子弹不会自动回收 —— 出界 / 命中后由调用方或 modifier 决定 `Return` 时机。
+- 子弹在 Update 中越界且反弹未处理时自动回收；命中由 CollisionService 延迟回收。复用恢复基准缩放、视觉属性、雾化与擦弹状态；重复 Return 不会重复入池。
 - 全屏消弹统一调用 `BulletPool.ReturnAll`，它先快照活跃集合再逐颗走标准 `Return`，因此会正确解除信号订阅、清理 modifier 并按 prefab 回池；不要由外部直接禁用子弹 GameObject。
 
 **阵营语义:**
@@ -87,7 +87,7 @@ FireAction.OnTick
 
 - 同一 FirePattern 资产是 SO,**被 N 个敌人引用**;
 - 如果 modifier 是单例被 N 颗子弹共享,任何 modifier 上的状态字段(如 `计时器` / `追踪冷却`)会被所有子弹同时读写,行为完全错乱;
-- **Clone 出独立实例**(默认 `MemberwiseClone`,纯值类型字段无开销,引用类型字段需手动 override),保证 per-instance state 安全。
+- **Clone 出独立实例**(默认 `MemberwiseClone`,值类型字段按值复制，但克隆仍会分配对象,引用类型字段需手动 override),保证 per-instance state 安全。
 
 ### 2.3 BulletModifier 字段约定(写 modifier 时遵守)
 
@@ -175,16 +175,7 @@ FireAction.OnTick
 - `Angle Offset` 的 `BaseOffset` 本身也是 SR 多态(`Base Offset/Fixed` 精确值 / `Base Offset/Random Range` 区间随机)
 - 接口:`GetRotationOffset()` 返回本次旋转角增量 + `OnFireTriggered(Bullet host)` 钩子 + `SampleBatch()` Synchronized 入口
 
-**本批 BaseOffset 共享**(挂在 `AngleOffsetFirePatternBulletExtra.BatchSample` 字段):
-- `Independent`(默认):每颗母弹独立 Sample(模糊抖动、不规则分裂)
-- `Synchronized`:本批只 Sample 一次,本批所有母弹共用(精准扇形、节拍同步)
-- 机制:`BulletPool.FireGroup` 入口遍历本批 `extraModifiers`(BulletModifier[]),找挂有 AngleOffset 的 `FirePatternBulletModifier` 子类(FireOnEnter / FireOnDuration),调其 `Extra` 字段的 `OnBatchFire()` 提前抽样一次
-  - 抽样结果(`_sampledBaseOffset` + `_fireCount` 归 0 + `_baseOffsetSampled=true`)通过 `MemberwiseClone` 字段浅拷贝传到本批每颗母弹 modifier 上 → 每颗母弹飞行 N 秒后 OnFireTriggered 直接用 `_sampledBaseOffset`,跳过抽样
-  - 仅当 `BatchSample = Synchronized` 才生效;Independent 模式 OnBatchFire 直接 return,每颗母弹 AngleOffset 在 OnFireTriggered 时各自 Sample(旧行为,完全兼容)
-- 字段位置刻意放在 `AngleOffset` 内部(而非 FirePattern 上),因为同步语义只影响有 AngleOffset 的母弹配置 —— 用户只在 AngleOffset 字段配置即可,不必双层切换
-- `CompositeFirePattern` 自动兼容:无论 AngleOffset 挂在 FirePattern.ModifierPrefabs 还是 FireAction.ExtraModifierPrefabs 或子 pattern 上,BulletPool 入口遍历 extraModifiers 都能找到
-- 旧 .asset 反序列化时 `BatchSample` 字段不存在 → 走枚举默认值 `Independent`,行为 100% 兼容历史
-
+**分裂 Extra 的批次抽样边界：** Independent 在母弹首次分裂时抽样；Synchronized 当前只由根 FireGroup 扫描调用方 extras 中首个匹配项。持久抽样标记尚未按批次重置，默认 Modifier 和 Composite 子项不能视为已全部覆盖。该机制不同于 FireExtension 的 PrepareBatch，详见[射击模式](./arch-fire-pattern.md)。
 ### 2.6 时间窗口(Delay / Duration / OneShot)
 
 **所有 BulletModifier 自动支持时间窗口**,由基类统一管理,子类只需 override `ModifyCore`(不要 override `Modify`,它是 sealed)。
@@ -494,7 +485,7 @@ public class EmitSignalAction : EnemyAction
 本板块与其他板块的依赖 / 协作关系(简单文字说明):
 
 - [hitbox](./arch-hitbox.md) — 复用 AABB + 阵营;每个 Bullet 自动挂 HitboxComponent
-- [fire-pattern](./arch-fire-pattern.md) — Bullet 由 FirePattern.SpawnBullet 创建,modifier 由 FirePattern.ModifierPrefabs 挂载;**BulletPool.FireGroup 入口维护 per-FireExtension 字典 `_fireCounts`**(供 `AccumulatingOffsetAngleFireExtension` 等批次累加型 FireExtension 读取本批开火序号),Ring/Line/Arc 三个 FirePattern 子类的 `Fire()` 入口从 `pool.GetFireExtensionFireCounts()` 取字典传给 Resolver(详见 [fire-pattern §3.1.1](./arch-fire-pattern.md#311-批次累加型accumulatingoffsetanglefireextension))
+- [fire-pattern](./arch-fire-pattern.md) — 负责运行扩展、批次准备与逐弹角度；独立上下文与旧共享入口并存，具体覆盖范围以该文档为准。
 - [bounds](./arch-bounds.md) — 出界回收 / 反弹判定都基于 BoundsService.CullingArea
 - [enemy-ai](./arch-enemy-ai.md) — BulletSignalBus 接收 EmitSignalAction 的信号,驱动 BulletModifier 激活
 - [audio](./arch-audio.md) — Hit 音效 / 染色 modifier 与 SfxCue 体系可联动(按需)

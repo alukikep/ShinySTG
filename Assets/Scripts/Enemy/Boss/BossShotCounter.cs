@@ -28,6 +28,8 @@ namespace ShinySTG.EnemyAI.Boss
             Total += pattern.GetFireCount();
         }
 
+        public void OnBossFired(int spawnedCount) => Total += Mathf.Max(0, spawnedCount);
+
         public void Reset() { Total = 0; }
     }
 }

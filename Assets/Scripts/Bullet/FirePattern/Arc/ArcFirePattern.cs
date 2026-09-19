@@ -19,19 +19,14 @@ public class ArcFirePattern : FirePattern
         // 取 BulletPool 维护的 per-FireExtension fireCount 字典 → 让累加型模块拿到本批开火序号。
         var extensions = pool.GetRuntimeFireExtensions(FireExtensions);
         var fireCountMap = pool?.GetRuntimeFireCounts(FireExtensions);
-        float centerRad = FireExtensionResolver.ResolvePipelineWithOffset(extensions, ref from, rotationRad, fireCountMap);
+        FireExtensionResolver.PrepareBatch(extensions, ref from, fireCountMap);
         var team = ownerHitbox != null ? ownerHitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
 
-        if (Count <= 1)
-        {
-            FireOne(from, centerRad, pool, team, extraModifiers);
-            return;
-        }
-        float start = centerRad - (ArcLength * Mathf.Deg2Rad) / 2f;
-        float step = (ArcLength * Mathf.Deg2Rad) / (Count - 1);
+        float start = Count == 1 ? 0f : -ArcLength * Mathf.Deg2Rad / 2f;
+        float step = Count == 1 ? 0f : ArcLength * Mathf.Deg2Rad / (Count - 1);
         for (int i = 0; i < Count; i++)
         {
-            float rad = start + step * i;
+            float rad = FireExtensionResolver.ResolveBulletPipeline(extensions, from, i, Count, rotationRad) + start + step * i;
             // Radius 是扇形起始偏移(本地,沿每发子弹方向),与 Base.PositionOffset 正交叠加。
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
             FireOne(from + offset, rad, pool, team, extraModifiers);

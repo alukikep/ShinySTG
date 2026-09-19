@@ -18,6 +18,17 @@ using UnityEngine;
 /// </summary>
 public static class FireExtensionResolver
 {
+    /// <summary>每批只准备一次计数/抽样及位置偏移，逐弹解析不重复触发钩子。</summary>
+    public static void PrepareBatch(FireExtension[] extensions, ref Vector2 from,
+        System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> counts)
+    {
+        if (extensions == null || extensions.Length == 0) return;
+        if (extensions[0] is BaseAngleFireExtension baseAngle) from += baseAngle.PositionOffset;
+        foreach (var ext in extensions)
+            if (ext != null && counts != null && counts.TryGetValue(ext, out int count))
+                ext.OnFireGroupTriggered(count);
+    }
+
     const float FallbackDeg = 270f;
 
     /// <summary>

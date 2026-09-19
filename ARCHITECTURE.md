@@ -11,7 +11,7 @@
 | 板块文件 | 一句话 | 对应原 § |
 |---|---|---|
 | [bullet](./docs/architecture/arch-bullet.md) | `BulletPool` + `Bullet` + `BulletModifier` + 反弹 + 信号触发 | §2 |
-| [fire-pattern](./docs/architecture/arch-fire-pattern.md) | `FirePattern` SO + `FireExtension` / `FireSound` / `SpawnFog` 多态扩展 | §3 |
+| [fire-pattern](./docs/architecture/arch-fire-pattern.md) | `FirePattern` + 发射运行状态 + Composite 调度 / 逐弹角度 | §3 |
 | [enemy-ai](./docs/architecture/arch-enemy-ai.md) | `BehaviorFlow` + `EnemyAction` + `MoveBehaviour` + `ActionDurationConfig` | §4 |
 | [boss](./docs/architecture/arch-boss.md) | `BossController` + 多阶段 + 多管血 + `BossSignal` | §5 |
 | [game-actions](./docs/architecture/arch-game-actions.md) | Encounter 动作序列、可等待演出与全局指令 | — |
