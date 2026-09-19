@@ -201,6 +201,14 @@ Enemy 总控在 HP 清零的单次死亡路径中保存位置，停止行为流�
 SelfDestructAction、离场销毁和 OnDisable 不触发死亡掉落。
 行为流需要显式撒道具时，可通过 ExecuteGlobalCommandsAction 使用 SpawnDropsCommand。
 
+## 死亡表现
+
+普通敌人由 Enemy 在单次击杀路径生成可选死亡特效，特效独立于敌人销毁，
+不延后掉落或战斗结算。出界、自毁和清场不播放死亡特效。
+EffectPool 按场景与 prefab 复用表现对象，场景卸载时一同清理。
+配置和附带音效的归属见 [战斗特效](../../Assets/Scripts/Effects/README.md)。
+Boss 的战败保留流程不受该普通敌人死亡入口影响。
+
 ## 与其他板块的关系
 
 - [items](./arch-items.md) — 敌人死亡掉落与显式撒道具共用生成服务。

@@ -12,13 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4d2674020be4e1458e666068af6d165, type: 3}
   m_Name: EnemyDeath
   m_EditorClassIdentifier: 
-  Clips: []
+  Clips:
+  - {fileID: 8300000, guid: 3d68037c96c71af4d83cacb278a90f2f, type: 3}
   DefaultVolume: 1
   DefaultPitch: 1
   Loop: 0
   Bus: {fileID: 0}
   Priority: 128
   MaxVoices: 4
+  Overflow: 0
   Cooldown: 0
   Rules: []
   references:

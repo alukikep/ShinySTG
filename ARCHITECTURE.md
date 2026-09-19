@@ -44,6 +44,7 @@
 │     → 通过 BulletPool.FireGroup / LaserPool.Fire 触发弹 / 激光
 ├── BulletPool (场景单例) ─────► Bullet (对象池复用 + Modifier 多态)
 ├── LaserPool  (场景单例) ─────► LaserEntity (5 段状态机 + Renderer 多态)
+├── EffectPool (按场景自动创建) ─► 独立死亡特效 / 命中残影 / 可选 SfxCue
 ├── ItemDropService (场景单例) ─► ItemPickup (撒出、吸附、对象池)
 ├── CollisionService / LaserService ─► HitboxComponent / 阵营过滤
 ├── BoundsService (单例)        ─► PlayableArea + CullingArea(Gizmo 可视化)
@@ -67,6 +68,8 @@
 - **background ↔ level**：关卡广播 Cue 请求及生命周期事件，显式背景绑定负责转发；背景独立推进，不改变战斗视角。
 
 - **hud → player**：Presenter 读取资源并订阅事件，View 只负责显示；布局编辑只修改 UI，不控制相机、世界边界或游戏流程。
+
+- **战斗特效**：Enemy 的击杀和玩家弹命中生成独立表现，EffectPool 管理复用，附带声音交给 AudioMix；配置见 [Effects README](./Assets/Scripts/Effects/README.md)。
 
 **运行时支撑层**:
 

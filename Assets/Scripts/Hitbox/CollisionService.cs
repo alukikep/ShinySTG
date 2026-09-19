@@ -262,6 +262,7 @@ namespace ShinySTG.Hitbox
                     {
                         // 玩家弹伤害由 b.Damage 决定(由 FirePattern.Damage 经 pool.Get 写入)。
                         QueueReturn(b);
+                        b.PlayHitAfterimage();
                         enemy.TakeDamage(b.Damage);
                         OnPlayerBulletHitEnemy?.Invoke(b, enemy);
                         hit = true;
@@ -303,6 +304,7 @@ namespace ShinySTG.Hitbox
                     if (HitboxMath.AABBOverlap(bRect, hb._cachedBounds))
                     {
                         QueueReturn(b);
+                        b.PlayHitAfterimage();
                         boss.TakeDamage(b.Damage);
                         // OnPlayerBulletHitEnemy 事件签名是 (Bullet, EnemyHealth),这里不触发 —
                         //   Boss 命中后通过 BossHealth.OnAnyDeath 广播死亡,Boss 总控再广播 OnBossDefeated。

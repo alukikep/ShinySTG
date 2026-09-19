@@ -9,7 +9,7 @@
 
 ## 11. 音频音乐系统(AudioSystem)
 
-负责把「什么时机播什么音」封装成可复用资产,并在场景里按需调度 SFX + BGM。**与既有层完全正交** —— 不修改 Player / Enemy / Bullet / Level 任何代码,仅复用项目已有的「数据驱动 + 多态 + Pipeline」套路。
+负责把「什么时机播什么音」封装成可复用资产,并在场景里按需调度 SFX + BGM。调用方在战斗或表现入口提交音效请求，音频系统统一负责规则、限流和声部生命周期。
 
 **职责分工:**
 
@@ -35,7 +35,7 @@
 
 **协作边界:**
 
-- **不侵入其他模块**:所有挂点都是「在调用方已有的逻辑里加一行 `AudioMix.PlaySfx(...)`」,不修改 Player / Enemy / Bullet / Boss 任何接口/事件/字段。
+- **调用边界**：宿主或特效组件通过可选 SfxCue 配置和 AudioMix.PlaySfx 提交请求，音频系统不控制伤害结算、敌人销毁或特效回收。
 - **嵌入方式**:在 `PlayerHealth` / `BossHealth` / `EnemyHealth` / `PlayerShooting` 上加 `[SerializeField] SfxCue` 字段 + 在 TakeDamage / TakeHit / OnDeath 处调 `AudioMix.PlaySfx(...)`。
 - **静态门面 null-safe**:`AudioSystem.Instance == null` 时调用静默返回,不报错 —— 调用方不需要 null check。
 - **场景单例**:场景里挂一个 `AudioSystem` MonoBehaviour,`PersistentSingleton` 跨场景保留,菜单切关卡不重置音量。
@@ -47,9 +47,16 @@
 |---|---|---|
 | `PlayerHealth` / `BossHealth` / `EnemyHealth` | 加 `[SerializeField] SfxCue` 字段,在 TakeDamage / OnDeath 调 `AudioMix.PlaySfx(...)` | ✅ 改动但**只增字段 + 只增调用,不改签名/事件/字段顺序** |
 | `PlayerShooting` | 加 `[SerializeField] SfxCue _shootSfx` 字段,FireGroup 后调 `AudioMix.PlaySfx(...)` | ✅ 同上 |
-| `Bullet` / `CollisionService` / `Enemy` | 0 改动 —— SFX 由宿主在自己的 TakeDamage 处触发 | ❌ 完全不动 |
+| `Enemy` / `Bullet` / `CollisionService` | 击杀与命中入口生成独立特效，由 PooledEffect 提交可选音效 | 战斗入口与表现播放分离 |
 | `LevelController` / `BehaviorFlow` | `LevelController.BeginLevel` 调一次 `AudioEventHub.TryBind(definition)`(3 行内,无侵入) | ✅ 改动但只增 1 行调用 |
 | `DOTween` | 后续可复用于音量淡入淡出(`DOFloat` / `DOVolume`),已集成 | 复用 |
+
+**特效音效边界：**
+
+PooledEffect 在每次正式播放时请求一次可选音效，使用播放起点，不绑定特效 Transform。
+特效回收不停止声音；声音仍受音频系统暂停、清场和声部限流控制。此入口用于非循环短音效。
+Health 的受击、死亡声仍保留，迁移同一种声音时应移除旧配置，避免重复触发。
+配置入口见 [战斗特效](../../Assets/Scripts/Effects/README.md#特效附带音效)。
 
 **自动切歌机制(按关卡启用):**
 

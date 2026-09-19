@@ -134,3 +134,5 @@ MonoBehaviour:
   Damage: 1
   Hitbox: {fileID: 4600069463098476186}
   Renderer: {fileID: 0}
+  _showHitAfterimage: 1
+  _hitAfterimagePrefab: {fileID: 11400000, guid: 220ea9992a374e418509f6cd0551ae54, type: 3}

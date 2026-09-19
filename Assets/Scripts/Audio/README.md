@@ -108,6 +108,15 @@ AudioMix.MuteAll(true);
 新增 `FireSound` 类型的方法见
 [`arch-fire-pattern.md`](../../../docs/architecture/arch-fire-pattern.md#32-开火音多态扩展firesound)。
 
+## 特效 prefab 音效
+
+死亡爆炸和命中残影可在特效组件的 `Play Sfx` 中引用非循环 `SfxCue`，
+通过同一个 AudioMix 入口播放并沿用限流。声音独立于特效对象，回池不会截断尾音。
+同一种声音从 Health 迁移到特效后，应清空 Health 上对应引用，避免叠音；
+关闭残影也会关闭它附带的命中声。
+组件挂载方式、临时测试 prefab 和生命周期说明见
+[战斗特效配置](../Effects/README.md#特效附带音效)。
+
 ## 常见问题
 
 ### 播放时没有声音

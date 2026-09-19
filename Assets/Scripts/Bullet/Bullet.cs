@@ -57,6 +57,23 @@ public class Bullet : MonoBehaviour
              "允许为空(没有可见子弹 / 走 VFX-only / ParticleSystem 表现);视觉 modifier 自身会做 null 保护。")]
     public SpriteRenderer Renderer;
 
+    [SerializeField, Tooltip("玩家弹命中时生成通用残影；特殊弹种可关闭。")]
+    bool _showHitAfterimage = true;
+    [SerializeField, Tooltip("可选残影 prefab；留空使用 Resources/Effects/BulletAfterimage。")]
+    ShinySTG.Effects.BulletAfterimage _hitAfterimagePrefab;
+    static GameObject _defaultAfterimagePrefab;
+
+    /// <summary>碰撞结算前调用，立即复制视觉，避免伤害回调清场后读到已复用子弹。</summary>
+    public void PlayHitAfterimage()
+    {
+        if (!_showHitAfterimage || Renderer == null || Renderer.sprite == null || !Renderer.enabled
+            || !Renderer.gameObject.activeInHierarchy) return;
+        if (_hitAfterimagePrefab == null && _defaultAfterimagePrefab == null)
+            _defaultAfterimagePrefab = Resources.Load<GameObject>("Effects/BulletAfterimage");
+        var prefab = _hitAfterimagePrefab != null ? _hitAfterimagePrefab.gameObject : _defaultAfterimagePrefab;
+        ShinySTG.Effects.EffectPool.Play(prefab, transform.position, gameObject.scene, this);
+    }
+
     public Vector2 Position => transform.position;
 
     /// <summary>是否与某 hitbox 相撞(便捷入口)。Hitbox 未配置时返回 false。</summary>

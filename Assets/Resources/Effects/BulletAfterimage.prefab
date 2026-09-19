@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4288273717789115445
+--- !u!1 &8445010616754556486
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,39 +8,38 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6644702986280249329}
-  - component: {fileID: 866796576621088829}
-  - component: {fileID: -6979183110424681869}
-  - component: {fileID: 2577476433622056203}
+  - component: {fileID: 4158770122188674009}
+  - component: {fileID: 4278759665107185898}
+  - component: {fileID: 11400000}
   m_Layer: 0
-  m_Name: NatsuhaABullet
+  m_Name: BulletAfterimage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6644702986280249329
+--- !u!4 &4158770122188674009
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4288273717789115445}
+  m_GameObject: {fileID: 8445010616754556486}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.5594589, y: -0.41732907, z: 0}
-  m_LocalScale: {x: 0.4, y: 0.4, z: 0.4}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &866796576621088829
+--- !u!212 &4278759665107185898
 SpriteRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4288273717789115445}
+  m_GameObject: {fileID: 8445010616754556486}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -75,7 +74,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 4882c63956e30274580efe73ed229238, type: 3}
+  m_Sprite: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -83,56 +82,69 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &-6979183110424681869
+--- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4288273717789115445}
+  m_GameObject: {fileID: 8445010616754556486}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c71bd53462af9a4d86669dd4ac810a4, type: 3}
+  m_Script: {fileID: 11500000, guid: 2faac5f4de624e0183d978b3a36fa693, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Size: {x: 1, y: 1.3}
-  Color: {r: 0, g: 1, b: 0.3, a: 0.9}
-  SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
-  AlwaysDraw: 1
-  Team: 0
-  IsFogged: 0
-  _cachedBounds:
+  _maxDuration: 10
+  _duration: 0.15
+  _distance: 0.5
+  _movement:
     serializedVersion: 2
-    x: 0
-    y: 0
-    width: 0
-    height: 0
---- !u!114 &2577476433622056203
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4288273717789115445}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66c6fbbc1fef7a242a6dac1b70cab251, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Speed: 0
-  AngularSpeed: 0
-  SteerAngle: 0
-  Lifetime: 0
-  HasGrazed: 0
-  SourcePrefab: {fileID: 0}
-  FogElapsed: 0
-  FogDuration: 0
-  _baseLocalScale: {x: 0, y: 0, z: 0}
-  Damage: 1
-  Hitbox: {fileID: -6979183110424681869}
-  Renderer: {fileID: 0}
-  _showHitAfterimage: 1
-  _hitAfterimagePrefab: {fileID: 11400000, guid: 220ea9992a374e418509f6cd0551ae54, type: 3}
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  _opacity:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: -1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: -1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4

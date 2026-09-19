@@ -102,6 +102,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MaxHp: 100
   _currentHp: 100
+  _hitSfx: {fileID: 0}
+  _deathSfx: {fileID: 0}
   Hitbox: {fileID: 6027466860592158076}
 --- !u!114 &2829716655156229401
 MonoBehaviour:
@@ -128,6 +130,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57cb4c7e9b101ac4e89014cd2a096743, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _selfDestructOutOfBounds: 1
+  _entryGraceSeconds: 5
+  _deathDrops: {fileID: 0}
+  _deathEffectPrefab: {fileID: 8445010616754556486, guid: a4913effda0f4bb3b964fb60d692acd5, type: 3}
 --- !u!114 &6027466860592158076
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -145,6 +151,7 @@ MonoBehaviour:
   SelectedColor: {r: 1, g: 0.6, b: 0, a: 1}
   AlwaysDraw: 1
   Team: 2
+  IsFogged: 0
   _cachedBounds:
     serializedVersion: 2
     x: 0
