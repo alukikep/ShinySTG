@@ -40,8 +40,10 @@ namespace ShinySTG.Player
         [Tooltip("初始残机数(含本体,例如 3 = 玩家 + 2 续命)。")]
         public int InitialLives = 3;
 
-        [Tooltip("0 = 无残机,死了不复活,只触发 OnAllLivesLost。")]
+        [Tooltip("当前生命总数，含本体；1 = 无备用残机，0 = 已死亡。")]
         public int Lives { get; private set; }
+        /// <summary>生命总数改变后触发，参数含本体；HUD 备用残机应减去本体。</summary>
+        public event Action<int> OnLivesChanged;
 
         [Header("Power")]
         [Range(0, 4)]
@@ -185,6 +187,7 @@ namespace ShinySTG.Player
             if (_hitSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_hitSfx, position: (Vector2)transform.position);
 
             Lives -= 1;
+            OnLivesChanged?.Invoke(Lives);
             if (Lives <= 0)
             {
                 Lives = 0;
@@ -225,7 +228,10 @@ namespace ShinySTG.Player
         /// <summary>强制复活 / 加命(给续命道具用)。</summary>
         public void AddLife(int delta = 1)
         {
-            Lives = Mathf.Max(0, Lives + delta);
+            int next = (int)Math.Max(0L, Math.Min(int.MaxValue, (long)Lives + delta));
+            if (next == Lives) return;
+            Lives = next;
+            OnLivesChanged?.Invoke(Lives);
         }
     }
 }
