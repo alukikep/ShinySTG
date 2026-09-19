@@ -15,7 +15,7 @@ namespace ShinySTG.EnemyAI.Boss
         /// <summary>每帧调用,用于累加内部状态。</summary>
         public virtual void Tick(BossController boss, float dt) { }
 
-        /// <summary>当前信号值(HpSignal: HP%; ShotsFiredSignal: 累计; PhaseTimeSignal: 秒数)。</summary>
+        /// <summary>当前信号值(HpSignal: HP%; PhaseTimeSignal: 秒数)。</summary>
         public abstract float CurrentValue { get; }
     }
 }

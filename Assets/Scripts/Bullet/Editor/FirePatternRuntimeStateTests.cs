@@ -4,6 +4,75 @@ using UnityEngine;
 public class FirePatternRuntimeStateTests
 {
     [Test]
+    public void DefaultSpriteMaterialsShareFallbackAndReleaseLastOwner()
+    {
+        var first = new GameObject("fallback-first");
+        var second = new GameObject("fallback-second");
+        try
+        {
+            first.AddComponent<SpriteRenderer>();
+            second.AddComponent<SpriteRenderer>();
+            var a = first.AddComponent<Bullet>();
+            var b = second.AddComponent<Bullet>();
+            var material = a.Renderer.sharedMaterial;
+            Assert.That(material.shader.name, Is.EqualTo("STG/BulletTint"));
+            Assert.That(b.Renderer.sharedMaterial, Is.SameAs(material));
+            Object.DestroyImmediate(first);
+            Assert.That(material != null, Is.True);
+            Object.DestroyImmediate(second);
+            Assert.That(material == null, Is.True);
+        }
+        finally
+        {
+            if (first != null) Object.DestroyImmediate(first);
+            if (second != null) Object.DestroyImmediate(second);
+        }
+    }
+
+    [Test]
+    public void CachedPreparationAdvancesCountsAndResetReclones()
+    {
+        var source = new FireExtension[] { new BaseAngleFireExtension() };
+        var state = new FirePatternRuntimeState();
+        state.Advance(source);
+        var extensions = state.GetRuntimeExtensions(source);
+        var counts = state.GetRuntimeFireCounts(source);
+        Assert.That(counts[extensions[0]], Is.EqualTo(1));
+        state.Advance(source);
+        Assert.That(state.GetRuntimeExtensions(source), Is.SameAs(extensions));
+        Assert.That(state.GetRuntimeFireCounts(source), Is.SameAs(counts));
+        Assert.That(counts[extensions[0]], Is.EqualTo(2));
+        state.Reset();
+        Assert.That(state.GetRuntimeExtensions(source)[0], Is.Not.SameAs(extensions[0]));
+        Assert.That(state.GetRuntimeFireCounts(source).Count, Is.Zero);
+    }
+
+    sealed class SignalReceiver
+    {
+        public void Receive(Vector2 origin) { }
+    }
+
+    [Test]
+    public void SignalUnsubscribeUsesDelegateEquality()
+    {
+        const string signal = "test/delegate-equality";
+        var receiver = new SignalReceiver();
+        var subscribed = new System.Action<Vector2>(receiver.Receive);
+        var removed = new System.Action<Vector2>(receiver.Receive);
+        Assert.That(subscribed, Is.Not.SameAs(removed));
+        try
+        {
+            ShinySTG.BulletCore.BulletSignalBus.Subscribe(signal, subscribed);
+            ShinySTG.BulletCore.BulletSignalBus.Unsubscribe(signal, removed);
+            Assert.That(ShinySTG.BulletCore.BulletSignalBus.DebugSubscriberCount(signal), Is.Zero);
+        }
+        finally
+        {
+            ShinySTG.BulletCore.BulletSignalBus.Unsubscribe(signal, subscribed);
+        }
+    }
+
+    [Test]
     public void IndependentStatesDoNotShareCounts()
     {
         var extension = new BaseAngleFireExtension();
@@ -86,5 +155,68 @@ public class FirePatternRuntimeStateTests
         FireExtensionResolver.PrepareBatch(extensions, ref from, counts);
         Assert.That(FireExtensionResolver.ResolveBulletPipeline(extensions, from, 0, 3, 0f), Is.EqualTo(13f * Mathf.Deg2Rad).Within(0.0001f));
         Assert.That(FireExtensionResolver.ResolveBulletPipeline(extensions, from, 2, 3, 0f), Is.EqualTo(23f * Mathf.Deg2Rad).Within(0.0001f));
+    }
+
+    sealed class CountingOffset : BaseOffsetStrategy
+    {
+        public static int Calls;
+        public override float Sample() { Calls++; return Calls; }
+    }
+
+    [Test]
+    public void RootBatchSamplesAllModulesOnceAcrossRepeatedChildren()
+    {
+        var root = new GameObject("batch-test");
+        var source = new GameObject("bullet-template");
+        source.SetActive(false);
+        var prefab = source.AddComponent<Bullet>();
+        var pool = root.AddComponent<BulletPool>();
+        var leaf = ScriptableObject.CreateInstance<RingFirePattern>();
+        var composite = ScriptableObject.CreateInstance<CompositeFirePattern>();
+        var first = new AngleOffsetFirePatternBulletExtra { BaseOffset = new CountingOffset(), BatchSample = AngleOffsetFirePatternBulletExtra.BatchSampleMode.Synchronized };
+        var second = new AngleOffsetFirePatternBulletExtra { BaseOffset = new CountingOffset(), BatchSample = AngleOffsetFirePatternBulletExtra.BatchSampleMode.Synchronized };
+        leaf.BulletPrefab = prefab;
+        leaf.Count = 3;
+        leaf.ModifierPrefabs = new BulletModifier[] { new FireOnEnterBulletModifier { Extra = first } };
+        var extras = new BulletModifier[] { new FireOnEnterBulletModifier { Extra = second } };
+        composite.Children = new FirePattern[] { leaf, leaf };
+        CountingOffset.Calls = 0;
+        try
+        {
+            pool.FireGroup(composite, Vector2.zero, 0f, null, extras, new FirePatternRuntimeState());
+            Assert.That(pool.ActiveBullets.Count, Is.EqualTo(6));
+            Assert.That(CountingOffset.Calls, Is.EqualTo(2));
+            pool.ReturnAll();
+            pool.FireGroup(composite, Vector2.zero, 0f, null, extras, new FirePatternRuntimeState());
+            Assert.That(CountingOffset.Calls, Is.EqualTo(4));
+            var field = typeof(AngleOffsetFirePatternBulletExtra).GetField("_baseOffsetSampled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(field.GetValue(first), Is.False);
+            Assert.That(field.GetValue(second), Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(source);
+            Object.DestroyImmediate(leaf);
+            Object.DestroyImmediate(composite);
+        }
+    }
+
+    [Test]
+    public void IndependentMotherSamplesOncePerClone()
+    {
+        var template = new AngleOffsetFirePatternBulletExtra { BaseOffset = new CountingOffset() };
+        var first = (AngleOffsetFirePatternBulletExtra)template.Clone();
+        var second = (AngleOffsetFirePatternBulletExtra)template.Clone();
+        CountingOffset.Calls = 0;
+        first.OnFireTriggered(null);
+        first.OnFireTriggered(null);
+        second.OnFireTriggered(null);
+        Assert.That(CountingOffset.Calls, Is.EqualTo(2));
+        Assert.That(first.GetRotationOffset(), Is.EqualTo(Mathf.Deg2Rad).Within(0.0001f));
+        Assert.That(second.GetRotationOffset(), Is.EqualTo(2f * Mathf.Deg2Rad).Within(0.0001f));
+        var reused = (AngleOffsetFirePatternBulletExtra)first.Clone();
+        reused.OnFireTriggered(null);
+        Assert.That(CountingOffset.Calls, Is.EqualTo(3));
     }
 }

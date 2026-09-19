@@ -12,8 +12,8 @@
 **职责:** 与普通敌人**正交**的 Boss 编排层,提供多阶段 / 阶段触发条件 / 多管血。普通敌人就一段行为流,Boss 需要这些"上层编排"概念,所以单独建一层。
 
 **协作边界:**
-- Boss GameObject 上挂 `Boss + BossHealth + BossHitbox + BossController`,**不挂 ShooterEnemy**,**也不挂 BossShotCounter**。
-- `BossShotCounter` 是**场景级单例**(`Singleton<BossShotCounter>`),由场景里单独挂一份。把它从 Boss prefab 摘掉的原因:之前它是 `static Instance + RequireComponent` 双绑,在"同场景多 Boss" / "Boss 多次入场销毁" 场景下会把 Instance 误清成 null;改成 Singleton 后重复挂载自动 Destroy(只留第一份),`BulletPool.FireGroup` 钩子读 Instance 永远稳。
+- Boss GameObject 上挂 `Boss + BossHealth + BossHitbox + BossController`,不挂 ShooterEnemy。
+- Boss 发射次数统计当前未启用；阶段信号使用 HP、血管和阶段时间等明确来源。
 - 阶段用 `ShooterPhase` 直接持 BehaviorFlow 资产,boss 行为复用普通敌人那套行为流。
 - 多管血 / 多阶段 / 信号切换都在 Inspector 配,无需新代码。
 
@@ -51,7 +51,6 @@
 | `CurrentBarIndexSignal` | `Signal/Current Bar Index` | 当前血管编号(0/1/2/...,Int,打完管单调递增) | `Equal + 1` = 打完第 1 管切下阶段;`GreaterOrEqual + 2` = 进入第 3 管 |
 | `TotalHpPercentSignal` | `Signal/Total HP %` | 所有血管累计剩余百分比(0~100,按 MaxHp 加权) | `LessOrEqual + 30` = 残血 30% 切暴走 phase |
 | `PhaseTimeSignal` | `Signal/Phase Time` | 当前阶段已持续秒数(每阶段 EnterPhase 时自动 Reset) | `GreaterOrEqual + 30` = 本阶段打了 30 秒强切下阶段 |
-| `ShotsFiredSignal` | `Signal/Shots Fired` | Boss 全局累计开火数(BossShotCounter.Total,跨阶段累计) | `GreaterOrEqual + 500` = 开火 500 次后切下阶段 |
 
 **配置模式:阶段退出触发 = (SignalIndex, Op, Threshold) 三元组**
 

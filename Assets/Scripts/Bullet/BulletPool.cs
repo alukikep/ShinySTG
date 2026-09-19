@@ -94,7 +94,6 @@ public class BulletPool : MonoBehaviour
         b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, spawnFog);
         AttachModifiers(b, modifiersToAttach);
         _active.Add(b);
-        _groupSpawnCount++;
         return b;
     }
 
@@ -109,7 +108,7 @@ public class BulletPool : MonoBehaviour
     /// ★ 挂完所有 modifier 后,统一调一次 ResetWindow,把每颗子弹的时间窗口计时器归零
     ///   (OneShot modifier 重新具备触发机会;Delay/Duration 从这一刻起算)。
     /// </summary>
-    static void AttachModifiers(Bullet bullet, BulletModifier[] mods)
+    void AttachModifiers(Bullet bullet, BulletModifier[] mods)
     {
         if (bullet == null || mods == null) return;
         for (int i = 0; i < mods.Length; i++)
@@ -120,7 +119,21 @@ public class BulletPool : MonoBehaviour
             // 避免多颗子弹共享同一 modifier 模板导致状态污染。
             // ★ Clone 内部已深拷 StartTrigger(见 BulletModifier.Clone 注释),
             //   所以每颗子弹的 StartTrigger 都是独立实例,订阅不会互相覆盖。
-            bullet.AddModifier(mod.Clone());
+            var runtime = mod.Clone();
+            if (mod is FirePatternBulletModifier source && source.Extra is AngleOffsetFirePatternBulletExtra config
+                && runtime is FirePatternBulletModifier split && split.Extra is AngleOffsetFirePatternBulletExtra angle
+                && config.BatchSample == AngleOffsetFirePatternBulletExtra.BatchSampleMode.Synchronized)
+            {
+                float sample;
+                if (_batchSamples == null) sample = angle.BaseOffset?.Sample() ?? 0f;
+                else if (!_batchSamples.TryGetValue(config, out sample))
+                {
+                    sample = angle.BaseOffset?.Sample() ?? 0f;
+                    _batchSamples.Add(config, sample);
+                }
+                angle.SetBatchSample(sample);
+            }
+            bullet.AddModifier(runtime);
         }
         // ★ 挂在 _modifiers 之后才调 ResetWindow(此前 _modifiers 已由 Bullet.Init 的 ClearModifiers 清空过)。
         // 这里没暴露 ResetAllModifierWindows,因为它需要遍历 _modifiers(私有列表),
@@ -208,50 +221,28 @@ public class BulletPool : MonoBehaviour
         // 详见 Assets/Scripts/Bullet/FireExtension/FireSound.cs 顶部注释。
         pattern.PlayFireSounds(pos, ownerHitbox);
 
-        // ─── 本批 BaseOffset 共享抽样(由 AngleOffset 内部字段 BatchSample 驱动) ───
-        // 遍历本批 extraModifiers(BulletModifier[])里的 FirePatternBulletModifier 子类,
-        // 看它们的 Extra 字段是不是 AngleOffsetFirePatternBulletExtra 且 BatchSample = Synchronized,
-        // 如果是,调 AngleOffset.OnBatchFire() 提前抽样一次,本批所有母弹的 AngleOffset
-        // (通过 MemberwiseClone 继承 _sampledBaseOffset + _baseOffsetSampled + _batchSampleActivated 状态)
-        // 共用该值。
-        //
-        // Independent 模式(AngleOffset.BatchSample 默认值)→ OnBatchFire 直接 return,无副作用,
-        // 每颗母弹 AngleOffset 自己 Sample,行为与历史 100% 等价。
-        if (extraModifiers != null)
-        {
-            for (int i = 0; i < extraModifiers.Length; i++)
-            {
-                var fpbMod = extraModifiers[i] as FirePatternBulletModifier;
-                if (fpbMod != null)
-                {
-                    var ao = fpbMod.Extra as AngleOffsetFirePatternBulletExtra;
-                    if (ao != null)
-                    {
-                        ao.OnBatchFire();
-                        break; // 仅第一个挂 AngleOffset 的 modifier 参与本批共享
-                    }
-                }
-            }
-        }
-
         var previousState = _currentRuntimeState;
-        _currentRuntimeState = state;
-        int previousCount = _groupSpawnCount;
-        _groupSpawnCount = 0;
+        _currentRuntimeState = state ?? _sharedRuntimeState;
+        var previousSamples = _batchSamples;
+        var samples = _availableBatchSamples.Count > 0
+            ? _availableBatchSamples.Pop()
+            : new Dictionary<AngleOffsetFirePatternBulletExtra, float>();
+        _batchSamples = samples;
         try
         {
             FireChild(pattern, pos, rotationRad, ownerHitbox, extraModifiers);
-            ShinySTG.EnemyAI.Boss.BossShotCounter.Instance?.OnBossFired(_groupSpawnCount);
         }
         finally
         {
-            _groupSpawnCount = previousCount;
             _currentRuntimeState = previousState;
+            _batchSamples = previousSamples;
+            samples.Clear();
+            _availableBatchSamples.Push(samples);
         }
     }
 
     readonly HashSet<FirePattern> _firePath = new();
-    int _groupSpawnCount;
+    readonly Stack<Dictionary<AngleOffsetFirePatternBulletExtra, float>> _availableBatchSamples = new();
     public const int MaxPatternDepth = 64;
 
     // 子项共用上下文，不重复播放根音效或提交统计；路径集合只阻止循环，不阻止兄弟重复引用。
@@ -292,12 +283,14 @@ public class BulletPool : MonoBehaviour
     public System.Collections.Generic.IReadOnlyDictionary<FireExtension, int> GetRuntimeFireCounts(FireExtension[] source)
         => _currentRuntimeState != null ? _currentRuntimeState.GetRuntimeFireCounts(source) : _fireCounts;
 
-    public void ResetFireCounts() => _fireCounts.Clear();
+    public void ResetFireCounts() { _fireCounts.Clear(); _sharedRuntimeState.Reset(); }
 
     /// <summary>
     /// per-FireExtension 累加计数(由 FireGroup 入口维护,key = pattern.FireExtensions 数组里的具体元素 ref)。
     /// 详见 FireGroup 内注释。
     /// </summary>
     readonly Dictionary<FireExtension, int> _fireCounts = new();
+    readonly FirePatternRuntimeState _sharedRuntimeState = new();
+    Dictionary<AngleOffsetFirePatternBulletExtra, float> _batchSamples;
     FirePatternRuntimeState _currentRuntimeState;
 }

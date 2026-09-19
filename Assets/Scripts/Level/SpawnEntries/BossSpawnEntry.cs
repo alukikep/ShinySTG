@@ -12,14 +12,14 @@ namespace ShinySTG.Level.SpawnEntries
     /// 本类不再订阅任何 boss 内部事件,保持 SpawnEntry 子类"只管生成"的语义。
     ///
     /// 用法:
-    ///   - BossPrefab 上挂 Boss 总控即可,`[RequireComponent]` 自动加挂 BossHealth + BossHitbox + BossShotCounter + BossController,无需手填。
+    ///   - BossPrefab 上挂 Boss 总控即可,`[RequireComponent]` 自动加挂 BossHealth + BossHitbox + BossController,无需手填。
     ///   - BossController.Start 会自动跑第一阶段,本类不主动驱动。
     /// </summary>
     [Serializable]
     [Obsolete("BossSpawnEntry 已弃用。请使用 BossEncounterEntry + BossEncounterDefinition。")]
     public class BossSpawnEntry : SpawnEntry
     {
-        [Tooltip("Boss prefab。要求挂 BossController + BossHealth + BossShotCounter。")]
+        [Tooltip("Boss prefab。要求挂 BossController + BossHealth。")]
         public GameObject BossPrefab;
 
         [Tooltip("生成位置(世界坐标)。")]

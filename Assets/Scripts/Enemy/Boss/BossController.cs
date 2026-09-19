@@ -20,9 +20,6 @@ namespace ShinySTG.EnemyAI.Boss
     ///   - BossHealth:HP + 多管血
     ///   - BossHitbox:碰撞盒
     ///
-    /// 注:BossShotCounter 不再 RequireComponent —— 它是场景级单例(Singleton&lt;T&gt;),
-    /// Awake 时通过 Singleton&lt;T&gt;.Instance 自动拿引用,不存在时 ShotCount == null
-    /// (ShotsFiredSignal 在 CurrentValue 里 Null-safe 返回 0,不影响 boss 运转)。
     ///
     /// 死亡收尾流程:
     ///   1. BossHealth.OnDeath 事件触发
@@ -55,15 +52,9 @@ namespace ShinySTG.EnemyAI.Boss
         [Tooltip("Boss 的 HP 组件。HpSignal 会读它。由 [RequireComponent] 自动注入,不要在 Inspector 手填。")]
         public BossHealth Health;
 
-        [Header("Required (场景单例 Awake 注入,不要手填)")]
-        [HideInInspector]
-        [Tooltip("Boss 全局开火计数器。场景里单独挂一份,Awake 时通过 Singleton<T>.Instance 自动拿引用。\n" +
-                 "不存在时 ShotCount == null(ShotsFiredSignal Null-safe 返回 0)。")]
-        public BossShotCounter ShotCount;
-
         [Header("Signals (全局信号池)")]
         [SerializeReference, SR]
-        [Tooltip("每帧 tick 的信号源,产出 CurrentValue。可下拉选:HpSignal / ShotsFiredSignal / PhaseTimeSignal。")]
+        [Tooltip("每帧 tick 的信号源,产出 CurrentValue。可下拉选:HpSignal / PhaseTimeSignal。")]
         public BossSignal[] Signals;
 
         [Header("Phases")]
@@ -83,9 +74,6 @@ namespace ShinySTG.EnemyAI.Boss
         void Awake()
         {
             Health = GetComponent<BossHealth>();
-            // BossShotCounter 是场景单例;Awake 时通过 Singleton<T>.Instance 拿引用,
-            // 场景里没挂时 ShotCount == null(ShotsFiredSignal 在 CurrentValue 里 Null-safe 返回 0)。
-            ShotCount = BossShotCounter.Instance;
         }
 
         void OnEnable()

@@ -39,7 +39,7 @@ namespace ShinySTG.EnemyAI.Boss
                 case ComparisonOp.Equal:
                     // Mathf.Approximately 是相对+绝对容差,适合"离散整型信号近似相等"场景
                     // —— 比如 CurrentBarIndexSignal(Int 0/1/2) 触发 Equal。
-                    // 不推荐用于 PhaseTimeSignal / ShotsFiredSignal 这类累加型浮点信号:
+                    // 不推荐用于 PhaseTimeSignal 这类累加型浮点信号:
                     // 每帧 deltaTime 不一定能把 _elapsed 刚好凑到 Threshold 的容差带内,
                     // 触发时机不稳定。要做"打够 N 秒切阶段",请用 GreaterOrEqual + N。
                     return Mathf.Approximately(v, Threshold);

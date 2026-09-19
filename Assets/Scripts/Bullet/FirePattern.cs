@@ -106,8 +106,7 @@ public abstract class FirePattern : ScriptableObject
 
     /// <summary>
     /// 本次 Fire() 调用会发射多少颗子弹。Composite 需要递归求和。
-    /// Boss 系统的 ShotsFiredSignal 用它做全局开火计数。
-    /// </summary>
+    ///     /// </summary>
     public virtual int GetFireCount() => 0;
 
     /// <summary>

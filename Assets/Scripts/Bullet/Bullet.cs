@@ -34,6 +34,9 @@ public class Bullet : MonoBehaviour
     MaterialPropertyBlock _initialPropertyBlock;
     bool _baselineCaptured;
     bool _fogActive;
+    static Material _fallbackMaterial;
+    static int _fallbackUsers;
+    bool _usesFallbackMaterial;
     public uint SpawnVersion { get; private set; }
 
     [Header("Combat")]
@@ -70,12 +73,7 @@ public class Bullet : MonoBehaviour
         // 用 GetComponentInChildren(true) 兼顾 SpriteRenderer 在子物体上的 prefab 结构。
         if (Renderer == null) Renderer = GetComponentInChildren<SpriteRenderer>(true);
 
-        // ★ 视觉兼容兜底:BulletColorModifier 通过 MaterialPropertyBlock 写 _TintColor,
-        //   但配套 shader STG/BulletTint 才会读这个字段。如果 prefab 的 SpriteRenderer 用了
-        //   其他 shader(最常见的就是忘了切的 Sprites/Default),染色/渐变/闪烁会"静默失效"。
-        //   这里做一次懒切换:不是 STG/BulletTint → 自动换成配套 shader 派生的 .mat 实例。
-        //   ★ 不会破坏 batching:STG/BulletTint 的 _TintColor 走 [PerRendererData],MPB 友好。
-        //   ★ 不会污染 prefab:这里改的是 runtime 实例的 sharedMaterial,prefab 源资产不动。
+        // 默认 Sprite 材质使用共享染色兜底，自定义材质由 prefab 自己管理。
         EnsureTintCompatibleMaterial();
         CaptureBaseline();
     }
@@ -116,21 +114,24 @@ public class Bullet : MonoBehaviour
     }
 
     /// <summary>
-    /// 确保 SpriteRenderer.sharedMaterial 的 shader 是 STG/BulletTint。
-    /// 如果不是,运行时用 Shader.Find 创建一个 material 替换上去(per-instance 不破坏 prefab)。
-    /// 配套 shader 路径:Assets/Shaders/BulletTint.shader。
+    /// 默认 Sprite 材质共用一个兜底；池中 inactive 子弹仍持有引用。
+    /// 最后一颗使用者销毁时释放，不改写自定义 shader 或资产材质。
     /// </summary>
     void EnsureTintCompatibleMaterial()
     {
         if (Renderer == null) return;
         var sm = Renderer.sharedMaterial;
         if (sm == null || sm.shader == null) return;
-        if (sm.shader.name == "STG/BulletTint") return;  // 已对,跳过
-
-        var sh = Shader.Find("STG/BulletTint");
-        if (sh == null) return;  // shader 没编进来(不应该发生,兜底静默)
-        var tint = new Material(sh) { name = "BulletTint (auto-fallback)" };
-        Renderer.sharedMaterial = tint;
+        if (sm != _fallbackMaterial && sm.shader.name != "Sprites/Default") return;
+        if (_fallbackMaterial == null)
+        {
+            var shader = Shader.Find("STG/BulletTint");
+            if (shader == null) return;
+            _fallbackMaterial = new Material(shader) { name = "BulletTint (shared fallback)" };
+        }
+        Renderer.sharedMaterial = _fallbackMaterial;
+        _usesFallbackMaterial = true;
+        _fallbackUsers++;
     }
 
     void Reset()
@@ -217,6 +218,16 @@ public class Bullet : MonoBehaviour
     void OnDestroy()
     {
         DetachSignalTriggers();
+        if (_usesFallbackMaterial)
+        {
+            _usesFallbackMaterial = false;
+            if (--_fallbackUsers == 0)
+            {
+                if (Application.isPlaying) Destroy(_fallbackMaterial);
+                else DestroyImmediate(_fallbackMaterial);
+                _fallbackMaterial = null;
+            }
+        }
     }
 
     /// <summary>

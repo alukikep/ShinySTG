@@ -83,7 +83,7 @@
   - 字段: `LengthMultiplier: float`(默认 1)
   - **几何语义**: `position` = 两条激光的共享起点,正向沿 `angleRad`、反向沿 `angleRad + π`,长度相同。两条**独立 `LaserEntity`**,各自走完五段状态机
   - **视觉语义**: Body 从起点各向相反方向延伸 → ✕ 形 / 十字交叉
-  - `GetFireCount() = 2`(对齐 CompositeFirePattern 语义,Boss 系统 `ShotsFired` 统计按 2 算)
+  - `GetFireCount() = 2`(对齐 CompositeFirePattern 语义，供配置数量工具使用)
   - **不做位置偏移**:两条激光共享同一个 `position`。若需肩炮等"两个不同发射点"的双向,Action 层用两个 FireLaserAction 各偏一点,或未来加 MultiAngleLaserPattern
   - **共享 FireExtensions 累加字典**: 一次 Fire 走一次 Resolver,fireCount +=1;正反两条同角度、同长度、同 modifier、同阵营
 
@@ -93,7 +93,7 @@
   - **视觉语义**: N 条等分环形 → 圆盘形 / 多向散射
   - **对齐 Bullet 端**: 复用 `RingFirePattern` 的均分算法(`step = 360°/Count`)与 `Radius` 外推语义;激光版每条独占生命周期
   - **与 BidirectionalStraightLaserPattern 的边界**: Ring 是 N 条等分,**全部单向**,无 `rad + π` 的反向第二条;Bidirectional 是固定 2 条**正反对称**
-  - `GetFireCount() = Count`(对齐 CompositeFirePattern 语义,Boss `ShotsFired` 按 N 算)
+  - `GetFireCount() = Count`(对齐 CompositeFirePattern 语义，供配置数量工具使用)
   - **共享 FireExtensions 中心方向**: 一次 Fire 走一次 Resolver,fireCount +=1;N 条共用同一个 `centerRad` 与同一个 `from`(已含 Base.PositionOffset)
 
 - **`ArcLaserPattern: LaserPattern`** —— **单向弧形激光**(同点弧长内扇出 N 条):

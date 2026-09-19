@@ -12,9 +12,6 @@ namespace ShinySTG.EnemyAI.Boss
     ///     ├─ BossHitbox       (HitboxComponent 子类,Team=Enemy)
     ///     └─ BossController   (阶段协调器 + Signal)
     ///
-    /// 注:BossShotCounter **不挂**在 Boss prefab 上 —— 它是场景级单例(Singleton&lt;T&gt;),
-    /// 由场景单独挂一份(详见 BossShotCounter.cs 注释)。ShotsFiredSignal 通过 BossController
-    /// 的 BossShotCounter 引用读值,而不是读静态 Instance。
     ///
     /// 协作边界(对齐 Enemy):
     ///   - Boss 总控是公共访问入口:外部系统通过 boss.Health / boss.Hitbox / boss.Controller 访问

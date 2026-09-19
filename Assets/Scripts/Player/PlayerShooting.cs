@@ -66,6 +66,7 @@ namespace ShinySTG.Player
         {
             _fireHeld = false;
             _cooldown = 0f;
+            _fireState.Reset();
             _requireFireRelease = PlayerControlLock.IsLocked;
             _controlRevision = PlayerControlLock.Revision;
         }
@@ -74,6 +75,7 @@ namespace ShinySTG.Player
         "设大一点(STG 经典 12~20)。")]
         public float FireRate = 12f;
 
+        readonly FirePatternRuntimeState _fireState = new();
         float _cooldown;
 
         void Update()
@@ -94,7 +96,7 @@ namespace ShinySTG.Player
                 // 玩家发射 → 子弹阵营由 Player.Instance.Hitbox.Team 自动透传(通常是 Player)
                 var ownerHb = Player.Instance?.Hitbox;
                 foreach (var p in MainPatterns)
-                    if (p != null) BulletPool.Instance.FireGroup(p, transform.position, 0f, ownerHb);
+                    if (p != null) BulletPool.Instance.FireGroup(p, transform.position, 0f, ownerHb, null, _fireState);
             }
             else
             {
@@ -103,7 +105,7 @@ namespace ShinySTG.Player
                     ? Player.Instance.Health.PowerLevel : 0;
                 var p = MainPatterns[Mathf.Clamp(pl, 0, MainPatterns.Length - 1)];
                 var ownerHb = Player.Instance?.Hitbox;
-                if (p != null) BulletPool.Instance.FireGroup(p, transform.position, 0f, ownerHb);
+                if (p != null) BulletPool.Instance.FireGroup(p, transform.position, 0f, ownerHb, null, _fireState);
             }
 
             // 开火音 —— 放在 FireGroup 之后,不影响子弹创建;只在「确实开火」时触发。

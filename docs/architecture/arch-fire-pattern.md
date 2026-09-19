@@ -46,7 +46,7 @@ Count 非正的叶子不发射；单颗弹走中线，Ring/Arc 保留半径偏�
 
 FireGroup 在发射前触发根 Pattern 的 FireSounds。Composite 子项不会再次触发；空发射仍可播放意图音效。
 成功 Get 的实例数量累计进当前发射组，根调用完成后提交一次实际弹数，避免 Composite 重复统计。
-BossShotCounter 名称虽然含 Boss，但当前挂钩没有按发射者筛选：玩家、敌人、分裂的 FireGroup 都可能贡献计数。
+Boss 发射次数统计当前未启用；需要时应作为 Boss 阶段上下文能力重新设计。
 需要“仅当前 Boss”的机制必须先增加归属过滤，不能直接依赖当前全局计数。
 
 ## 校验与边界

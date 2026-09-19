@@ -104,7 +104,7 @@ namespace ShinySTG.BulletCore
             // SwapRemove 避免 List<T>.Remove 的元素移动(委托列表无序要求)。
             for (int i = 0; i < list.Count; i++)
             {
-                if (ReferenceEquals(list[i], handler))
+                if (list[i] == handler)
                 {
                     list[i] = list[list.Count - 1];
                     list.RemoveAt(list.Count - 1);
@@ -117,7 +117,7 @@ namespace ShinySTG.BulletCore
         }
 
         /// <summary>
-        /// 发射信号 —— 所有同名的订阅者立刻被调一次(派发顺序 = Subscribe 顺序)。
+        /// 发射信号 —— 开始派发时的所有同名订阅者各调用一次；不保证订阅顺序。
         /// </summary>
         /// <param name="signalName">信号名,大小写敏感。空 / null 静默 return。</param>
         /// <param name="origin">信号源位置(世界坐标)。传给 handler 的 origin 参数;
@@ -128,11 +128,12 @@ namespace ShinySTG.BulletCore
             if (!_subs.TryGetValue(signalName, out var list)) return;
             if (list.Count == 0) return;
 
-            // ★ 拷贝引用而非整 List:handler 内的 Subscribe 走「新建 List」分支,
-            //   Unsubscribe 可能改 _subs[signalName] 指向新 List,本拷贝依然指向旧 List,
-            //   本次派发遍历的 handler 集合是确定的。
-            var snapshot = list;
-            for (int i = 0; i < snapshot.Count; i++)
+            // ★ 必须复制元素而不是只复制 List 引用。
+            //   回调可能在派发过程中 Subscribe / Unsubscribe；Unsubscribe 会对原列表
+            //   做 swap-remove，直接遍历原列表会跳过元素或重复访问。ToArray() 固定本次
+            //   派发开始时的订阅集合和顺序，新订阅者等下一次 Emit 才生效。
+            var snapshot = list.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
             {
                 var h = snapshot[i];
                 if (h == null) continue;

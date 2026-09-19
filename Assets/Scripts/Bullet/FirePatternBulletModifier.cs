@@ -119,14 +119,7 @@ public class AngleOffsetFirePatternBulletExtra : FirePatternBulletExtra
              "  5   = 60 发后旋转 300°,形成旋转扇形。")]
     public float StepOffset = 0f;
 
-    [Tooltip("本批 BaseOffset 共享策略:\n" +
-             "  Independent (默认) = 每颗母弹独立 Sample(模糊抖动、不规则分裂);\n" +
-             "  Synchronized       = 本批 FireGroup 内所有母弹共用一个抽样值(精准扇形、节拍同步)。\n" +
-             "机制:BulletPool.FireGroup 入口会调 OnBatchFire(),把抽样结果写进 _sampledBaseOffset;\n" +
-             "      MemberwiseClone 时这个状态会被复制到本批每颗母弹 modifier 上,实现共享。\n" +
-             "★ 注意 ★\n" +
-             "  - 旧 .asset 反序列化本字段时走枚举默认值 Independent,行为与历史 100% 等价。\n" +
-             "  - 仅当挂在 FirePatternBulletModifier.Extra 上时生效(否则 BulletPool 入口遍历不到)。")]
+    [Tooltip("Independent：每颗母弹首次分裂时抽样。Synchronized：同一次根发射中同一 Extra 配置共享抽样，下一批重抽；覆盖默认和追加 Modifier。")]
     public BatchSampleMode BatchSample = BatchSampleMode.Independent;
 
     /// <summary>本批 BaseOffset 抽样共享策略(详见 AngleOffsetFirePatternBulletExtra.BatchSample 字段注释)。</summary>
@@ -142,38 +135,24 @@ public class AngleOffsetFirePatternBulletExtra : FirePatternBulletExtra
     [NonSerialized] int   _fireCount;            // 已触发的 FireOnce 次数
     [NonSerialized] float _sampledBaseOffset;     // 第一次 FireOnce(或 OnBatchFire)时抽到的 BaseOffset(度)
     [NonSerialized] bool  _baseOffsetSampled;     // 避免重复抽样
-    // ★ Synchronized 模式 marker:在 BulletPool.FireGroup 入口的原始 modifier 上设为 true,
-    //   MemberwiseClone 会复制这个 bool=true 到本批每颗母弹 modifier 实例上,后续 OnBatchFire
-    //   看到 true 直接 return(每颗母弹 modifier 不再重复抽样)。
-    [NonSerialized] bool  _batchSampleActivated;
-
     public override float GetRotationOffset()
     {
         // 公式:第 N 次(N 从 1 开始) → sampledBaseOffset + (N-1) * StepOffset
         return (_sampledBaseOffset + (_fireCount - 1) * StepOffset) * Mathf.Deg2Rad;
     }
 
-    /// <summary>
-    /// 本批共享抽样入口 —— 由 <see cref="BulletPool.FireGroup"/> 在每次开火组触发时调一次。
-    /// 仅在 <see cref="BatchSampleMode.Synchronized"/> 模式生效:本批 FireGroup 共享同一个 BaseOffset 抽样值,
-    /// 通过 MemberwiseClone 的字段复制语义传到本批每颗母弹的 AngleOffset 实例上(per-instance 状态都被复制)。
-    /// Independent 模式直接 return,每颗母弹 AngleOffset 在 OnFireTriggered 时各自 Sample,行为与历史一致。
-    /// </summary>
+    /// <summary>由池写入当前根发射批次的抽样，仅写运行实例。</summary>
+    public void SetBatchSample(float value)
+    {
+        _sampledBaseOffset = value;
+        _baseOffsetSampled = true;
+        _fireCount = 0;
+    }
+
+    [Obsolete("批次抽样由 BulletPool 管理；仅对运行实例使用 SetBatchSample。")]
     public void OnBatchFire()
     {
-        // 仅 Synchronized 模式触发本批共享抽样
-        if (BatchSample != BatchSampleMode.Synchronized) return;
-        // 原始 modifier 抽样一次后设 _batchSampleActivated=true,Clone 出来的实例继承这个 true,
-        // 后续 OnBatchFire 看到 true 直接 return(防止「按 modifier 数组逐个调用」时重复抽样)。
-        if (_batchSampleActivated) return;
-
-        _sampledBaseOffset = BaseOffset?.Sample() ?? 0f;
-        _baseOffsetSampled = true;          // 标记母弹 OnFireTriggered 不再抽样
-        _fireCount = 0;                     // ★ 关键:原始 modifier 的 _fireCount 必须归 0,
-                                            //   MemberwiseClone 会把这个 0 复制到本批每颗母弹 modifier 上,
-                                            //   保证每颗母弹的累加序列从 1 开始算(否则历史 _fireCount 残留会导致
-                                            //   GetRotationOffset 公式错位)。
-        _batchSampleActivated = true;       // 标记本批已抽过
+        if (BatchSample == BatchSampleMode.Synchronized) SetBatchSample(BaseOffset?.Sample() ?? 0f);
     }
 
     public override void OnFireTriggered(FirePatternBulletModifier host)
@@ -193,15 +172,11 @@ public class AngleOffsetFirePatternBulletExtra : FirePatternBulletExtra
 
     public override FirePatternBulletExtra Clone()
     {
-        // ★ 关键:标 [NonSerialized] 的 per-instance 状态(_fireCount / _sampledBaseOffset /
-        //   _baseOffsetSampled / _batchSampleActivated)随 MemberwiseClone 自动浅拷贝——
-        //   这正是「Synchronized 模式本批共享」的关键:原始 modifier 在 BulletPool 入口抽样后,
-        //   这些字段被 Clone 复制到本批每颗母弹 modifier 上,每颗母弹都继承同一个 _sampledBaseOffset。
-        //   注意:_fireCount 在复制后本批每颗母弹都从原始值继续递增(而不是归零)——
-        //   这不影响语义,因为每颗母弹的 AngleOffset 只关心「自己」累加序列,共享的是「起点」而非「计数」。
         var copy = (AngleOffsetFirePatternBulletExtra)MemberwiseClone();
-        // BaseOffset 是 BaseOffsetStrategy 引用类型字段,必须深拷(用户可能继承出带状态的子类)。
         copy.BaseOffset = BaseOffset?.Clone();
+        copy._fireCount = 0;
+        copy._sampledBaseOffset = 0f;
+        copy._baseOffsetSampled = false;
         return copy;
     }
 }
@@ -357,6 +332,7 @@ public abstract class FirePatternBulletModifier : BulletModifier
 
     // ─── per-instance 状态(Clone 时 [NonSerialized] 自然归零) ───
     [NonSerialized] protected float _accumulator;   // 持续型触发的间隔累加器
+    [NonSerialized] FirePatternRuntimeState _runtimeState;
     [NonSerialized] protected int   _shotsFired;    // 已发射次数(供 MaxShots / 调试)
 
     /// <summary>已发射的分裂次数(只读)。用于调试 / 上层逻辑判断。</summary>
@@ -411,7 +387,8 @@ public abstract class FirePatternBulletModifier : BulletModifier
             b.Position,
             rotationRad,
             ownerHitbox: owner,
-            extraModifiers: ExtraModifiers);
+            extraModifiers: ExtraModifiers,
+            state: _runtimeState ??= new FirePatternRuntimeState());
 
         _shotsFired++;
     }
@@ -425,6 +402,7 @@ public abstract class FirePatternBulletModifier : BulletModifier
         var copy = (FirePatternBulletModifier)base.Clone();
         copy._accumulator = 0f;
         copy._shotsFired = 0;
+        copy._runtimeState = null;
         if (ExtraModifiers != null)
         {
             copy.ExtraModifiers = new BulletModifier[ExtraModifiers.Length];

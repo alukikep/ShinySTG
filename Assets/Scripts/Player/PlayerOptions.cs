@@ -58,6 +58,7 @@ namespace ShinySTG.Player
 
         readonly List<Transform> _spawned = new();
         readonly List<float> _fireCooldowns = new();
+        readonly List<FirePatternRuntimeState> _fireStates = new();
 
         int _lastPowerLevel = -1;
 
@@ -68,12 +69,19 @@ namespace ShinySTG.Player
             Rebresh();
         }
 
+        void OnDisable()
+        {
+            foreach (var state in _fireStates) state.Reset();
+            for (int i = 0; i < _fireCooldowns.Count; i++) _fireCooldowns[i] = 0f;
+        }
+
         void OnDestroy()
         {
             PositionForm?.OnExit(this);
             foreach (var t in _spawned) if (t != null) Destroy(t.gameObject);
             _spawned.Clear();
             _fireCooldowns.Clear();
+            _fireStates.Clear();
         }
 
         void Update()
@@ -120,7 +128,7 @@ namespace ShinySTG.Player
                     {
                         // 子机弹阵营 = 玩家阵营(共用 Player.Instance.Hitbox.Team)
                         var ownerHb = Player.Instance?.Hitbox;
-                        BulletPool.Instance.FireGroup(OptionFirePatterns[i], t.position, 0f, ownerHb);
+                        BulletPool.Instance.FireGroup(OptionFirePatterns[i], t.position, 0f, ownerHb, null, _fireStates[i]);
                     }
                 }
             }
@@ -146,11 +154,13 @@ namespace ShinySTG.Player
                 int last = _spawned.Count - 1;
                 if (_spawned[last] != null) Destroy(_spawned[last].gameObject);
                 _spawned.RemoveAt(last);
+                _fireStates.RemoveAt(last);
                 if (last < _fireCooldowns.Count) _fireCooldowns.RemoveAt(last);
             }
             // 不够的补上
             while (_spawned.Count < desired)
             {
+                _fireStates.Add(new FirePatternRuntimeState());
                 if (OptionPrefab == null) { _spawned.Add(null); _fireCooldowns.Add(0f); continue; }
                 var t = Instantiate(OptionPrefab, transform.position, Quaternion.identity);
                 _spawned.Add(t);
