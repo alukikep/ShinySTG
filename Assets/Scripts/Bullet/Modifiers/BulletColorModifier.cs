@@ -31,7 +31,7 @@ using UnityEngine;
 ///
 /// 字段约定:
 ///   - _lifetime / _solidApplied / _mpb 都是 per-instance 状态。
-///   - _mpb 是 MaterialPropertyBlock 引用(Clone 时浅拷没问题,因为 Unity 调用 SetPropertyBlock 时
+///   - _mpb 是 MaterialPropertyBlock 引用(Clone 时清空并懒创建独立实例。Unity 调用 SetPropertyBlock 时
 ///     会把 mpb 内部数据复制到 renderer;MPB 自身不在子弹之间共享状态)。
 ///
 /// 与 HomingEnemyModifier 同源套路:走 SerializeReference 多态下拉,无新增 prefab 成本。
@@ -58,7 +58,7 @@ public class BulletColorModifier : BulletModifier
 
     [Header("Color")]
     [Tooltip("主色。Solid 模式直接用此色;FadeByLifetime 模式的'起点色'。\n" +
-             "Alpha 通道在 FadeByLifetime / Flash 模式中也会被改写。")]
+             "Alpha 在 Solid 中是染色强度，在 Fade/Flash 中也控制透明度。")]
     public Color Color = Color.red;
 
     [Tooltip("仅 FadeByLifetime 模式有效:老化终点的颜色(通常把 alpha 设 0 做渐隐)。")]
@@ -75,7 +75,7 @@ public class BulletColorModifier : BulletModifier
     public float ReferenceLifetime = 1.5f;
 
     [Range(0f, 30f)]
-    [Tooltip("仅 Flash 模式有效:闪烁频率(Hz)。5 ≈ 1/12 秒一个周期;10 ≈ 1/6 秒一个周期。")]
+    [Tooltip("仅 Flash 模式有效:闪烁频率(Hz)。5 = 0.2 秒一个周期;10 = 0.1 秒一个周期。")]
     public float FlashFrequency = 5f;
 
     [Range(0f, 1f)]
@@ -95,6 +95,16 @@ public class BulletColorModifier : BulletModifier
     float _lifetime;
     bool _solidApplied;     // Solid 模式只设一次,避免覆盖美术在 prefab 上配的 sprite 颜色被反复回写(虽然等价)
     MaterialPropertyBlock _mpb;  // per-instance MPB,避免和别的子弹共享状态
+
+    static readonly int TintId = Shader.PropertyToID("_TintColor");
+    static readonly int OpacityId = Shader.PropertyToID("_BulletOpacity");
+
+    protected override void OnResetWindow()
+    {
+        _lifetime = 0f;
+        _solidApplied = false;
+        _mpb = null;
+    }
 
     public override void ModifyCore(Bullet b, float dt)
     {
@@ -125,12 +135,13 @@ public class BulletColorModifier : BulletModifier
     ///   - 配套 shader 'STG/BulletTint' 走自定义 _TintColor 字段,不走内置 color。
     ///   - MPB 不会破坏 SRP Batcher / 静态 batching(Renderer.color 会破坏 batching,大弹量场景下掉帧)。
     /// </summary>
-    void ApplyTintColor(Bullet b, Color c)
+    void ApplyTintColor(Bullet b, Color c, float opacity = 1f)
     {
         // 懒分配 per-instance MPB(Clone modifier 时 _mpb 为 null,首帧才创建)
         if (_mpb == null) _mpb = new MaterialPropertyBlock();
         b.Renderer.GetPropertyBlock(_mpb);   // 读取 renderer 已有的 mpb(其他 modifier 可能也写过),保留其属性
-        _mpb.SetColor("_TintColor", c);     // 覆盖或写入 _TintColor
+        _mpb.SetFloat(OpacityId, Mathf.Clamp01(opacity));
+        _mpb.SetColor(TintId, c);     // 覆盖或写入 _TintColor
         b.Renderer.SetPropertyBlock(_mpb);   // 应用
     }
 
@@ -157,19 +168,21 @@ public class BulletColorModifier : BulletModifier
         // 参考寿命 <=0 时兜底 1s,避免除零。
         float refLife = ReferenceLifetime > 0f ? ReferenceLifetime : 1f;
         float t = Mathf.Clamp01(_lifetime / refLife);
-        float fadeT = Mathf.InverseLerp(FadeStart, 1f, t);
-        ApplyTintColor(b, Color.Lerp(Color, FadeOutColor, fadeT));
+        float fadeT = FadeStart >= 1f ? (t >= 1f ? 1f : 0f) : Mathf.InverseLerp(FadeStart, 1f, t);
+        var c = Color.Lerp(Color, FadeOutColor, fadeT);
+        float opacity = c.a;
+        c.a = Color.a; // 染色强度不随淡出变化。
+        ApplyTintColor(b, c, opacity);
     }
 
     /// <summary>
-    /// Flash:TintColor.a 在 [FlashMinAlpha, 1] 间正弦振荡。RGB 保持 Color。
+    /// Flash:独立透明度按正弦变化，染色强度和 RGB 保持不变。
     /// </summary>
     void ApplyFlash(Bullet b)
     {
         float s = 0.5f * (Mathf.Sin(_lifetime * FlashFrequency * Mathf.PI * 2f) + 1f);
         float a = Mathf.Lerp(FlashMinAlpha, 1f, s);
         var c = Color;
-        c.a *= a;
-        ApplyTintColor(b, c);
+        ApplyTintColor(b, c, c.a * a);
     }
 }

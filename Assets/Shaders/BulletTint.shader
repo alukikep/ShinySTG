@@ -34,6 +34,7 @@ Shader "STG/BulletTint"
         // 出生雾化通道(per-instance,MaterialPropertyBlock 写入)
         _FogAmount      ("Fog Amount (1 = full fog, 0 = clear)", Range(0, 1)) = 0.0
         _FogColor       ("Fog Color (覆盖雾化期整体颜色)", Color) = (1, 1, 1, 1)
+        _BulletOpacity  ("Bullet Opacity", Range(0, 1)) = 1
         _EffectOpacity  ("Effect Opacity", Range(0, 1)) = 1
     }
 
@@ -86,6 +87,7 @@ Shader "STG/BulletTint"
             float     _FogAmount;
             float4    _FogColor;
             float     _EffectOpacity;
+            float     _BulletOpacity;
 
             v2f vert(appdata_t v)
             {
@@ -133,7 +135,7 @@ Shader "STG/BulletTint"
                 // ═══════════════════════════════════════════════════════════
                 fixed3 finalRgb   = lerp(tinted, _FogColor.rgb, _FogAmount);
                 fixed  finalAlpha = lerp(baseAlpha, baseAlpha + (1.0 - baseAlpha) * 0.6, _FogAmount);
-                finalAlpha *= _EffectOpacity;
+                finalAlpha *= _EffectOpacity * _BulletOpacity;
 
                 // 7. 预乘 alpha 输出(配合 Blend One OneMinusSrcAlpha)
                 return fixed4(finalRgb * finalAlpha, finalAlpha);

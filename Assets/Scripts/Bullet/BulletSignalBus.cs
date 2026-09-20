@@ -58,7 +58,7 @@ namespace ShinySTG.BulletCore
     ///   BulletSignalBus.Unsubscribe("boss_yell_charge_done", OnSignalReceived);
     /// </code>
     ///
-    /// 详见 <c>Assets/Scripts/Bullet/ModifierStartTrigger.cs</c> 的 OnSignalStartTrigger 子类,
+    /// 详见 <c>Assets/Scripts/Bullet/Triggers/ModifierStartTrigger.cs</c> 的 OnSignalStartTrigger 子类,
     /// 与 <c>Assets/Scripts/Enemy/AI/Actions/EmitSignalAction.cs</c>。
     /// </summary>
     public static class BulletSignalBus

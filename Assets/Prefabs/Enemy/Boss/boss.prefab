@@ -102,7 +102,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Bars:
   - Name: Bar 1
-    MaxHp: 500
+    MaxHp: 1000
     CurrentHp: 0
     TriggerOnEmpty: 1
   - Name: Bar 2
@@ -157,7 +157,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Health: {fileID: 0}
-  ShotCount: {fileID: 0}
   Signals:
   - rid: 6177226981840519179
   Phases:

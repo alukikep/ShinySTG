@@ -55,8 +55,9 @@ Boss 发射次数统计当前未启用；需要时应作为 Boss 阶段上下文
 默认 Inspector 承担序列化编辑，新提示只读，不额外写入 dirty 状态。
 同一个扩展对象在数组内重复出现，计数和准备钩子会重复执行，不保证仍然只抽样一次。
 
-分裂 Extra 的 Synchronized 抽样是另一条路径：当前仅扫描根调用的额外 Modifier 中首个匹配项，
-持久抽样标记也尚未按批次重置。它不能被视为所有默认 Modifier、子 Pattern 和跨批抽样都已正确覆盖。
+分裂 Extra 的 Synchronized 抽样由 BulletPool 在同一次 FireGroup 内按 Extra 配置对象身份共享，
+覆盖经统一挂载入口处理的默认、追加 Modifier 和 Composite 子项，只写入运行实例，下一批重新抽样。
+直接 Get 没有批次上下文时独立抽样。它与 FireExtension 的 PrepareBatch 是不同机制，详见[子弹系统](./arch-bullet.md)。
 
 ## 相关文档
 

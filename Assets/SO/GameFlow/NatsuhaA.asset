@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee9f344a9ebd17948b85d6e7f1771ae4, type: 3}
+  m_Name: NatsuhaA
+  m_EditorClassIdentifier: 
+  Id: natsuha-a
+  DisplayName: Natsuha A
+  Description: "\u6807\u51C6\u673A\u4F53 \xB7 \u65B9\u5411\u952E\u79FB\u52A8 / Z
+    \u5C04\u51FB / Shift \u4F4E\u901F"
+  Portrait: {fileID: 0}
+  PlayerPrefab: {fileID: 6489865405517200825, guid: 587263542dcf41c469c80cdaac38d978, type: 3}

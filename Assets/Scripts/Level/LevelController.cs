@@ -166,6 +166,14 @@ namespace ShinySTG.Level
                 CompleteLevel();
         }
 
+        void OnDestroy()
+        {
+            // 场景卸载也会终止 Encounter 与非等待动作，释放其持有的控制锁。
+            _runtime?.CancelTimelineProcesses();
+            if (Instance == this)
+                ShinySTG.Audio.AudioSystem.Instance?.EventHub?.DisableAutoSwitch();
+        }
+
         // ─── SpawnEntry 调用的事件广播入口 ───────────────────────────────────
         // 把这一对方法暴露给 SpawnEntry 子类用,而不是让子类直接 Invoke 事件
         // —— 保持事件发送权集中在 LevelController(与 EnemyHealth 暴露 OnDamaged 给子组件用法对齐)。

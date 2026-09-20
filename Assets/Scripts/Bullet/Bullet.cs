@@ -113,7 +113,6 @@ public class Bullet : MonoBehaviour
     public void ResetForPool()
     {
         CaptureBaseline();
-        DetachSignalTriggers();
         ClearModifiers();
         if (_fogActive) ClearFogVisual();
         _fogActive = false;
@@ -122,6 +121,8 @@ public class Bullet : MonoBehaviour
         FogCfg = null;
         FogElapsed = FogDuration = Lifetime = 0f;
         Speed = AngularSpeed = SteerAngle = Damage = 0f;
+        _hasModifierTurn = false;
+        _modifierTurn = 0f;
         HasGrazed = false;
         if (Hitbox != null)
         {
@@ -167,15 +168,38 @@ public class Bullet : MonoBehaviour
     }
 
     readonly List<BulletModifier> _modifiers = new();
+    bool _hasModifierTurn;
+    float _modifierTurn;
 
-    public void AddModifier(BulletModifier m) => _modifiers.Add(m);
+    // 后调用的转向覆盖本帧先前转向；有效时长由 modifier 窗口裁剪。
+    public void SetModifierTurn(float radiansPerSecond, float activeTime)
+    {
+        AngularSpeed = radiansPerSecond;
+        _modifierTurn = radiansPerSecond * activeTime;
+        _hasModifierTurn = true;
+    }
+
+    public void ClearModifierTurnRate() => AngularSpeed = 0f;
+
+    internal void ApplyTurn(float deltaTime)
+    {
+        SteerAngle += _hasModifierTurn ? _modifierTurn : AngularSpeed * deltaTime;
+        _hasModifierTurn = false;
+        _modifierTurn = 0f;
+    }
+
+    public void AddModifier(BulletModifier m) { if (m != null) _modifiers.Add(m); }
 
     /// <summary>
     /// 清空所有 modifier(纯 C# 列表操作,无需 Destroy)。
     /// 在 BulletPool.Return / Init 里被调用,确保回池后列表干净。
     /// Modifier 不是 GameObject(走 SerializeReference + Clone 路线),不需要销毁子对象。
     /// </summary>
-    public void ClearModifiers() => _modifiers.Clear();
+    public void ClearModifiers()
+    {
+        for (int i = 0; i < _modifiers.Count; i++) _modifiers[i].Detach(this);
+        _modifiers.Clear();
+    }
 
     /// <summary>
     /// 把所有 modifier 的 <see cref="ModifierStartTrigger"/> 调到 OnAttach 阶段。
@@ -234,7 +258,7 @@ public class Bullet : MonoBehaviour
     /// </summary>
     void OnDestroy()
     {
-        DetachSignalTriggers();
+        ClearModifiers();
         if (_usesFallbackMaterial)
         {
             _usesFallbackMaterial = false;
@@ -344,10 +368,15 @@ public class Bullet : MonoBehaviour
         }
 
         // 1. 让 modifier 修改当前状态
-        foreach (var m in _modifiers) m.Modify(this, dt);
+        uint version = SpawnVersion;
+        for (int i = 0; i < _modifiers.Count; i++)
+        {
+            _modifiers[i].Modify(this, dt);
+            if (!gameObject.activeInHierarchy || SpawnVersion != version) return;
+        }
 
         // 2. 角速度累加到当前飞行方向
-        SteerAngle += AngularSpeed * dt;
+        ApplyTurn(dt);
 
         // 3. 按当前方向移动
         Vector2 dir = new Vector2(Mathf.Cos(SteerAngle), Mathf.Sin(SteerAngle));

@@ -15,11 +15,14 @@ MonoBehaviour:
   BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
   ModifierPrefabs:
   - rid: 6177226960998236160
+  - rid: 6177227209184378882
   FireExtensions:
   - rid: 6177227034789412874
   FireSounds: []
   Speed: 1
   AngularSpeed: 0
+  SpawnFog:
+    rid: -2
   Damage: 1
   Count: 6
   ArcLength: 60
@@ -27,10 +30,14 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 6177226960998236160
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:
         Delay: 0
+        StartTrigger:
+          rid: -2
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
@@ -47,3 +54,12 @@ MonoBehaviour:
       data:
         BaseAngle: 300
         PositionOffset: {x: 0, y: 0}
+    - rid: 6177227209184378882
+      type: {class: AimAtPlayerModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 2
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 1

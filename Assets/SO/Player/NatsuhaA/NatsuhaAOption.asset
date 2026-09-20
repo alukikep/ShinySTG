@@ -21,15 +21,25 @@ MonoBehaviour:
   - rid: 6177226998917365764
   Speed: 8
   AngularSpeed: 0
-  Damage: 5
+  SpawnFog:
+    rid: -2
+  Damage: 1
   Count: 1
   DeltaSpeed: 1
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 6177226981840519173
       type: {class: HomingEnemyModifier, ns: , asm: Assembly-CSharp}
       data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
         SearchRadius: 6
         TurnRate: 180
         LockOnDelay: 0

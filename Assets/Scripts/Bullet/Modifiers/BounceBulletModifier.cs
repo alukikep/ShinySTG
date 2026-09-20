@@ -67,13 +67,13 @@ public class BounceBulletModifier : BulletModifier
              "1.0(默认) = 完全弹性碰撞,速率不变(经典 STG 反弹直觉)。\n" +
              "0.95 = 轻微能量损失(每次反弹留 95% 速度)。\n" +
              "0.5 = 每次反弹掉一半速度。\n" +
-             "0.0 = 完全非弹性,贴墙切线滑行。\n" +
+             "0.0 = 反弹后整体速度归零。\n" +
              "> 1 = 反物理(子弹反弹后加速,STG 偶尔需要)。")]
     [Range(0f, 2f)]
     public float Restitution = 1f;
 
     // ─── per-instance 运行时状态 ───
-    // [NonSerialized]:不参与序列化;Clone 时自动重置为 0(每颗子弹独立计数)。
+    // [NonSerialized]:不参与序列化;通过 OnResetWindow 显式重置(每颗子弹独立计数)。
     [NonSerialized] int _remaining;
     [NonSerialized] bool _initialized;
 
@@ -81,6 +81,12 @@ public class BounceBulletModifier : BulletModifier
     // ★ OnWindowEnter / OnWindowExitCleanup / OnWindowExit 都是基类的 protected virtual 钩子
     //   (基类负责调度,子类 override 时必须保持 protected,不能放宽成 public —— 否则 C# 报 CS0507)。
     //   见 BulletModifier.cs 第 118 / 140 / 153 行。
+    protected override void OnResetWindow()
+    {
+        _remaining = 0;
+        _initialized = false;
+    }
+
     protected override void OnWindowEnter(Bullet bullet)
     {
         // 每次进入窗口(Delay 后第一次激活)时重置次数 —— 配合 Delay>0 场景:
@@ -109,7 +115,7 @@ public class BounceBulletModifier : BulletModifier
         // ─── 0. 守门:窗口外 / 未初始化 / 次数用尽 → 不反弹 ───
         if (!IsActive) return false;
         if (!_initialized) return false;
-        if (MaxBounces > 0 && _remaining <= 0) return false;
+        if (MaxBounces >= 0 && _remaining <= 0) return false;
 
         // ─── 1. 取反弹区域(优先 BoundsService,fallback ±10/±20) ───
         Rect cull;
@@ -177,6 +183,10 @@ public class BounceBulletModifier : BulletModifier
                 break;
         }
 
+        // 角落同时越过禁止反弹边时也应回收，不能被另一条边救回。
+        if ((outLeft && !canBounceLeft) || (outRight && !canBounceRight)
+            || (outTop && !canBounceTop) || (outBottom && !canBounceBottom)) return false;
+
         bool flippedX = false, flippedY = false;
         // 水平翻转:左/右任一越界 + 对应边允许翻 → 翻。两侧分开判断是为了未来 ExceptLeft / ExceptRight 也能直接复用。
         if ((outLeft && canBounceLeft) || (outRight && canBounceRight))
@@ -216,7 +226,7 @@ public class BounceBulletModifier : BulletModifier
             p.z);
         bullet.transform.position = clamped;
 
-        // ─── 6. 扣次数(MaxBounces<=0 表示无限,跳过扣减) ───
+        // ─── 6. 扣次数(MaxBounces<0 表示无限,跳过扣减) ───
         if (MaxBounces > 0) _remaining--;
 
         return true;

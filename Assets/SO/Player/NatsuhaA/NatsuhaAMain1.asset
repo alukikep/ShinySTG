@@ -22,7 +22,7 @@ MonoBehaviour:
   AngularSpeed: 0
   SpawnFog:
     rid: -2
-  Damage: 20
+  Damage: 2
   Count: 1
   DeltaSpeed: 0
   references:

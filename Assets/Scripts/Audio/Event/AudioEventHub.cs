@@ -37,18 +37,20 @@ namespace ShinySTG.Audio
 
         /// <summary>
         /// 关卡启用入口(LevelController.BeginLevel 调)。
-        ///   - 若 Definition.AutoSwitchBgm == false:不启用,直接 return(可多次调,幂等)
-        ///   - 若 Definition.AudioBinding == null:不启用,直接 return(配「允许自动切但本关不切」)
-        ///   - 否则:启用 EventHub(若尚未启用) + 订阅当前 LevelController + 缓存 activeBinding
+        ///   - 若不参与自动切歌或没有绑定:解除旧关卡订阅，不主动切换正在播放的音乐
+        ///   - 否则:启用 EventHub，并确保订阅当前 LevelController，缓存 activeBinding
         ///
         /// 幂等:同一关卡多次调 TryBind 不会重复订阅(内部判 Instance 是否一致)。
         /// 关卡切换时:下一关调 TryBind 会自动解订旧订阅 + 订阅新 LevelController(同实例)。
         /// </summary>
         public void TryBind(ShinySTG.Level.LevelDefinition def)
         {
-            if (def == null) return;
-            if (!def.AutoSwitchBgm) return;             // 关卡明确不参与自动切歌
-            if (def.AudioBinding == null) return;       // 允许切但本关没配 binding
+            if (def == null || !def.AutoSwitchBgm || def.AudioBinding == null)
+            {
+                DisableAutoSwitch();
+                _activeBinding = null;
+                return;
+            }
 
             // 1. 缓存 activeBinding(用于后续 OnBossSpawned / OnBossDefeated 切歌)
             _activeBinding = def.AudioBinding;
@@ -60,7 +62,6 @@ namespace ShinySTG.Audio
         /// <summary>启用「按 LevelController 事件自动切 BGM」。默认关。多次调幂等。</summary>
         public void EnableAutoSwitch()
         {
-            if (_autoSwitchEnabled) return;
             _autoSwitchEnabled = true;
 
             // 当前已有 LevelController → 立即订阅;否则启动协程轮询兜底
