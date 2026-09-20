@@ -132,7 +132,7 @@ Project 右键 `Create > STG > Background > Loop Cue` 创建循环配置。在 N
 
 保留已有 LevelBackgroundBinding。在 BossEncounter 资产的 StartActions.Actions 中选择 `Game Action/Play Background Cue` 并指定 SlowTurn，开启该序列的 WaitForCompletion。BossEncounterEntry 的 BlockTimeline 可开启，镜头过渡期间背景仍会独立推进。
 
-在对应 PhasePresentations 的 EnterActions 中配置 Cruise 并开启 WaitForCompletion，即可在进入该阶段前等待恢复镜头。首阶段进入动作紧接开场动作；若希望减速画面保持至后续阶段，请将 Cruise 配置到后续 PhaseIndex。DefeatActions 和 CompleteActions 同样支持；CompleteActions 不依赖仍然存在的 Boss 对象。
+在对应 Phases 阶段 的 EnterActions 中配置 Cruise 并开启 WaitForCompletion，即可在进入该阶段前等待恢复镜头。首阶段进入动作紧接开场动作；若希望减速画面保持至后续阶段，请将 Cruise 配置到后续阶段。DefeatActions 和 CompleteActions 同样支持；CompleteActions 不依赖仍然存在的 Boss 对象。
 
 动作本身始终等待实际句柄完成，外层 WaitForCompletion 决定是否阻塞 Boss 阶段；关闭后动作仍由 Encounter 持续管理，并可能在阶段退出或遭遇结束时被取消。不要在同一 Parallel 中同时播放两个背景 Cue。关卡时间点或手动 Cue 可接管当前播放，原动作将报告取消并终止其后续序列。
 

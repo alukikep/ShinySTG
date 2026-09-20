@@ -27,7 +27,7 @@ Timeline 适配尚未实现，也应按实际完成状态结束，而非猜测�
 
 - Start 启动，Tick 推进，IsComplete 表示结束；Dispose 在正常结束、取消或失败时释放资源。
 - 句柄的 Cancel 幂等；异常被记录到 Failure 并终止该序列，后续动作不再执行。
-  当前 Encounter 将失败句柄视为已结束，不自动重试或中止整场遭遇。
+  等待式开场和阶段动作失败/取消会停止 Controller 并结束遭遇；击破、完成动作的失败句柄按已结束处理，继续收尾。非等待动作不阻塞推进，均不自动重试。
 - Runner.Dispose 取消当前所有句柄并清空集合；Runner 可以继续 Play 新序列，Encounter 在死亡时用它切换到击破动作。
 - Context 的 Position 是调用时快照；Owner 是可能已被销毁的 Unity 对象，跨帧使用前必须检查。
 - RunBehaviorFlowAction 克隆 Flow，完成或取消时释放克隆。循环 Flow 需要外部取消；

@@ -86,21 +86,18 @@ namespace ShinySTG.Presentation.SpellDeclaration.Editor
             var encounter = Selection.activeObject as BossEncounterDefinition;
             var sample = AssetDatabase.LoadAssetAtPath<SpellDeclarationDefinition>(SamplePath);
             if (encounter == null || sample == null) return;
-            var presentations = encounter.PhasePresentations ?? System.Array.Empty<PhasePresentation>();
-            var phase = System.Array.Find(presentations, p => p != null && p.PhaseIndex == 0);
+            var phase = encounter.Phases != null && encounter.Phases.Length > 0 ? encounter.Phases[0] : null;
+            if (phase == null)
+            {
+                Debug.LogWarning("[Spell Declaration] 请先创建首阶段。", encounter);
+                return;
+            }
             if (phase?.EnterActions?.Actions != null && phase.EnterActions.Actions.Length > 0)
             {
                 Debug.LogWarning("[Spell Declaration] 首阶段已有进入动作，请手动添加宣言，避免覆盖现有演出。", encounter);
                 return;
             }
             Undo.RecordObject(encounter, "Add Spell Declaration");
-            if (phase == null)
-            {
-                phase = new PhasePresentation { PhaseIndex = 0 };
-                System.Array.Resize(ref presentations, presentations.Length + 1);
-                presentations[presentations.Length - 1] = phase;
-                encounter.PhasePresentations = presentations;
-            }
             phase.EnterActions = new ActionSequence
             {
                 Actions = new GameAction[]

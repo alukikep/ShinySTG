@@ -27,7 +27,7 @@
 **扩展点:**
 
 - **新条目类型**(等玩家到位 / 周期性 / 全清触发 / 概率触发 / **时间点 SFX** / ...):新建 `SpawnEntry` 子类 + `[SRName("Entry/<名字>")]`,在 `ShouldTrigger` / `OnTrigger` 两个钩子实现,无需改 `LevelController`(详见 `Assets/Scripts/Level/`)。
-- **Boss Encounter 扩展**:表现配置放在 `BossEncounterDefinition`,运行时协调放在 `BossEncounterRuntime`;旧 `BossSpawnEntry` 已弃用,仅用于已有资产反序列化。
+- **Boss Encounter 扩展**:血管、阶段、Signals 与演出统一配置在 `BossEncounterDefinition`,运行时协调放在 `BossEncounterRuntime`;旧 `BossSpawnEntry` 已弃用,不作为新配置入口，旧 prefab 战斗配置不再回退。
 - **可视化时间轴编辑器**:已实现时间轴 / 列表 / 详情面板 + Preview + Scene Gizmos。详见 [关卡编辑器](./arch-level-editor.md)。
 - **关卡级 BGM 自动切歌**:在 `LevelDefinition.AudioBinding` 挂 `LevelAudioBinding` 资产,`BeginLevel` 时 `AudioEventHub.TryBind` 自动订阅事件切歌。详见 [audio](./arch-audio.md)。
 
@@ -53,11 +53,11 @@ LevelRuntime 先推进运行时过程，再判断时间轴阻塞，因此等待�
 死亡后的旧收尾延迟与击破动作并行等待，两者满足后运行 CompleteActions。
 非等待动作不会延长遭遇生命周期；完成、取消、关卡重置或 Boss 意外消失会清理剩余动作。
 阶段退出也会清理 Encounter 当前动作，包括尚未结束的非等待开场动作。
-旧音效字段先执行，再启动对应动作，配置同一个音效两次会重复播放；新增空数组不要求迁移旧资产。
+旧音效字段先执行，再启动对应动作，配置同一个音效两次会重复播放；Boss 配置应在 Encounter SO 中重建，不提供旧配置迁移。
 
 本板块与其他板块的依赖 / 协作关系(简单文字说明):
 
 - [enemy-ai](./arch-enemy-ai.md) — 生成的敌人 prefab 引用 BehaviorFlow 资产
-- [boss](./arch-boss.md) — BossEncounter 生成 Boss prefab,监听阶段进入/退出与真实死亡
+- [boss](./arch-boss.md) — BossEncounter 注入独立配置实例，通过阶段等待接口和真实死亡协调战斗与收尾
 - [level-editor](./arch-level-editor.md) — 关卡编辑器直接编辑 LevelDefinition.Entries
 - [audio](./arch-audio.md) — SpawnEntry/PlaySFX 触发 SfxCue(由 AudioSystem 播放)

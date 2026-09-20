@@ -35,28 +35,37 @@ namespace ShinySTG.EnemyAI.Boss
         [Serializable]
         public class HealthBar
         {
+            [Tooltip("稳定引用 ID，同一 Boss 内唯一；例如 spell-a。被阶段引用后不要修改，重排和改名不影响引用。旧血管可留空。")]
+            public string Id = "";
+
             [Tooltip("便于 Inspector 辨认,如 'Bar 1 (符卡 A)'。")]
             public string Name = "Bar";
 
             [Tooltip("该管血量上限。")]
             public float MaxHp = 1000f;
 
-            [HideInInspector] public float CurrentHp;
+            [NonSerialized] public float CurrentHp;
 
             [Tooltip("该管被打空时是否触发 OnBarDepleted 事件。")]
             public bool TriggerOnEmpty = true;
+
+            [Tooltip("打空本管时丢弃本次攻击的剩余伤害；不阻止后续攻击。默认关闭以兼容旧配置。")]
+            public bool DiscardOverflow;
         }
 
-        [Tooltip("Boss 血量管列。每管打空自动切到下一管,全部打空则死亡。")]
-        public HealthBar[] Bars = new HealthBar[]
-        {
-            new HealthBar { Name = "Bar 1", MaxHp = 1000f },
-            new HealthBar { Name = "Bar 2", MaxHp = 800f  },
-            new HealthBar { Name = "Bar 3", MaxHp = 500f  },
-        };
+        [NonSerialized] public HealthBar[] Bars;
+        [NonSerialized] public float LegacyMaxHp;
 
-        [Tooltip("兼容字段:Bars 为空时把 MaxHp 当单管血。")]
-        public float LegacyMaxHp = 1000f;
+        public void Initialize(HealthBar[] bars)
+        {
+            Bars = bars;
+            LegacyMaxHp = LegacyCurrentHp = 0f;
+            CurrentBarIndex = 0;
+            _deathFired = _applyingDamage = false;
+            _invincibilityLocks.Clear();
+            _transitionProtectionOwners.Clear();
+            InitBars();
+        }
 
         [Header("Audio (optional — 留空则不播放)")]
         [Tooltip("Boss 受击时播放的 SFX cue(留空 = 不播)。")]
@@ -71,16 +80,23 @@ namespace ShinySTG.EnemyAI.Boss
                  "空时回退到 transform.position。")]
         public ShinySTG.Hitbox.HitboxComponent Hitbox;
 
-        [HideInInspector] public int CurrentBarIndex;
-        [HideInInspector] public float LegacyCurrentHp;
+        [NonSerialized] public int CurrentBarIndex;
+        [NonSerialized] public float LegacyCurrentHp;
 
         public Vector2 Position =>
             Hitbox != null ? Hitbox.Position : (Vector2)transform.position;
 
         // OnDeath 防重入:TakeDamage 每次进入只触发一次。
         bool _deathFired;
+        bool _applyingDamage;
         readonly HashSet<string> _invincibilityLocks = new();
-        public bool IsInvincible => _invincibilityLocks.Count > 0;
+        readonly HashSet<object> _transitionProtectionOwners = new();
+        public bool IsInvincible => _invincibilityLocks.Count > 0 || _transitionProtectionOwners.Count > 0;
+
+        // 内部事实通知，不受表现/旧阶段通知开关 TriggerOnEmpty 影响。
+        internal event Action<int> BarEmptied;
+        internal void AcquireTransitionProtection(object owner) => _transitionProtectionOwners.Add(owner);
+        internal void ReleaseTransitionProtection(object owner) => _transitionProtectionOwners.Remove(owner);
 
         /// <summary>某管被打空事件(int = 被清空的 BarIndex)。</summary>
         public event Action<int> OnBarDepleted;
@@ -90,14 +106,6 @@ namespace ShinySTG.EnemyAI.Boss
 
         /// <summary>一次伤害完整结算（包括死亡通知）后触发，不受 TriggerOnEmpty 控制。</summary>
         public event Action OnHealthChanged;
-
-        void Awake()
-        {
-            InitBars();
-            // Hitbox 不在这里赋值 —— 由 Boss 总控统一注入(避免 Awake 顺序耦合,
-            // BossHealth 不需要知道 Boss 总控的存在,语义对齐 EnemyHealth)。
-            // Boss 总控没找到时 Hitbox 留空,Position 属性会回退到 transform.position。
-        }
 
         void OnEnable()
         {
@@ -133,6 +141,28 @@ namespace ShinySTG.EnemyAI.Boss
         public float CurrentHpNormalized => MaxHp > 0f ? Mathf.Clamp01(CurrentHp / MaxHp) : 0f;
         public float HpPercent => CurrentHpNormalized * 100f;
         public float CurrentBarPercent => HpPercent;
+
+        /// <summary>按稳定 ID 查询指定管。缺失、重复或无效配置不回退到当前管。</summary>
+        public bool TryGetBarPercent(string id, out float percent)
+        {
+            percent = 0f;
+            if (string.IsNullOrWhiteSpace(id) || !HasBars) return false;
+            int found = -1;
+            for (int i = 0; i < Bars.Length; i++)
+            {
+                if (Bars[i] == null || !string.Equals(Bars[i].Id, id, StringComparison.Ordinal)) continue;
+                if (found >= 0) return false;
+                found = i;
+            }
+            if (found < 0) return false;
+            var bar = Bars[found];
+            if (bar.MaxHp <= 0f || float.IsNaN(bar.MaxHp) || float.IsInfinity(bar.MaxHp)) return false;
+            if (found < CurrentBarIndex) return true;
+            if (found > CurrentBarIndex) { percent = 100f; return true; }
+            if (float.IsNaN(bar.CurrentHp) || float.IsInfinity(bar.CurrentHp)) return false;
+            percent = Mathf.Clamp01(bar.CurrentHp / bar.MaxHp) * 100f;
+            return true;
+        }
 
         /// <summary>只计非空且上限为正的管；空数组使用 Legacy 单管。</summary>
         public int TotalBarCount => HasBars ? CountBars(0) : (LegacyMaxHp > 0f ? 1 : 0);
@@ -187,8 +217,14 @@ namespace ShinySTG.EnemyAI.Boss
         /// </summary>
         public void TakeDamage(float dmg)
         {
-            if (dmg <= 0f || IsDead || IsInvincible) return;
+            if (dmg <= 0f || float.IsNaN(dmg) || float.IsInfinity(dmg) || IsDead || IsInvincible || _applyingDamage) return;
+            _applyingDamage = true;
+            try { ApplyDamage(dmg); }
+            finally { _applyingDamage = false; }
+        }
 
+        void ApplyDamage(float dmg)
+        {
             if (Bars == null || Bars.Length == 0)
             {
                 // 兼容单管模式
@@ -208,6 +244,7 @@ namespace ShinySTG.EnemyAI.Boss
                     {
                         remaining = -bar.CurrentHp; // 溢出伤害继续扣下一管
                         bar.CurrentHp = 0f;
+                        BarEmptied?.Invoke(oldBarIdx);
                         // __BOSSDEBUG__ #7:每管打空都打印
                         Debug.Log($"[__BOSSDEBUG__] Bar[{oldBarIdx}] depleted, remaining={remaining:F1} → switch to next", this);
                         if (bar.TriggerOnEmpty)
@@ -217,6 +254,7 @@ namespace ShinySTG.EnemyAI.Boss
                         }
                         CurrentBarIndex++;
                         SkipInvalidBars();
+                        if (bar.DiscardOverflow || _transitionProtectionOwners.Count > 0) remaining = 0f;
                     }
                     else
                     {

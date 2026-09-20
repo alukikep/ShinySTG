@@ -93,6 +93,9 @@ namespace ShinySTG.GameFlow
             var operation = SceneManager.LoadSceneAsync(CurrentRequest.Stage.ScenePath, LoadSceneMode.Single);
             if (operation == null) throw new InvalidOperationException("无法创建场景加载请求。");
             yield return operation;
+            // 场景激活本身可能触发大量 Awake/OnEnable。先让 Unity 完成一次渲染循环，
+            // 再查找 Bootstrap，避免把场景激活、对象扫描和玩家实例化压在同一帧。
+            yield return null;
             var scene = SceneManager.GetActiveScene();
             GameplayBootstrap bootstrap = null;
             foreach (var root in scene.GetRootGameObjects())
@@ -117,8 +120,14 @@ namespace ShinySTG.GameFlow
         {
             if (CurrentRequest == null || !CurrentRequest.Validate(out _))
                 throw new InvalidOperationException("请配置默认角色和关卡，或从开始菜单进入。");
+
+            // 玩家 prefab 的 Instantiate 会同步执行 Awake/OnEnable。拆出一帧让加载黑幕
+            // 先稳定显示，减少从角色选择进入关卡时的可感知卡顿。
+            yield return null;
             bootstrap.Prepare(CurrentRequest);
-            // 动态生成对象的 Start 和 HUD 的 LateUpdate 在揭幕前完成。
+            // 动态生成对象的 Start 和 HUD 的 LateUpdate 在揭幕前完成；额外让一帧
+            // 消化首次初始化、Canvas rebuild 和资源上传。
+            yield return null;
             yield return null;
             yield return _transition.Reveal();
             bootstrap.Begin();

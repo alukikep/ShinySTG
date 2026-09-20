@@ -15,7 +15,7 @@ SpellDeclarationDefinition 配置，在对应阶段的播放动作中引用它�
    多场景同时加载时也应只启用一个服务。菜单不会重复创建当前场景已有的服务，场景创建支持 Undo。
 2. 使用 `Create > STG > Spell Declaration` 创建配置，填写符卡名称、立绘和非循环短音效。
    可先复制 [示例配置](../../../SO/Presentation/SpellDeclarationSample.asset)。示例只有英文横幅，立绘与音效留空。
-3. 在 BossEncounter 的 `PhasePresentations` 中找到对应 `PhaseIndex`，给 `EnterActions` 添加
+3. 在 BossEncounter 的 `Phases` 中找到目标阶段，给 `EnterActions` 添加
    `Game Action/Play Spell Declaration`，在 Declaration 中引用该符卡配置，保持外层 `WaitForCompletion` 开启。
    其他符卡阶段引用各自的配置；播放完成后视图清理本次内容，下次播放读取新的配置。
 4. 需要演出期间无敌时，用 `Invincibility Scope` 包裹宣言动作并勾选 `ProtectOwner`；玩家保护按需开启。
@@ -37,7 +37,7 @@ prefab 和示例配置，保留已有资产。这个菜单只创建 Project 资�
 
 默认字体与现有 HUD 一致；显示中文或日文符卡名时，应为 Title 指定包含相应字符的 TMP 字体或 fallback。
 立绘可以留空，视图仍需保留 Portrait Image 引用。没有随代码提供角色美术或音频资源。
-宣言名称来自 Declaration 配置，不读取 PhasePresentation.DisplayName。
+宣言名称来自 Declaration 配置，不读取 BossPhase.DisplayName。
 不同配置共用相同布局与滑入/淡出形式；完全不同的布局或动画形式需要扩展视图与播放逻辑。
 
 ## 场景接入排查

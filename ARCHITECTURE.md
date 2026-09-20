@@ -13,7 +13,7 @@
 | [bullet](./docs/architecture/arch-bullet.md) | `BulletPool` + `Bullet` + `BulletModifier` + 反弹 + 信号触发 | §2 |
 | [fire-pattern](./docs/architecture/arch-fire-pattern.md) | `FirePattern` + 发射运行状态 + Composite 调度 / 逐弹角度 | §3 |
 | [enemy-ai](./docs/architecture/arch-enemy-ai.md) | `BehaviorFlow` + `EnemyAction` + `MoveBehaviour` + `ActionDurationConfig` | §4 |
-| [boss](./docs/architecture/arch-boss.md) | `BossController` + 多阶段 + 多管血 + `BossSignal` | §5 |
+| [boss](./docs/architecture/arch-boss.md) | `BossEncounterDefinition` 统一配置 + 阶段执行 + 多管血 | §5 |
 | [game-actions](./docs/architecture/arch-game-actions.md) | Encounter 动作序列、可等待演出与全局指令 | — |
 | [dialogue](./docs/architecture/arch-dialogue.md) | 线性对话、播放句柄与玩家控制锁 | — |
 | [extension-guide](./docs/architecture/arch-extension-guide.md) | 加新功能统一套路 / 反模式 / 数据 vs 逻辑边界 | §6 |
@@ -80,7 +80,7 @@
 
 - **game-actions**：Encounter 持有 Runner，调用全局指令或适配 BehaviorFlow；BossController 根据动作句柄等待阶段推进，动作能力可由其他宿主复用。
 
-- **boss ⊂ enemy-ai**:`BossController` 的每个 Phase 本质是 `BehaviorFlow`(通过 `ShooterPhase` 复用),AI 子类(EnemyAction / MoveBehaviour / BossPhase / BossSignal)统一走"SR 多态"扩展套路。
+- **boss ⊂ enemy-ai**:Encounter 配置阶段，`BossController` 执行本场实例；`ShooterPhase` 通过 `BehaviorFlow` 复用敌人行为,AI 子类(EnemyAction / MoveBehaviour / BossPhase / BossSignal)统一走"SR 多态"扩展套路。
 - **level → 一切资产**:`SpawnEntry` 在运行时按时间轴 instantiate enemy / boss prefab、播放 SFX,这些 prefab 间接引用 `BehaviorFlow` / `FirePattern` / `SfxCue`。
 
 - **dialogue → player**：DialogueService 持有玩家控制锁；PlayDialogueAction 将播放句柄接入 Encounter，UI 不依赖 Boss 对象。

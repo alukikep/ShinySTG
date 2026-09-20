@@ -16,18 +16,28 @@ MonoBehaviour:
   DefeatOutroDelay: 1
   EncounterStartSfx: {fileID: 11400000, guid: eb4faee07b77d6349842b0c1e723fc30, type: 2}
   DefeatSfx: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
-  PhasePresentations:
-  - PhaseIndex: 0
-    DisplayName: 111
-    EnterSfx: {fileID: 11400000, guid: eb4faee07b77d6349842b0c1e723fc30, type: 2}
-    ExitSfx: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
-    EnterActions:
-      WaitForCompletion: 1
-      Actions: []
-    ExitActions:
-      WaitForCompletion: 1
-      Actions:
-      - rid: 6177227137434517519
+  Bars:
+  - Id: bar-1
+    Name: Bar1
+    MaxHp: 200
+    TriggerOnEmpty: 1
+    DiscardOverflow: 0
+  - Id: bar-2
+    Name: Bar2
+    MaxHp: 200
+    TriggerOnEmpty: 1
+    DiscardOverflow: 0
+  - Id: bar-3
+    Name: Bar3
+    MaxHp: 200
+    TriggerOnEmpty: 1
+    DiscardOverflow: 0
+  Signals: []
+  Phases:
+  - rid: 6177227213694566405
+  - rid: 6177227213694566406
+  - rid: 6177227213694566407
+  Loop: 0
   StartActions:
     WaitForCompletion: 1
     Actions:
@@ -44,20 +54,6 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 6177227137434517519
-      type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
-      data:
-        Commands:
-        - rid: 6177227137434517520
-        - rid: 6177227143308115968
-        - rid: 6177227145319809029
-    - rid: 6177227137434517520
-      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
-      data:
-        ClearEnemyProjectiles: 1
-        ClearPlayerProjectiles: 0
-        ClearNeutralProjectiles: 0
-        IncludeLasers: 1
     - rid: 6177227140901109760
       type: {class: InvincibilityScopeAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
       data:
@@ -85,15 +81,6 @@ MonoBehaviour:
       data:
         Dialogue: {fileID: 11400000, guid: 9a22af9073286494ca2cfd146e3d0bc4, type: 2}
         LockPlayerControls: 1
-    - rid: 6177227143308115968
-      type: {class: SpawnDropsCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
-      data:
-        Profile: {fileID: 11400000, guid: 9d28ef3de5397d54482d1bc36a6f6957, type: 2}
-        OnPhaseCompleted: 1
-        OnBossDeath: 0
-    - rid: 6177227145319809029
-      type: {class: ClearEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
-      data: 
     - rid: 6177227147636375553
       type: {class: PlayBackgroundCueAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
       data:
@@ -106,3 +93,114 @@ MonoBehaviour:
       type: {class: PlaySpellDeclarationAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
       data:
         Declaration: {fileID: 11400000, guid: dc520b2863d04e6189f392ffd91df03b, type: 2}
+    - rid: 6177227213694566405
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        DisplayName: 1
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands:
+        - rid: 6177227213694566411
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions:
+        - Kind: 0
+          BarId: bar-1
+          Threshold: 50
+          SignalTrigger:
+            SignalIndex: 0
+            Op: 0
+            Threshold: 0
+        ProtectBarTransition: 1
+        ProtectedBarId: bar-2
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227213694566406
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        DisplayName: 2
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands:
+        - rid: 6177227213694566409
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions:
+        - Kind: 0
+          BarId: bar-2
+          Threshold: 50
+          SignalTrigger:
+            SignalIndex: 0
+            Op: 0
+            Threshold: 0
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227213694566407
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        DisplayName: 3
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands:
+        - rid: 6177227213694566410
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions:
+        - Kind: 0
+          BarId: bar-3
+          Threshold: 50
+          SignalTrigger:
+            SignalIndex: 0
+            Op: 0
+            Threshold: 0
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227213694566409
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1
+    - rid: 6177227213694566410
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1
+    - rid: 6177227213694566411
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1

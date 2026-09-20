@@ -10,7 +10,7 @@ namespace ShinySTG.EnemyAI.Boss
     [Serializable, SRName("Signal/Phase Time")]
     public class PhaseTimeSignal : BossSignal
     {
-        public float _elapsed;
+        [NonSerialized] public float _elapsed;
         public override float CurrentValue => _elapsed;
         public override void Tick(BossController boss, float dt) { _elapsed += dt; }
         public void Reset() { _elapsed = 0f; }

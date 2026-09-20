@@ -70,7 +70,7 @@
 
 ### Boss Encounter
 
-配置 Boss Prefab、出生位置及对应阶段资产。Boss 的阶段、信号和血条规则见
+选择 Encounter SO，在条目中配置出生位置、旋转和 BlockTimeline。Boss prefab、血管、阶段、Signals 及演出统一在 Encounter SO 中编辑；每个阶段自带进退场动作，重排时一起移动。操作见 [Boss 配置说明](./Assets/Scripts/Enemy/Boss/README.md)，规则见
 [`arch-boss.md`](./docs/architecture/arch-boss.md)。
 
 进入 Boss 战后，关卡事件可驱动音乐切换；Boss 击败后继续执行后续条目还是结束关卡，

@@ -101,18 +101,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Bars:
-  - Name: Bar 1
-    MaxHp: 1000
+  - Id: spell1
+    Name: Bar 1
+    MaxHp: 200
     CurrentHp: 0
     TriggerOnEmpty: 1
-  - Name: Bar 2
-    MaxHp: 800
+    DiscardOverflow: 0
+  - Id: spell2
+    Name: Bar 2
+    MaxHp: 200
     CurrentHp: 0
     TriggerOnEmpty: 1
-  - Name: Bar 3
-    MaxHp: 500
+    DiscardOverflow: 0
+  - Id: spell3
+    Name: Bar 3
+    MaxHp: 200
     CurrentHp: 0
     TriggerOnEmpty: 1
+    DiscardOverflow: 0
   LegacyMaxHp: 1000
   _hitSfx: {fileID: 0}
   _barDepletedSfx: {fileID: 0}
@@ -157,57 +163,75 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Health: {fileID: 0}
-  Signals:
-  - rid: 6177226981840519179
+  Signals: []
   Phases:
-  - rid: 6177226960998236162
-  - rid: 6177226966485434376
-  - rid: 6177226966485434380
+  - rid: 6177227213694566401
+  - rid: 6177227213694566400
+  - rid: 6177227213694566402
   Loop: 0
   references:
     version: 2
     RefIds:
-    - rid: 6177226960998236162
-      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
-      data:
-        EnterCommands: []
-        ExitCommands: []
-        ExitTriggers:
-        - rid: 6177226968670666752
-        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
-        ResetOnEnter: 1
-    - rid: 6177226966485434376
-      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
-      data:
-        EnterCommands: []
-        ExitCommands: []
-        ExitTriggers:
-        - rid: 6177226986570383360
-        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
-        ResetOnEnter: 1
-    - rid: 6177226966485434380
+    - rid: 6177227213694566400
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
         EnterCommands: []
         ExitCommands: []
         ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions:
+        - Kind: 0
+          BarId: spell1
+          Threshold: 50
+          SignalTrigger:
+            SignalIndex: 0
+            Op: 0
+            Threshold: 0
+        ProtectBarTransition: 0
+        ProtectedBarId: 
         Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
         ResetOnEnter: 1
-    - rid: 6177226968670666752
-      type: {class: PhaseTrigger, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+    - rid: 6177227213694566401
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
-        SignalIndex: 0
-        Op: 1
-        Threshold: 0
-    - rid: 6177226981840519179
-      type: {class: CurrentBarPercentSignal, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
-      data: 
-    - rid: 6177226986570383360
-      type: {class: PhaseTrigger, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions:
+        - Kind: 0
+          BarId: spell2
+          Threshold: 50
+          SignalTrigger:
+            SignalIndex: 0
+            Op: 0
+            Threshold: 0
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227213694566402
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
-        SignalIndex: 0
-        Op: 1
-        Threshold: 0
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions:
+        - Kind: 0
+          BarId: spell3
+          Threshold: 50
+          SignalTrigger:
+            SignalIndex: 0
+            Op: 0
+            Threshold: 0
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
+        ResetOnEnter: 1
 --- !u!114 &5153665219166452950
 MonoBehaviour:
   m_ObjectHideFlags: 0

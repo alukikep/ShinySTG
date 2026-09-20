@@ -25,19 +25,30 @@ namespace ShinySTG.Level.Encounter
         public BossEncounterRuntime(BossEncounterDefinition definition, GameObject bossObject, bool blocksTimeline,
             LevelRuntime levelRuntime = null)
         {
-            _definition = definition;
+            if (bossObject != null && bossObject.GetComponent<Boss>()?.HasEncounter == true)
+                throw new System.InvalidOperationException("同一 Boss 不能绑定多个遭遇。");
+            _definition = definition != null ? definition.CreateRuntimeCopy() : null;
             _bossObject = bossObject;
             _blocksTimeline = blocksTimeline;
             _levelRuntime = levelRuntime;
             _boss = bossObject != null ? bossObject.GetComponent<Boss>() : null;
             _health = bossObject != null ? bossObject.GetComponent<BossHealth>() : null;
             _controller = bossObject != null ? bossObject.GetComponent<BossController>() : null;
-            if (_health == null || _controller == null || _boss == null)
+            if (_definition == null || _health == null || _controller == null || _boss == null)
             {
                 Debug.LogError("[Level] Boss Encounter 缺少 Boss、BossHealth 或 BossController。", bossObject);
-                _complete = true;
+                Dispose();
                 return;
             }
+            if (!_definition.TryValidate(out var error))
+            {
+                Debug.LogError($"[Boss Encounter] {error}", definition);
+                Dispose();
+                return;
+            }
+            _boss.BindEncounter(this, definition);
+            _health.Initialize(_definition.Bars);
+            _controller.Initialize(_definition);
             _context = new GameActionContext(bossObject.transform, _controller, levelRuntime: _levelRuntime);
             _boss.RetainForDefeatActions = true;
             _controller.PhaseActions = PlayPhaseActions;
@@ -45,6 +56,7 @@ namespace ShinySTG.Level.Encounter
             AudioMix.PlaySfx(_definition?.EncounterStartSfx);
             _startActions = _runner.Play(_definition?.StartActions, _context);
             _controller.StartGate = Gate(_definition?.StartActions, _startActions);
+            _controller.BeginEncounter();
         }
 
         static GameActionHandle Gate(ActionSequence sequence, GameActionHandle handle) =>
@@ -54,6 +66,7 @@ namespace ShinySTG.Level.Encounter
         {
             if (_complete || _disposed) return;
             if (_bossObject == null && !_defeated) { Dispose(); return; }
+            if (!_defeated && _controller != null && _controller.IsStopped) { Dispose(); return; }
             _runner.Tick(dt);
             if (!_defeated) return;
             _outroElapsed += dt;
@@ -73,6 +86,8 @@ namespace ShinySTG.Level.Encounter
         void HandleDefeated()
         {
             if (_defeated || _disposed) return;
+            // 即使总控死亡回调尚未执行，也先完成阶段收尾。
+            _controller.Stop();
             _defeated = true;
             _runner.Dispose();
             _context = new GameActionContext(_bossObject != null ? _bossObject.transform : null, _controller,
@@ -96,14 +111,9 @@ namespace ShinySTG.Level.Encounter
             return Gate(sequence, _phaseActions);
         }
 
-        PhasePresentation FindPresentation(int index)
-        {
-            var presentations = _definition?.PhasePresentations;
-            if (presentations == null) return null;
-            foreach (var presentation in presentations)
-                if (presentation != null && presentation.PhaseIndex == index) return presentation;
-            return null;
-        }
+        BossPhase FindPresentation(int index) =>
+            _controller.Phases != null && index >= 0 && index < _controller.Phases.Length
+                ? _controller.Phases[index] : null;
 
         public void Dispose()
         {
@@ -112,11 +122,21 @@ namespace ShinySTG.Level.Encounter
             _complete = true;
             _runner.Dispose();
             if (_health != null) _health.OnDeath -= HandleDefeated;
-            if (_controller != null) { _controller.PhaseActions = null; _controller.StartGate = null; }
+            if (_controller != null)
+            {
+                _controller.PhaseActions = null;
+                _controller.StartGate = null;
+                _controller.Stop();
+            }
             if (_boss != null)
             {
                 _boss.RetainForDefeatActions = false;
-                if (_defeated) Object.Destroy(_bossObject);
+                if (Application.isPlaying) Object.Destroy(_bossObject);
+            }
+            if (_definition != null)
+            {
+                if (Application.isPlaying) Object.Destroy(_definition);
+                else Object.DestroyImmediate(_definition);
             }
         }
     }

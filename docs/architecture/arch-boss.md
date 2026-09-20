@@ -1,153 +1,97 @@
 # Boss 系统
 
-> BossController + 多阶段 + 多管血 + BossSignal
+BossEncounterDefinition 负责一场 Boss 战的配置，BossController 负责阶段执行，
+BossHealth 负责血量状态。配置步骤见 [Boss 操作说明](../../Assets/Scripts/Enemy/Boss/README.md)。
 
-> 本板块对应 ARCHITECTURE § 5. Boss 系统(BossController + 多阶段 + 多管血)(原 ARCHITECTURE.md 第 914–1008 行)。
-> 本文档面向项目维护者,不复制实现细节,字段 / 数值 / 默认值以源文件为准。
+## 配置与实例边界
 
----
+Encounter SO 持有实体 prefab、血管、Signals、阶段列表、循环选项和整场动作。
+每个 BossPhase 同时包含行为、退出条件、过渡保护、指令、名称、音效和进退场动作。
+阶段重排时这些内容一起移动，不再通过另一份演出列表的数字索引关联。
+血管与行为阶段保持独立，多个阶段可以引用同一血管；血管引用使用稳定 ID。
 
-## 5. Boss 系统(BossController + 多阶段 + 多管血)
+实体挂载 Boss、BossHealth、BossHitbox 和 BossController。prefab 保留外观、碰撞及
+组件相关配置，血管、阶段和 Signals 在 Encounter Inspector 编辑。
+ShooterPhase 引用 BehaviorFlow，复用普通敌人的行为系统。
 
-**职责:** 与普通敌人**正交**的 Boss 编排层,提供多阶段 / 阶段触发条件 / 多管血。普通敌人就一段行为流,Boss 需要这些"上层编排"概念,所以单独建一层。
+每场遭遇用 Unity 序列化克隆生成临时 Definition，隔离嵌套 managed reference。
+行为流、音效等 Unity 资产按引用共享，行为流自行创建执行实例。当前血量不序列化，
+初始化时从血量上限恢复；计时器和阶段执行状态不得写回源 SO。Dispose 释放临时 Definition。
+Boss 使用创建/销毁生命周期，不支持对执行过的实体重新初始化或作为对象池对象复用。
 
-**协作边界:**
-- Boss GameObject 上挂 `Boss + BossHealth + BossHitbox + BossController`,不挂 ShooterEnemy。
-- Boss 发射次数统计当前未启用；阶段信号使用 HP、血管和阶段时间等明确来源。
-- 阶段用 `ShooterPhase` 直接持 BehaviorFlow 资产,boss 行为复用普通敌人那套行为流。
-- 多管血 / 多阶段 / 信号切换都在 Inspector 配,无需新代码。
+Encounter 要求至少一个非空阶段和一管有效血量，血管 ID 唯一且非空，上限为有限正数。
+不提供旧 prefab 战斗配置或旧阶段演出表的迁移、回退；测试配置需在 SO 中重建。
+底层 Health 保留的单管 API 不构成 Encounter 的配置回退路径。
 
-**死亡收尾流程(单一路径):**
-```
-玩家弹 → CollisionService → BossHealth.TakeDamage(dmg)
-                              ↓ 切管 → 触发 OnBarDepleted(int)
-                              ↓ 全部清空 → 触发 OnDeath(防重入 _deathFired)
-                                    ↓
-                              Boss 总控.HandleDeath(_dead 防重入)
-                                    ↓
-                              BossController.Stop(_stopped 防重入)
-                                    ├─ 当前 phase.OnExit
-                                    ├─ LevelController.NotifyBossDefeated(_defeated 防重入)
-                                    └─ _current = null
-                                    ↓
-                              无 Encounter：Destroy(gameObject)
-                              有 Encounter：等待击破动作（按配置）后销毁
-```
+## 启动与宿主
 
-**扩展点:**
-- 新增 Boss 阶段:新建 `BossPhase` 子类,加到 `BossController.Phases`(详见 `Assets/Scripts/Enemy/Boss/`)。
-- 新增阶段退出信号源:新建 `BossSignal` 子类,加 `[Serializable, SRName("Signal/<你的名字>")]`,在 `BossController.Signals` 数组里下拉选(详见下文"内置 Signal")。
-- 阶段演出由 `BossEncounterDefinition` 配置，Encounter 通过 `BossController.PhaseActions` 提供可等待句柄，通过 StartGate 延迟首阶段。OnPhaseEntered / OnPhaseExited 保留为通知事件；关卡时间轴等待 Encounter 完成，而非仅等待 HP 清零。
-- 每个 `BossPhase` 可配置 `EnterCommands / ExitCommands`。进入指令在阶段行为流启动前执行;退出指令在阶段 `OnExit` 后执行,正常切阶段与 Boss 死亡 `Stop()` 共用同一路径。适合配置全屏消弹和阶段过渡无敌。
+BossEncounterEntry 校验配置、生成实体、创建遭遇过程并登记到关卡，再通知 Boss 出场。
+遭遇注入独立的血量、阶段与信号，绑定动作及死亡回调，然后显式启动 Controller。
+Controller 在完成初始化前不自动推进阶段，避免依赖不同组件的 Start 顺序。
 
-### 5.1 内置 Signal(BossSignal 多态信号源)
+直接放入场景时，在 Boss 组件指定 Encounter；BossEncounterHost 在同一场景独立推进
+遭遇，实体销毁后仍可运行收尾。该入口不提供 LevelRuntime，依赖关卡上下文的动作
+应通过 BossEncounterEntry 使用。关卡和场景宿主均在结束时 Dispose 遭遇。
 
-`BossSignal` 是 `BossController` 每帧 tick 的信号源,产出 `CurrentValue`,供 `PhaseTrigger.IsSatisfied(signal)` 读取。**新增 transition = 新建一个 BossSignal 子类 + 加 `[SRName("Signal/<名字>")]`,自动出现在 `Signals` 数组下拉**。
+关卡的 BlockTimeline 决定是否等待整场遭遇；动作的 WaitForCompletion 决定是否等待
+该组动作。阻塞关卡时间轴不会暂停遭遇 Tick，也不会暂停其他单位或自动提供无敌。
 
-| 类型名 | SRName | 含义 | 典型触发 |
-|---|---|---|---|
-| `HpSignal` | `Signal/HP %` | 单管剩余 HP%(0~100,Bars 为空时 100) | `LessOrEqual + 50` = 当前管打掉一半切下阶段 |
-| `CurrentBarPercentSignal` | `Signal/Current Bar %` | 当前血管剩余 HP%(0~100,打空自动重置到下一管) | `LessOrEqual + 0` = 当前管打空切下阶段 ⚠️ 见下方"多管血 + 大伤害"坑 |
-| `CurrentBarIndexSignal` | `Signal/Current Bar Index` | 当前血管编号(0/1/2/...,Int,打完管单调递增) | `Equal + 1` = 打完第 1 管切下阶段;`GreaterOrEqual + 2` = 进入第 3 管 |
-| `TotalHpPercentSignal` | `Signal/Total HP %` | 所有血管累计剩余百分比(0~100,按 MaxHp 加权) | `LessOrEqual + 30` = 残血 30% 切暴走 phase |
-| `PhaseTimeSignal` | `Signal/Phase Time` | 当前阶段已持续秒数(每阶段 EnterPhase 时自动 Reset) | `GreaterOrEqual + 30` = 本阶段打了 30 秒强切下阶段 |
+## 阶段与退出条件
 
-**配置模式:阶段退出触发 = (SignalIndex, Op, Threshold) 三元组**
+新建 Inspector 阶段使用 Conditions，可组合指定血管耗尽、血管剩余比例、总血量、
+阶段时间及高级 Signal 条件。Any / All 决定组合方式；空列表不自动退出。
+指定血管条件读取稳定状态，耗尽后切到下一管也仍成立，不依赖 TriggerOnEmpty。
+阶段时间从正式进入开始，过渡等待不计时，循环重入会重置。
 
-`PhaseTrigger` 不再直接持有 `BossSignal` 实例(避免 SerializeReference 独立实例导致 `_health` 没绑),改成持有 `int SignalIndex`,引用 `BossController.Signals` 数组里的下标。Inspector 里给每个 PhaseTrigger 配 SignalIndex 时,下拉/数字框列出可用 Signal。
+LegacyTriggers 是独立的条件模式，不与 Conditions 混合。其 SignalIndex 在
+Encounter.Signals 中配置，运行时读取 Controller 持有的本场 Signal 实例。
+旧模式通过 OnBarDepleted 捕获瞬时零血并排队，下次 Update 在伤害结算后最多推进一次，
+最终死亡优先于进入下一阶段。大伤害可能跨过多个编号，离散索引条件需考虑越过阈值。
+新配置检测耗尽优先使用稳定 ID 的 BarDepleted 条件。
 
-```text
-Phase 1 (开场符卡)
-  ExitTriggers:
-    [0] SignalIndex = 0  (默认指向 Signals[0] = CurrentBarPercentSignal)
-        Op = LessOrEqual
-        Threshold = 0
-        // 当前管打空就切 → Phase 2
+DiscardOverflow 只丢弃打空该管的本次剩余伤害；阶段过渡保护则能阻止同帧后续攻击，
+保持到下一阶段入场完成。保护不代替退出条件，All 条件不要依赖保护期间无法产生的伤害。
+停止、死亡、阶段耗尽和等待动作失败/取消都会释放 Controller 持有的保护。
+禁用 Controller 时释放保护，重新启用继续原阶段时恢复；这不表示重新初始化 Boss。
 
-Phase 2 (中期弹幕)
-  ExitTriggers:
-    [0] SignalIndex = 0  (指向 Signals[0] = TotalHpPercentSignal,见 Signals 数组配置)
-        Op = LessOrEqual
-        Threshold = 30
-        // 残血 30% → Phase 3(暴走)
+## 阶段动作与死亡收尾
 
-Phase 3 (暴走)
-  (没有 ExitTrigger,玩家继续打到 BossHealth 全清 → BossHealth.OnDeath 触发总控收尾)
-```
+阶段动作保存在 BossPhase，Encounter 负责执行，并通过 Controller 的等待接口协调：
 
-**算子选择要点:**
-- `LessOrEqual` 是绝大多数 HP 触发的默认。
-- `GreaterOrEqual` 是 PhaseTime / ShotsFired 累加型信号的默认(打够 N 秒 / N 发)。
-- `Equal` 仅推荐用于 `CurrentBarIndexSignal`(离散 Int);不推荐用于累加型浮点(详见 `PhaseTrigger.cs` 注释)。
+- 正常入场先执行 EnterActions，再执行 EnterCommands 和阶段行为，最后发送进入通知。
+- 正常退出先发送退出通知并停止行为，执行 ExitCommands，再执行 ExitActions。
+- 死亡仍退出当前阶段并执行 ExitCommands；不启动阶段 ExitActions，但保留退出音效。
+  取消未完成的开场与阶段动作后，转入整场 DefeatActions。
 
-**⚠️ 多管血 + 大伤害的"击穿"坑**
+等待式开场或阶段动作失败/取消时，Controller 停止，Encounter 随后清理并结束。
+击破和完成动作的失败句柄按已结束处理，继续收尾；非等待动作失败不会阻塞推进。
+非等待退出动作可以与下一阶段入场并行，下次阶段退出会清理此前仍运行的动作。
 
-`TakeDamage` 在 `LateUpdate` 同步上下文里走完整个扣血循环,可能**一帧内**把多管打空(溢出伤害),而 `BossController.Update()` 已经跑过了。下一帧 `Update` 检测时 `CurrentBarPercent` 已经是新 Bar 的满血值,**永远检测不到 `= 0` 的瞬间**。
+BossHealth 全部血量清空触发死亡，Boss 和 Encounter 共用幂等 Stop 完成阶段收尾。
+Boss 击败通知与整场完成是不同事件：等待式 DefeatActions 可保留实体，完成后销毁；
+DefeatOutroDelay 从死亡开始计时，与击破动作并行等待，两者满足后启动 CompleteActions。
+CompleteActions 必须允许实体已销毁。遭遇完成或取消时清理剩余动作并释放临时配置。
 
-**处理方式**：OnBarDepleted 在血管清空的瞬间检查 ExitTrigger，记录切换请求；下一次 Update 在伤害结算结束后推进切换。这样可以捕获瞬时零血，并让最终死亡优先于进入下一阶段。同一帧多次满足条件会合并为一次请求，不会逐管回放多个阶段。
+## 血量 UI 与奖励
 
-溢出伤害仍可能打穿多管。需要表达“已经进入或越过第 N 管”时使用 CurrentBarIndexSignal + GreaterOrEqual；Equal 可能被跳过。阶段动作提供无敌并不撤销此前已经结算的伤害。
+BossHealth 提供当前管比例和有效血管计数，死亡后读取当前管返回零。
+OnHealthChanged 在一次伤害完整结算及死亡通知后发送，不受 TriggerOnEmpty 控制。
+数据层剩余管数包含当前管，HUD 只显示后续管数，不以行为阶段数推算血管数。
+绑定与显隐见 [HUD 架构](./arch-hud.md)。
 
-### 5.2 多管血(BossHealth.Bars)
+阶段奖励在 ExitCommands 配置 SpawnDropsCommand。Controller 提供正常阶段结束、
+Boss 死亡或手动停止的调用原因；阶段奖励按配置允许前两者，手动停止不产生奖励。
+每次实际退出只结算一次，未进入或跳过的阶段不补发，循环阶段每次退出重新结算。
+最终奖励可配置在保持到死亡的最后阶段，不要在退出指令和演出中重复配置同一奖励。
 
-每管血有独立的 `MaxHp` + `Name` + `TriggerOnEmpty` 字段。`TakeDamage` 自动处理扣穿(溢出伤害继续扣下一管),每管打空触发 `OnBarDepleted(int)` 事件,全部清空触发 `OnDeath`。
+## 扩展与协作
 
-供 Signal 读的属性:
+新增 BossPhase 或 BossSignal 子类时沿用 Serializable / SRName 约定，在 Encounter 的
+阶段或 Signals 列表配置。扩展类型的运行状态必须按每场实例隔离。
+OnPhaseEntered / OnPhaseExited 用于通知；需要阻塞的演出使用阶段 ActionSequence。
 
-| 属性 | 含义 |
-|---|---|
-| `HpPercent` | 单管剩余百分比(兼容旧 HpSignal) |
-| `CurrentBarPercent` | 当前管剩余百分比 |
-| `CurrentBarIndex` | 当前管编号(打空后自增) |
-| `TotalHpPercent` | 所有管加权累计百分比(残血/暴走触发用) |
-| `IsDead` | 所有管清空(Legacy 模式 LegacyCurrentHp 归零) |
-
----
-
-
-## 血量 UI 边界
-
-BossHealth 提供安全的当前管比例和血管计数，死亡后读取当前管数据返回零。
-空血管数组沿用 Legacy 单管；非空数组中的空元素与非正上限血管不计入有效管数。
-OnHealthChanged 在一次伤害完整结算及死亡通知后发送，不受 TriggerOnEmpty 控制；
-OnBarDepleted 仍保留阶段检测需要的瞬时零血时序。
-
-数据层剩余管数包含当前管，HUD 仅显示后续管数，最后一管显示 0。
-UI 不使用行为阶段数推算血管数，不通过显示更新触发阶段或恢复血量。
-绑定、显隐和动画边界见 [HUD 架构](./arch-hud.md)，配置见
-[HUD 操作说明](../../Assets/Scripts/UI/README.md)。
-
-## 阶段掉落
-
-在 BossPhase.ExitCommands 配置 SpawnDropsCommand，复用阶段退出的单一路径。
-Controller 通过 GlobalCommandContext.Invocation 区分正常阶段结束、Boss 死亡和手动停止；
-撒道具指令可分别允许前两种原因，手动停止不产生阶段奖励。奖励在阶段 OnExit 后、Encounter 退出动作之前生成。
-
-每次实际退出只执行一次；过渡期间死亡不会重复结算已退出阶段。未进入或被跳过的阶段不补发奖励，
-没有当前阶段时死亡也没有阶段奖励。需要最终击破奖励时，让最终阶段保持到死亡并配置退出指令。
-循环阶段每次实际退出均重新结算。不要同时在阶段指令与 Encounter 演出里配置同一份奖励。
-
-## 对话接入
-
-战前对话使用等待式 StartActions；战后需保留 Boss 时使用 DefeatActions，仅立绘时可使用 CompleteActions。PlayDialogueAction 不改变 Boss 死亡通知的时机；无敌和消弹仍需显式配置。
-
-## 与其他板块的关系
-
-- [items](./arch-items.md) — 阶段退出提供触发原因，道具系统独立生成和回收。
-
-- [dialogue](./arch-dialogue.md) — 对话播放及与战斗的协作边界。
-
-- [game-actions](./arch-game-actions.md) — 通用动作的运行、取消与扩展契约。
-
-阶段顺序为：旧阶段通知及 OnExit/ExitCommands → Encounter ExitActions → Encounter EnterActions → 新阶段 EnterCommands/OnEnter → OnPhaseEntered。
-只有配置等待时才延迟后续步骤；等待期间不推进阶段行为与信号计时，但不会自动无敌。
-死亡取消尚未完成的开场和阶段附加动作，运行 DefeatActions；死亡不启动 Encounter ExitActions，旧 ExitSfx 仍保留。
-BossPhase 自身的 ExitCommands 仍在 Stop 时执行。需要尸体或 Transform 的动画放入等待式 DefeatActions，
-CompleteActions 必须允许 Boss 已销毁。无 Encounter 时保持直接销毁路径。
-
-本板块与其他板块的依赖 / 协作关系(简单文字说明):
-
-- [enemy-ai](./arch-enemy-ai.md) — Phase 体本质是 BehaviorFlow(ShooterPhase);复用 EnemyAction 全部类型
-- [hitbox](./arch-hitbox.md) — BossHitbox 继承 HitboxComponent,阵营 = Enemy
-- [bullet](./arch-bullet.md) — Boss 可发玩家弹(玩家阵营)打其他敌人(罕见)
-- [level](./arch-level.md) — `BossEncounterEntry` 启动遭遇并按需阻塞关卡时间轴;旧 `BossSpawnEntry` 已弃用
+- [敌人行为](./arch-enemy-ai.md)：ShooterPhase 复用 BehaviorFlow。
+- [通用动作](./arch-game-actions.md)：等待、取消与指令执行契约。
+- [关卡](./arch-level.md)：遭遇生成、推进与时间轴阻塞。
+- [对话](./arch-dialogue.md)：战前用 StartActions，保留实体的战后用 DefeatActions。
+- [道具](./arch-items.md)：阶段奖励生成及回收。

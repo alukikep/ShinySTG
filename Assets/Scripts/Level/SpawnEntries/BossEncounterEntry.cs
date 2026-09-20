@@ -23,6 +23,12 @@ namespace ShinySTG.Level.SpawnEntries
                 return;
             }
 
+            if (!Encounter.TryValidate(out var error) || Encounter.BossPrefab.GetComponent<ShinySTG.EnemyAI.Boss.Boss>() == null)
+            {
+                Debug.LogError($"[Level] Boss Encounter 配置无效：{error ?? "Prefab 缺少 Boss 组件。"}", Encounter);
+                return;
+            }
+
             var go = UnityEngine.Object.Instantiate(
                 Encounter.BossPrefab,
                 SpawnPosition,

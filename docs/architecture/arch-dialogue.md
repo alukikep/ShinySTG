@@ -29,7 +29,7 @@ PlayDialogueAction 要求场景中唯一启用的 Service，避免隐式选择�
 
 在 ActionSequence 的 SR 下拉加入 Game Action/Play Dialogue，即可等待真实播放结束；
 无需增加 Encounter 专用对话字段。适配器的 Dispose 只取消其持有的播放句柄。
-缺服务、多个服务、失败或外部取消会终止本组动作并报告 Failure，当前 Encounter 将失败视为结束继续推进。
+缺服务、多个服务、失败或外部取消会终止本组动作并报告 Failure，等待式开场或阶段对话失败会停止战斗并结束遭遇；击破或完成对话失败则继续收尾。
 
 StartActions 适合战前对话，DefeatActions 适合保留 Boss 的战后对话，CompleteActions 适合 Boss 消失后的立绘对话。
 等待条件和关卡时间轴阻塞由原有 Encounter/Level 契约决定；临时无敌与消弹复用已有动作。

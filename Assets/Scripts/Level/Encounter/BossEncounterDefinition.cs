@@ -1,4 +1,6 @@
 using System;
+using SerializeReferenceEditor;
+using ShinySTG.EnemyAI.Boss;
 using ShinySTG.Audio;
 using UnityEngine;
 using ShinySTG.GameActions;
@@ -20,8 +22,42 @@ namespace ShinySTG.Level.Encounter
         [Tooltip("Boss 被击败时播放的音效。")]
         public SfxCue DefeatSfx;
 
-        [Tooltip("按 BossController 阶段索引配置进入阶段时的最小演出。")]
-        public PhasePresentation[] PhasePresentations;
+        [Tooltip("血管配置。阶段通过稳定 ID 引用，独立于阶段数量。")]
+        public BossHealth.HealthBar[] Bars = { new BossHealth.HealthBar { Id = "bar-1" } };
+        [SerializeReference, SR, Tooltip("阶段条件可引用的信号；每场遭遇创建独立实例。")]
+        public BossSignal[] Signals;
+        [SerializeReference, SR, Tooltip("完整阶段列表，行为、条件和演出随阶段一起排序。")]
+        public BossPhase[] Phases;
+        [Tooltip("最后阶段退出后重新进入首阶段。")]
+        public bool Loop;
+
+        public bool TryValidate(out string error)
+        {
+            error = null;
+            if (Bars == null || Bars.Length == 0) error = "至少配置一管血。";
+            else
+            {
+                var ids = new System.Collections.Generic.HashSet<string>();
+                foreach (var bar in Bars)
+                    if (bar == null || string.IsNullOrWhiteSpace(bar.Id) || !ids.Add(bar.Id) ||
+                        !(bar.MaxHp > 0f) || float.IsInfinity(bar.MaxHp))
+                    { error = "血管需要唯一非空 ID 和有限正数血量。"; break; }
+            }
+            if (error == null && (Phases == null || Phases.Length == 0 || Array.Exists(Phases, phase => phase == null)))
+                error = "至少配置一个阶段，且阶段不能留空。";
+            return error == null;
+        }
+
+        public BossSignal GetSignal(int index) =>
+            Signals != null && index >= 0 && index < Signals.Length ? Signals[index] : null;
+
+        /// <summary>Unity 序列化克隆隔离嵌套 managed reference，保留行为流、音效等资产引用。</summary>
+        public BossEncounterDefinition CreateRuntimeCopy()
+        {
+            var copy = Instantiate(this);
+            copy.hideFlags = HideFlags.HideAndDontSave;
+            return copy;
+        }
 
         [Tooltip("开场动作；等待完成时暂不启动首阶段。")]
         public ActionSequence StartActions = new();
@@ -31,16 +67,4 @@ namespace ShinySTG.Level.Encounter
         public ActionSequence CompleteActions = new();
     }
 
-    [Serializable]
-    public class PhasePresentation
-    {
-        [Min(0)] public int PhaseIndex;
-        public string DisplayName;
-        public SfxCue EnterSfx;
-        public SfxCue ExitSfx;
-        [Tooltip("在本阶段战斗启动前执行。")]
-        public ActionSequence EnterActions = new();
-        [Tooltip("在本阶段战斗退出后执行。")]
-        public ActionSequence ExitActions = new();
-    }
 }
