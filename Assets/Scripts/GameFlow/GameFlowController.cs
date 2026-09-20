@@ -129,8 +129,12 @@ namespace ShinySTG.GameFlow
             // 消化首次初始化、Canvas rebuild 和资源上传。
             yield return null;
             yield return null;
-            yield return _transition.Reveal();
             bootstrap.Begin();
+            // BeginLevel 可能触发首批敌人、背景和 HUD 的初始化。必须在黑幕仍覆盖时
+            // 先完成这些工作，否则第一次揭幕帧会把初始化尖峰暴露成明显卡顿。
+            yield return null;
+            yield return null;
+            yield return _transition.Reveal();
             Time.timeScale = 1f;
             _ownsTimeScale = false;
             ReleaseControl();
