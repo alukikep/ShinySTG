@@ -70,6 +70,7 @@ namespace ShinySTG.Laser
         public LaserEntity Get(LaserData data, Vector2 pos, float angleRad, float length,
                                HitboxComponent ownerHitbox)
         {
+            if (ShinySTG.Level.BattleRestriction.IsActive) return null;
             var prefab = DefaultPrefab;
             if (prefab == null) return null; // 没配 prefab → 直接 return,不 NRE
             var stack = GetOrCreateStack(data);
@@ -155,7 +156,7 @@ namespace ShinySTG.Laser
                                      HitboxComponent ownerHitbox,
                                      LaserModifier[] extraModifiers = null)
         {
-            if (pattern == null) return null;
+            if (pattern == null || ShinySTG.Level.BattleRestriction.IsActive) return null;
 
             // ─── 触发 LaserPattern 的开火音(FireSounds 数组) ───
             // 在 pattern.Fire(...) 之前调 —— 每次"开火组"触发一次。

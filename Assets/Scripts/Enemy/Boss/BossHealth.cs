@@ -217,6 +217,8 @@ namespace ShinySTG.EnemyAI.Boss
         /// </summary>
         public void TakeDamage(float dmg)
         {
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
             if (dmg <= 0f || float.IsNaN(dmg) || float.IsInfinity(dmg) || IsDead || IsInvincible || _applyingDamage) return;
             _applyingDamage = true;
             try { ApplyDamage(dmg); }

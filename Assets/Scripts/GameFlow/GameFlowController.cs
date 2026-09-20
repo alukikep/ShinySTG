@@ -16,6 +16,7 @@ namespace ShinySTG.GameFlow
         public static GameFlowController Instance { get; private set; }
         public bool IsLoading { get; private set; }
         public GameStartRequest CurrentRequest { get; private set; }
+        public RunSession CurrentSession { get; private set; }
         public string Failure { get; private set; }
 
         ScreenWipeTransition _transition;
@@ -51,11 +52,17 @@ namespace ShinySTG.GameFlow
         }
 
         public bool TryStartGame(CharacterDefinition character, StageDefinition stage, out string error)
+            => TryStartRequest(new GameStartRequest(character, stage), out error);
+
+        public bool TryStartSequence(CharacterDefinition character, StageSequenceDefinition sequence, out string error)
+            => TryStartRequest(GameStartRequest.FromSequence(character, sequence), out error);
+
+        bool TryStartRequest(GameStartRequest request, out string error)
         {
             error = null;
             if (IsLoading || Failure != null) { error = "正在处理场景切换。"; return false; }
-            var request = new GameStartRequest(character, stage);
             if (!request.Validate(out error)) return false;
+            var stage = request.Stage;
             if (!Application.CanStreamedLevelBeLoaded(stage.ScenePath))
             {
                 error = "目标场景未加入 Build Settings：" + stage.ScenePath;
@@ -79,6 +86,7 @@ namespace ShinySTG.GameFlow
             IsLoading = true;
             Failure = null;
             CurrentRequest = request;
+            CurrentSession = request != null && request.Validate(out _) ? new RunSession(request) : null;
             _previousTimeScale = Time.timeScale;
             _ownsTimeScale = true;
             // 初始化期间不消耗出生无敌、背景时间或关卡时间；黑幕使用 unscaledDeltaTime。
@@ -201,9 +209,11 @@ namespace ShinySTG.GameFlow
 
         IEnumerator LoadMenu()
         {
+            ShinySTG.Level.LevelController.Instance?.EndLevel(ShinySTG.Level.LevelEndReason.Aborted);
             yield return _transition.Cover();
             ResetAudio();
             CurrentRequest = null;
+            CurrentSession = null;
             yield return SceneManager.LoadSceneAsync(_menuScenePath, LoadSceneMode.Single);
             yield return _transition.Reveal();
             Time.timeScale = 1f;

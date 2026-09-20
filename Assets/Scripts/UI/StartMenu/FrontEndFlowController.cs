@@ -16,6 +16,8 @@ namespace ShinySTG.UI
         ScreenWipeTransition _transition;
         [SerializeField, Tooltip("角色确认后进入的首关。")]
         ShinySTG.GameFlow.StageDefinition _firstStage;
+        [SerializeField, Tooltip("角色确认后优先使用的关卡序列；留空兼容首关配置。")]
+        ShinySTG.GameFlow.StageSequenceDefinition _stageSequence;
         [SerializeField, Min(0.05f), Tooltip("角色选择长按首次重复延迟。")]
         float _repeatDelay = 0.35f;
         [SerializeField, Min(0.02f), Tooltip("角色选择长按重复间隔。")]
@@ -112,7 +114,11 @@ namespace ShinySTG.UI
                 var view = _characterPage.GetComponent<CharacterSelectView>();
                 if (view == null) return;
                 var flow = ShinySTG.GameFlow.GameFlowController.EnsureInstance();
-                if (!flow.TryStartGame(view.SelectedDefinition, _firstStage, out var error))
+                string error;
+                bool started = _stageSequence != null
+                    ? flow.TryStartSequence(view.SelectedDefinition, _stageSequence, out error)
+                    : flow.TryStartGame(view.SelectedDefinition, _firstStage, out error);
+                if (!started)
                     view.ShowError(error);
                 return;
             }

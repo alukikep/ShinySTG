@@ -64,7 +64,7 @@ namespace ShinySTG.Items
             return _age < Mathf.Max(0.1f, service.Lifetime) && position.y >= service.DespawnBelowY;
         }
 
-        public static bool CanCollect(ShinySTG.Player.Player player) => player != null && player.isActiveAndEnabled &&
+        public static bool CanCollect(ShinySTG.Player.Player player) => !ShinySTG.Level.BattleRestriction.IsActive && player != null && player.isActiveAndEnabled &&
             player.Health != null && player.Health.isActiveAndEnabled && player.Health.CanInteract &&
             player.Hitbox != null && player.Hitbox.isActiveAndEnabled;
 

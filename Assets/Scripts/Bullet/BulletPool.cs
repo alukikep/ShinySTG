@@ -80,6 +80,7 @@ public class BulletPool : MonoBehaviour
                       SpawnFogConfig spawnFog = null)
     {
         // prefab 为空时兜底使用 DefaultPrefab(避免某些 Pattern 未配置时崩溃)
+        if (ShinySTG.Level.BattleRestriction.IsActive) return null;
         var usePrefab = prefab != null ? prefab : DefaultPrefab;
         if (usePrefab == null)
         {
@@ -214,7 +215,7 @@ public class BulletPool : MonoBehaviour
                           ShinySTG.Hitbox.HitboxComponent ownerHitbox,
                           BulletModifier[] extraModifiers, FirePatternRuntimeState state)
     {
-        if (pattern == null) return;
+        if (pattern == null || ShinySTG.Level.BattleRestriction.IsActive) return;
         // 触发 FirePattern 的开火音(FireSounds 数组)。
         // 在 pattern.Fire(...) 之前调 —— 每次"开火组"触发一次。
         // CompositeFirePattern 内部递归 Fire() 不走本入口,所以子 pattern 的 FireSounds 不重复触发。
@@ -249,7 +250,7 @@ public class BulletPool : MonoBehaviour
     public void FireChild(FirePattern pattern, Vector2 pos, float rotationRad,
         ShinySTG.Hitbox.HitboxComponent owner, BulletModifier[] extras)
     {
-        if (pattern == null || _firePath.Count >= MaxPatternDepth || !_firePath.Add(pattern)) return;
+        if (pattern == null || ShinySTG.Level.BattleRestriction.IsActive || _firePath.Count >= MaxPatternDepth || !_firePath.Add(pattern)) return;
         try
         {
             if (_currentRuntimeState != null) _currentRuntimeState.Advance(pattern.FireExtensions);

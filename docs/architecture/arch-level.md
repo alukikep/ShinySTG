@@ -13,7 +13,7 @@
 
 **职责分工:**
 - `LevelDefinition`(SO 资产) —— 持有 `Entries: SpawnEntry[]`(多态下拉)+ `Duration`(总时长)+ `Pool`(可选专用 BulletPool)+ `AutoSwitchBgm`(是否参与自动切歌)+ `AudioBinding`(关卡级 BGM 绑定,可选)。
-- `LevelController`(场景单例,`Singleton<T>`) —— 持有 `Definition` + `Runtime`,提供关卡事件(OnLevelStart / OnLevelComplete / OnEnemySpawned / OnBossSpawned / OnBossDefeated)。`BeginLevel` 调 `AudioEventHub.TryBind(definition)` 启用关卡级自动切歌。
+- `LevelController`(场景单例,`Singleton<T>`) —— 持有 `Definition` + `Runtime`,提供关卡事件(OnLevelStart / OnLevelEnded / OnLevelComplete / OnEnemySpawned / OnBossSpawned / OnBossDefeated)。`BeginLevel` 调 `AudioEventHub.TryBind(definition)` 启用关卡级自动切歌。
 
 **协作边界:**
 
@@ -34,6 +34,37 @@
 
 ---
 
+
+## 开局流程与本局状态
+
+`StageSequenceDefinition` 配置有序关卡；角色选择和场景直开优先使用序列，未配置时沿用单关入口。开局校验整个列表，当前要求共享同一个 Gameplay 场景。
+`GameStartRequest` 固定本局关卡顺序，但不复制关卡资产内容。`GameFlowController` 持有 `RunSession`，返回标题时清空；实时分数仍由玩家资源组件持有，本局结果仅保存快照。
+
+### 结束与结算
+
+`CompleteLevelEntry`（流程/关卡通关）只向所属 Runtime 登记请求，不直接访问场景单例。请求后停止条目与持续条目推进，但继续 Tick 已启动的运行时过程；已登记的阻塞过程全部结束后由 Controller 请求 Cleared，保留原有同帧失败优先与延迟结算规则。Reset 清除请求，Preview 的独立 Runtime 不影响真实关卡。同时间条目按数组顺序，通关条目之后的条目不再触发。
+
+`LevelController` 区分成功通关 `Cleared`、残机耗尽 `Failed` 和主动中止 `Aborted`。整体 Duration 大于零且关卡时间达到上限，或通关条目的请求满足结束条件时，请求通关；所有条目播放完本身不是结束条件。`StageSettlement` 监听本次玩家的死亡通知请求失败；返回标题和背景调试停止请求中止。旧 `CompleteLevel()` 兼容为中止，不能用于判断通关。
+
+通关和失败请求先停止时间轴推进，在下一帧发布结束事件；同帧最后一命耗尽优先于待定通关。中止立即定案，覆盖待定结果。定案后取消时间轴过程，每轮只发布一次。原 `OnLevelComplete` 保留给背景等生命周期订阅者，所有结束原因都会通知；结算使用带原因的 `OnLevelEnded`，不能将原事件等同于成功。
+
+`StageSettlement` 由 `GameplayBootstrap` 在启动前绑定到本次玩家和关卡，关卡开始时记录分数基线。通关时以累计分数差值生成不可变的 `StageResult`，保存分数及玩家资源快照，写入 `RunSession.Results`；失败和中止不记录通关结果。不通过 Boss 击破事件直接结算，避免跳过 Encounter 收尾。
+
+开始或调试重开会更新 `AttemptId`、清除待定结束，并重设分数基线、撤销当前关结果；前序关卡结果和玩家资源不重置。延迟结束回调应保存开始时的轮次，通过 `TryEndLevel(reason, attemptId)` 拒绝过期请求。销毁 Bootstrap 时解除结算订阅。
+
+当前已完成序列首关启动、结束原因、内存结算和战斗限制／清场，尚未自动推进下一关或写入磁盘存档。失败不暂停游戏时间，死亡演出可以继续；Game Over 界面尚未接入。独立转场原型使用显式 BattleArea UI 矩形裁剪，不从相机视口推断主画面范围。
+
+通关后的稳定状态是保留当前场景与玩家，完成清场并持有战斗限制；不会自动播放渐变、推进序列、展示整局结果或返回标题。`RunSession.TryAdvanceStage()` 目前只是进度接口，尚无正式流程调用。后续换关宿主需协调结算、转场、下一关准备和启动，再恢复战斗；末关需单独进入整局结束流程。
+
+### 战斗限制与清场
+
+结束定案时 Controller 持有 `BattleRestriction` 令牌，屏蔽射击、伤害、擦弹、拾取与新增掉落，停止敌人行为及新弹幕生成；存活玩家仍可移动和低速。它不修改游戏时间、玩家资源或对话控制锁。Bomb 当前只有库存，未来释放入口必须检查同一限制。
+
+待定通关期间不提前限制受伤，保留同帧失败优先规则。结束通知不代表已经清场：`IsBattleCleanupPending` 为真时，Controller 在 Update 执行 `BattleCleanup`，避免结束回调发生在碰撞遍历中时修改池集合。清场取消关卡及场景独立 Encounter、结束持续条目、无奖励清除敌人和 Boss，再回收场景内各池的全部阵营子弹、激光与道具，也覆盖关卡显式指定的子弹池。普通死亡演出特效不清除。
+
+重开先清场再释放 Controller 自己的令牌；销毁 Controller 同样释放，其他宿主的令牌不受影响。清场本身幂等且临时持有限制，取消回调不能生成新的弹幕或掉落。调用方必须在碰撞遍历之外使用清场／重开入口。渐变原型仍未接入正式换关流程。
+
+配置及验证入口见 [开局流程](../../Assets/Scripts/GameFlow/README.md)，视觉原型见 [转场说明](../../Assets/Scripts/GameFlow/StageFadePrototype.md)。
 
 ## 背景接入
 

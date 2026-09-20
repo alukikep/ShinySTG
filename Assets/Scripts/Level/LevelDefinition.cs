@@ -22,8 +22,8 @@ namespace ShinySTG.Level
         public SpawnEntry[] Entries;
 
         [Header("Optional")]
-        [Tooltip("关卡总时长(秒)。<=0 = 不限时(Duration 到也不会自动结束)。\n" +
-                 "运行时供 UI / 时间缩放系统读,不强制逻辑。")]
+        [Tooltip("关卡时间达到此值时自动通关。<=0 = 不限时，可通过流程/关卡通关条目结束。\n" +
+                 "使用通关条目时建议设为 0，避免总时长提前结束关卡。")]
         public float Duration = 60f;
 
         [Tooltip("关卡专用的 BulletPool(可选)。为空时 LevelController 会在 BeginLevel 自动 FindObjectOfType。\n" +

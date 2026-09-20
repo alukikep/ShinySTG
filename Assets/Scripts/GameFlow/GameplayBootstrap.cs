@@ -14,9 +14,12 @@ namespace ShinySTG.GameFlow
         CharacterDefinition _defaultCharacter;
         [SerializeField, Tooltip("直接打开场景测试时使用的关卡。")]
         StageDefinition _defaultStage;
+        [SerializeField, Tooltip("直接打开场景时优先使用的关卡序列；留空兼容默认单关。")]
+        StageSequenceDefinition _defaultSequence;
 
         public LevelController Level => _level;
         public PlayerController SpawnedPlayer { get; private set; }
+        StageSettlement _settlement;
 
         void Awake()
         {
@@ -27,7 +30,9 @@ namespace ShinySTG.GameFlow
         {
             var flow = GameFlowController.EnsureInstance();
             if (!flow.IsLoading)
-                flow.StartInPlace(this, new GameStartRequest(_defaultCharacter, _defaultStage));
+                flow.StartInPlace(this, _defaultSequence != null
+                    ? GameStartRequest.FromSequence(_defaultCharacter, _defaultSequence)
+                    : new GameStartRequest(_defaultCharacter, _defaultStage));
         }
 
         public void Prepare(GameStartRequest request)
@@ -48,8 +53,12 @@ namespace ShinySTG.GameFlow
         {
             if (SpawnedPlayer == null || SpawnedPlayer.Health == null || SpawnedPlayer.Health.IsDead)
                 throw new InvalidOperationException("玩家初始化失败或初始生命为零。");
+            _settlement?.Dispose();
+            _settlement = new StageSettlement(_level, SpawnedPlayer, GameFlowController.Instance.CurrentSession);
             _level.BeginLevel();
             if (!_level.IsRunning) throw new InvalidOperationException("关卡启动失败。");
         }
+
+        void OnDestroy() => _settlement?.Dispose();
     }
 }

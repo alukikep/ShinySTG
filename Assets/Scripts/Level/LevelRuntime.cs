@@ -27,6 +27,8 @@ namespace ShinySTG.Level
 
         public LevelDefinition Definition => _def;
         public float Elapsed { get; private set; }
+        public bool CompletionRequested { get; private set; }
+        public void RequestCompletion() => CompletionRequested = true;
         public IReadOnlyList<GameObject> ActiveUnits => _alive;
         public IReadOnlyList<SpawnEntry> SustainedEntries => _sustained;
         public bool IsTimelineBlocked
@@ -54,7 +56,7 @@ namespace ShinySTG.Level
             if (_alive.Count > 0) _alive.RemoveAll(g => g == null);
 
             TickTimelineProcesses(dt);
-            if (IsTimelineBlocked) return;
+            if (IsTimelineBlocked || CompletionRequested) return;
 
             Elapsed += dt;
             var entries = _def?.Entries;
@@ -69,6 +71,13 @@ namespace ShinySTG.Level
 
                     _fired[i] = true;
                     e.OnTrigger(this, _def);
+
+                    if (CompletionRequested)
+                    {
+                        // Boss 与通关条目同帧触发时，仍须等待刚登记的阻塞过程。
+                        ActivatePendingTimelineProcesses();
+                        return;
+                    }
 
                     // 持续型条目:OnTrigger 内通常已调 RegisterSustained 把自己加进去;
                     // 这里做兜底 —— 如果 OnTrigger 之后子类没注册,而又有 Duration,自动注册一次。
@@ -196,19 +205,31 @@ namespace ShinySTG.Level
             {
                 var snapshot = _alive.ToArray();
                 foreach (var go in snapshot)
-                    if (go != null) UnityEngine.Object.Destroy(go);
+                    if (go != null)
+                    {
+                        go.SetActive(false);
+                        UnityEngine.Object.Destroy(go);
+                    }
             }
             _alive.Clear();
         }
 
         /// <summary>
-        /// 强制重置:状态归零 + 销毁活跃单位 + 清空持续条目。
-        /// 给 LevelController.BeginLevel / ReloadLevel 等接口用。
-        /// 默认会销毁活跃单位 GameObject(语义对齐 Editor Preview 的 Stop —— "不留尾巴");
-        /// 不想销毁时传 destroyGameObjects:false(罕见用例)。
+        /// 结束持续条目并取消过程、清除单位；保留时间轴进度供结束状态查询。
         /// </summary>
+        public void ClearBattleState()
+        {
+            ClearTimelineProcesses();
+            var sustained = _sustained.ToArray();
+            _sustained.Clear();
+            foreach (var entry in sustained) entry?.OnEnd(this);
+            ClearAliveUnits();
+        }
+
+        /// <summary>重置时间轴与登记状态；运行中的战斗应先通过 BattleCleanup 清场。</summary>
         public void Reset(bool destroyGameObjects = true)
         {
+            CompletionRequested = false;
             Elapsed = 0f;
             for (int i = 0; i < _fired.Length; i++) _fired[i] = false;
             _sustained.Clear();

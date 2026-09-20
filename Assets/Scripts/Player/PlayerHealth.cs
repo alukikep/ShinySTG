@@ -129,6 +129,7 @@ namespace ShinySTG.Player
         /// <summary>CollisionService 触发时回调:累加 GrazeCount + 广播事件。</summary>
         void HandleGraze(Bullet bullet, PlayerHealth player)
         {
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
             // 参数 bullet / player 当前不读 —— 这里只关心"擦弹发生了"这一信号;
             // 后续若需要按弹类型 / 玩家状态做差异化(例如对追踪弹擦弹额外加分),可在此扩展。
             GrazeCount++;
@@ -182,7 +183,7 @@ namespace ShinySTG.Player
         /// <summary>被敌弹 / 敌人命中时调用。无敌时直接吞掉。</summary>
         public void TakeHit(float damage = 1f)
         {
-            if (!CanInteract || IsInvincible) return;
+            if (!CanInteract || IsInvincible || ShinySTG.Level.BattleRestriction.IsActive) return;
             if (damage <= 0f) return;
             if (Lives <= 0) return;
 

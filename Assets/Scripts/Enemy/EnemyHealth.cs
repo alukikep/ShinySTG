@@ -80,6 +80,8 @@ namespace ShinySTG.EnemyAI
         /// </summary>
         public void TakeDamage(float dmg)
         {
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
             if (IsDead || IsInvincible || dmg <= 0f) return;
 
             _currentHp = Mathf.Max(0f, _currentHp - dmg);

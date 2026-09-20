@@ -27,6 +27,8 @@ public class ShooterEnemy : MonoBehaviour
 
     void Update()
     {
+        if (ShinySTG.Level.BattleRestriction.IsActive) return;
+        if (ShinySTG.Level.BattleRestriction.IsActive) return;
         _runtime?.Tick(transform, Time.deltaTime);
     }
 

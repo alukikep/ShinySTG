@@ -17,6 +17,7 @@ MonoBehaviour:
   - rid: 6177227145319809027
   - rid: 6177227147044978688
   - rid: 6177227147044978689
+  - rid: 6177227213694566412
   Duration: 60
   Pool: {fileID: 0}
   AutoSwitchBgm: 1
@@ -65,3 +66,9 @@ MonoBehaviour:
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: fa3fa37bc1664014888346ed10715666, type: 2}
+    - rid: 6177227213694566412
+      type: {class: CompleteLevelEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 15.8533325
+        OneShot: 1
+        Duration: 0

@@ -108,6 +108,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
                 if (_elapsed < e.TriggerTime) continue;
                 _fired[i] = true;
                 TriggerOne(e);
+                if (_runtime != null && _runtime.CompletionRequested) break;
             }
         }
 
@@ -119,7 +120,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
             // BossEncounterRuntime 在阻塞期间仍需继续 Tick，以便战斗/收尾动作完成。
             float dt = (float)deltaSeconds;
             _runtime?.TickTimelineProcesses(dt);
-            if (_runtime != null && _runtime.HasBlockingProcess)
+            if (_runtime != null && (_runtime.HasBlockingProcess || _runtime.CompletionRequested))
                 return;
 
             _elapsed += deltaSeconds;
@@ -130,6 +131,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
                 if (_elapsed < e.TriggerTime) continue;
                 _fired[i] = true;
                 TriggerOne(e);
+                if (_runtime != null && _runtime.CompletionRequested) return;
             }
 
             // 推动持续条目
@@ -248,6 +250,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
 
             public void ClearPreviewState()
             {
+                Reset(false);
                 _sustained.Clear();
                 foreach (var process in _processes) process?.Dispose();
                 _processes.Clear();

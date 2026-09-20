@@ -68,6 +68,7 @@ DiscardOverflow 只丢弃打空该管的本次剩余伤害；阶段过渡保护�
 非等待退出动作可以与下一阶段入场并行，下次阶段退出会清理此前仍运行的动作。
 
 BossHealth 全部血量清空触发死亡，Boss 和 Encounter 共用幂等 Stop 完成阶段收尾。
+Stop 仅在 Health 确认死亡时发送击败事件；清场取消活着的 Boss 不发送击败通知。
 Boss 击败通知与整场完成是不同事件：等待式 DefeatActions 可保留实体，完成后销毁；
 DefeatOutroDelay 从死亡开始计时，与击破动作并行等待，两者满足后启动 CompleteActions。
 CompleteActions 必须允许实体已销毁。遭遇完成或取消时清理剩余动作并释放临时配置。

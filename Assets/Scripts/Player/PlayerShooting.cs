@@ -36,7 +36,8 @@ namespace ShinySTG.Player
             {
                 ObserveControlLock();
                 var health = GetComponent<PlayerHealth>();
-                return (health == null || health.CanInteract) && !PlayerControlLock.IsLocked && !_requireFireRelease && _fireHeld;
+                return (health == null || health.CanInteract) && !ShinySTG.Level.BattleRestriction.IsActive
+                    && !PlayerControlLock.IsLocked && !_requireFireRelease && _fireHeld;
             }
             set
             {

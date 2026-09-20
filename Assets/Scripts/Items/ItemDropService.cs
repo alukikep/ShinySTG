@@ -36,7 +36,7 @@ namespace ShinySTG.Items
 
         public static void Spawn(DropProfile profile, Vector2 position)
         {
-            if (profile == null || profile.Entries == null) return;
+            if (ShinySTG.Level.BattleRestriction.IsActive || profile == null || profile.Entries == null) return;
             if (Instance == null || !Instance.isActiveAndEnabled)
             {
                 Debug.LogWarning("[Items] 场景缺少 ItemDropService，未生成掉落。", profile);
@@ -95,7 +95,9 @@ namespace ShinySTG.Items
             _pool.Push(item);
         }
 
-        void OnDisable()
+        void OnDisable() => ReturnAll();
+
+        public void ReturnAll()
         {
             for (int i = _active.Count - 1; i >= 0; i--) ReturnAt(i);
         }

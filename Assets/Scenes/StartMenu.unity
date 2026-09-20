@@ -1517,7 +1517,8 @@ MonoBehaviour:
   _menuPage: {fileID: 920000010}
   _characterPage: {fileID: 930000100}
   _transition: {fileID: 930000014}
-  _firstStage: {fileID: 11400000, guid: 60ee97afe2240914d9723567d8599052, type: 2}
+  _firstStage: {fileID: 0}
+  _stageSequence: {fileID: 11400000, guid: 85130fd2a95f36441984e2376aea1f18, type: 2}
   _repeatDelay: 0.35
   _repeatInterval: 0.1
 --- !u!1 &930000100

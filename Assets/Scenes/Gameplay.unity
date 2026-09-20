@@ -501,6 +501,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 10002, guid: 52f1397121e1475e8825d73dfd0836ec, type: 3}
       insertIndex: -1
       addedObject: {fileID: 29593037}
+    - targetCorrespondingSourceObject: {fileID: 10145, guid: 52f1397121e1475e8825d73dfd0836ec, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 823352564}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 52f1397121e1475e8825d73dfd0836ec, type: 3}
 --- !u!1 &125895161
@@ -2281,6 +2284,54 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 691388597}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &711300356
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 711300358}
+  - component: {fileID: 711300357}
+  m_Layer: 0
+  m_Name: StageFadePrototype
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &711300357
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711300356}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acf28abd5a887914fb25f2c34109ad2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _gameplayCamera: {fileID: 1933857621}
+  _battleArea: {fileID: 823352564}
+  _fadeDuration: 1
+  _blackDuration: 3
+--- !u!4 &711300358
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711300356}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &724845335
 GameObject:
   m_ObjectHideFlags: 0
@@ -2469,6 +2520,41 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8cab3860fa6b26d4bbb7eca3065e1f4a, type: 3}
+--- !u!1 &823352563
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 823352564}
+  m_Layer: 0
+  m_Name: BattleArea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &823352564
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 823352563}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1520435075}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0.7, y: 1}
+  m_AnchoredPosition: {x: 221.02, y: 0}
+  m_SizeDelta: {x: -401.62, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &837713720
 GameObject:
   m_ObjectHideFlags: 0
@@ -3956,6 +4042,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1431708165}
   m_CullTransparentMesh: 1
+--- !u!224 &1520435075 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 10145, guid: 52f1397121e1475e8825d73dfd0836ec, type: 3}
+  m_PrefabInstance: {fileID: 90511631}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1552123672
 GameObject:
   m_ObjectHideFlags: 0
@@ -5477,3 +5568,4 @@ SceneRoots:
   - {fileID: 490011103}
   - {fileID: 90511631}
   - {fileID: 1875079541}
+  - {fileID: 711300358}

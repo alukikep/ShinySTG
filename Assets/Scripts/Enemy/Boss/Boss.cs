@@ -64,6 +64,15 @@ namespace ShinySTG.EnemyAI.Boss
             if (Health != null) Health.OnDeath -= HandleDeath;
         }
 
+        /// <summary>无奖励取消遭遇并离场，不发送死亡通知。</summary>
+        public void Despawn()
+        {
+            _encounterRuntime?.Dispose();
+            if (Controller != null) Controller.Stop();
+            gameObject.SetActive(false);
+            Destroy(gameObject);
+        }
+
         void HandleDeath()
         {
             if (_dead) return;

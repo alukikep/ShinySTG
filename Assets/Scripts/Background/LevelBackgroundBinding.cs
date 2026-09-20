@@ -133,7 +133,7 @@ namespace ShinySTG.Background
         [ContextMenu("Complete Bound Level (Play Mode)")]
         void CompleteBoundLevel()
         {
-            if (Application.isPlaying && isActiveAndEnabled && _level != null) _level.CompleteLevel();
+            if (Application.isPlaying && isActiveAndEnabled && _level != null) _level.EndLevel(LevelEndReason.Aborted);
         }
     }
 }

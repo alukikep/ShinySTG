@@ -9,6 +9,7 @@ namespace ShinySTG.Level.Encounter
         public void Initialize(BossEncounterRuntime runtime) => _runtime = runtime;
         void Update()
         {
+            if (BattleRestriction.IsActive) return;
             if (_runtime == null) return;
             _runtime.Tick(Time.deltaTime);
             if (!_runtime.IsComplete) return;
@@ -16,6 +17,14 @@ namespace ShinySTG.Level.Encounter
             _runtime = null;
             Destroy(gameObject);
         }
+        public void Cancel()
+        {
+            _runtime?.Dispose();
+            _runtime = null;
+            enabled = false;
+            Destroy(gameObject);
+        }
+
         void OnDestroy() => _runtime?.Dispose();
     }
 }

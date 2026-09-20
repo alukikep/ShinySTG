@@ -148,6 +148,8 @@ namespace ShinySTG.EnemyAI.Boss
 
         void Update()
         {
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
+            if (ShinySTG.Level.BattleRestriction.IsActive) return;
             // 场景 Boss 的 Start 顺序不固定；未绑定遭遇前不能按零血量停止。
             if (!_begun && _current == null && _pendingPhase < 0) return;
             // 已 stopped → 不再跑 phase / signal tick,直到 GameObject 被 Boss 总控销毁。
@@ -202,7 +204,7 @@ namespace ShinySTG.EnemyAI.Boss
         /// 行为:
         ///   1. 走当前 phase.OnExit 收尾
         ///   2. 标 _stopped = true(让 Update 跳过 phase tick,避免 runtime 悬挂)
-        ///   3. 一次性广播 NotifyBossDefeated(关卡级订阅入口)
+        ///   3. 仅真实死亡时一次性广播 NotifyBossDefeated，手动停止不冒充击败
         ///   4. **不直接 Destroy**(由 Boss 总控决定销毁时机,语义对齐 Enemy.HandleDeath)
         /// </summary>
         public void Stop()
@@ -219,8 +221,8 @@ namespace ShinySTG.EnemyAI.Boss
             // 1. 走当前 phase 收尾
             ExitCurrentPhase(Health != null && Health.IsDead ? CommandInvocation.BossDeath : CommandInvocation.Stopped);
 
-            // 2. 一次性广播 Defeated(给"解锁下一关 / UI 提示"等订阅)
-            if (!_defeated)
+            // 2. 仅真实死亡发送击败通知；清场与手动停止不触发。
+            if (!_defeated && Health != null && Health.IsDead)
             {
                 _defeated = true;
                 LevelController.Instance?.NotifyBossDefeated(gameObject);
