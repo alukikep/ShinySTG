@@ -16,6 +16,10 @@ namespace ShinySTG.EnemyAI.Boss
     /// </summary>
     public class BossHitbox : HitboxComponent
     {
+        [Header("Contact Damage")]
+        [Tooltip("与玩家实体碰撞时是否造成体术伤害。关闭时仍可被玩家子弹命中。")]
+        public bool DealsContactDamage = false;
+
         void Reset()
         {
             Size = new Vector2(1.5f, 1.5f);

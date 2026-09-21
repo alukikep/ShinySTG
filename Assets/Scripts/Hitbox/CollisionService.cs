@@ -110,15 +110,12 @@ namespace ShinySTG.Hitbox
         void LateUpdate()
         {
             if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
-            if (BulletPool.Instance == null)
-            {
-                TickItemsVsPlayer();
-                return;
-            }
-
             _bulletSnapshot.Clear();
-            foreach (var bullet in BulletPool.Instance.ActiveBullets)
-                if (bullet != null) _bulletSnapshot.Add((bullet, bullet.SpawnVersion));
+            if (BulletPool.Instance != null)
+            {
+                foreach (var bullet in BulletPool.Instance.ActiveBullets)
+                    if (bullet != null) _bulletSnapshot.Add((bullet, bullet.SpawnVersion));
+            }
 
             // 1. 清网格,准备重建
             _grid.Clear();
@@ -182,6 +179,9 @@ namespace ShinySTG.Hitbox
 
             // 6. 敌人弹 vs 玩家(含擦弹)
             if (_playerAlive) TickEnemyBulletsVsPlayer();
+
+            // 6b. 敌人实体 vs 玩家(体术接触伤害)
+            if (_playerAlive) TickEnemyContactVsPlayer();
 
             // 7. deferred return
             FlushReturns();
@@ -388,6 +388,36 @@ namespace ShinySTG.Hitbox
                         // 擦弹不 _toReturn:弹继续飞行(STG 经典行为)。
                     }
                 }
+            }
+        }
+
+        /// <summary>检测启用体术伤害的普通敌人 / Boss 与玩家实体碰撞。</summary>
+        void TickEnemyContactVsPlayer()
+        {
+            if (!_playerAlive || _playerHitbox == null) return;
+            var player = ShinySTG.Player.Player.Instance;
+            if (player == null || player.Health == null || !player.Health.CanInteract) return;
+
+            var alive = EnemyHealth.Alive;
+            for (int i = 0; i < alive.Count; i++)
+            {
+                var enemy = alive[i];
+                if (enemy == null || enemy.IsDead || enemy.Hitbox == null) continue;
+                if (!(enemy.Hitbox is EnemyHitbox enemyHitbox) || !enemyHitbox.DealsContactDamage) continue;
+                if (!HitboxMath.AABBOverlap(enemyHitbox._cachedBounds, _playerCachedBounds)) continue;
+                player.OnHit(1f);
+                if (!player.Health.CanInteract) return;
+            }
+
+            var aliveBoss = BossHealth.Alive;
+            for (int i = 0; i < aliveBoss.Count; i++)
+            {
+                var boss = aliveBoss[i];
+                if (boss == null || boss.IsDead || boss.Hitbox == null) continue;
+                if (!(boss.Hitbox is BossHitbox bossHitbox) || !bossHitbox.DealsContactDamage) continue;
+                if (!HitboxMath.AABBOverlap(bossHitbox._cachedBounds, _playerCachedBounds)) continue;
+                player.OnHit(1f);
+                if (!player.Health.CanInteract) return;
             }
         }
 

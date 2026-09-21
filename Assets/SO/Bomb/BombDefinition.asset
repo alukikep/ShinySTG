@@ -14,12 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Duration: 3
   InvincibilityDuration: 3
-  ClearEnemyProjectiles: 1
-  IncludeLasers: 1
+  ClearEnemyProjectiles: 0
+  IncludeLasers: 0
   DamageAllEnemies: 1
   EnemyDamage: 50
   DamageInterval: 1
   BombSfx: {fileID: 0}
+  ReturnSpawnedBulletsOnEnd: 1
+  DeathbombWindow: 1
   StartActions:
     WaitForCompletion: 1
     Actions:

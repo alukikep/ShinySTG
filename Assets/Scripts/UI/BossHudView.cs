@@ -27,7 +27,7 @@ namespace ShinySTG.UI
             _targetFill = Mathf.Clamp01(normalized);
             if (_fill != null && (immediate || _fillSpeed <= 0f)) _fill.fillAmount = _targetFill;
             // 数据源包含当前管；显示只计当前管之后的血条。
-            if (_barCount != null) _barCount.SetText("剩余 {0} 管", remainingBars > 0 ? remainingBars - 1 : 0);
+            if (_barCount != null) _barCount.SetText("{0}", remainingBars > 0 ? remainingBars - 1 : 0);
             _group.alpha = 1f;
         }
 
@@ -36,7 +36,7 @@ namespace ShinySTG.UI
             EnsureGroup();
             _targetFill = 0f;
             if (_fill != null) _fill.fillAmount = 0f;
-            if (_barCount != null) _barCount.SetText("剩余 0 管");
+            if (_barCount != null) _barCount.SetText("0");
             _group.alpha = 0f;
         }
 

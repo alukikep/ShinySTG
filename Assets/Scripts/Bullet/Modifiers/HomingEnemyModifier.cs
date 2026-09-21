@@ -11,7 +11,7 @@ using UnityEngine;
 ///      按 Team==Enemy 过滤,选距离最近(没用 IsDead/无引用)的作为 _target
 ///   3. 已锁定时:每帧检查 _target 是否仍存活 + 仍在 SearchRadius 内;任一条件不满足 → 重搜
 ///   4. 锁定目标后:计算"子弹 → 目标"的方向角,与当前 SteerAngle 求最短有向角差,
-///      按 TurnRate 限速后写入 b.AngularSpeed(由 Bullet.Update 累加到 SteerAngle)
+///      按 TurnRate 与近距离辅助限速后提交本帧转角。
 ///
 /// 注意:
 ///   - 只能挂玩家阵营的子弹上(语义约束:谁追击敌人)。
@@ -29,9 +29,14 @@ public class HomingEnemyModifier : BulletModifier
     public float SearchRadius = 6f;
 
     [Header("Tracking")]
-    [Tooltip("追踪性能(方向修正能力)= 角速度上限(度/秒)。\n" +
-             "0 = 不转(直线);180 = 经典 STG 追踪;360 = 1 秒转一圈;720 = 激进锁头。")]
+    [Min(0f)]
+    [Tooltip("基础转向上限(度/秒)，同时控制近距离辅助强度。0 = 不转向；数值越大诱导越强。")]
     public float TurnRate = 180f;
+
+    [Min(0f)]
+    [Tooltip("近距离辅助范围(世界单位)。进入后按弹速和距离逐渐提高转向上限，缓解绕圈。\n" +
+             "0 = 使用原固定上限；范围应覆盖绕行轨迹。弱诱导不保证命中。")]
+    public float AssistDistance = 6f;
 
     [Header("Timing")]
     [Tooltip("锁定延迟(秒)。前 N 秒不搜索不转向,子弹直线飞一段再开始追踪。\n" +
@@ -122,7 +127,16 @@ public class HomingEnemyModifier : BulletModifier
         );
 
         float maxRadPerSec = Mathf.Max(0f, TurnRate) * Mathf.Deg2Rad;
-        // 把 delta/dt 限制在 ±maxRadPerSec;直接给 b.AngularSpeed,Bullet.Update 累加。
+        if (AssistDistance > 0f && TurnRate > 0f)
+        {
+            float distance = toTarget.magnitude;
+            float assist = 1f - Mathf.Clamp01(distance / AssistDistance);
+            // v / d 随接近目标而增大，使允许的转弯半径随距离缩小。
+            // 保留 TurnRate 对近处诱导强度的控制，不强制弱诱导必定命中。
+            float closeRate = (TurnRate / 90f) * Mathf.Abs(b.Speed) / Mathf.Max(distance, 0.01f);
+            maxRadPerSec += closeRate * assist;
+        }
+        // 夹角限制避免单帧转过目标方向；仍使用裁剪后的追踪时长。
         b.SetModifierTurn(Mathf.Clamp(delta / trackingTime, -maxRadPerSec, maxRadPerSec), trackingTime);
     }
 

@@ -131,7 +131,8 @@ MonoBehaviour:
         ExitSfx: {fileID: 0}
         EnterActions:
           WaitForCompletion: 1
-          Actions: []
+          Actions:
+          - rid: 6177227235671408644
         ExitActions:
           WaitForCompletion: 1
           Actions: []
@@ -161,7 +162,8 @@ MonoBehaviour:
         ExitSfx: {fileID: 0}
         EnterActions:
           WaitForCompletion: 1
-          Actions: []
+          Actions:
+          - rid: 6177227235671408642
         ExitActions:
           WaitForCompletion: 1
           Actions: []
@@ -204,3 +206,29 @@ MonoBehaviour:
         ClearPlayerProjectiles: 0
         ClearNeutralProjectiles: 0
         IncludeLasers: 1
+    - rid: 6177227235671408642
+      type: {class: InvincibilityScopeAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        ProtectPlayer: 0
+        ProtectOwner: 1
+        Sequence:
+          WaitForCompletion: 1
+          Actions:
+          - rid: 6177227235671408643
+    - rid: 6177227235671408643
+      type: {class: PlaySpellDeclarationAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Declaration: {fileID: 11400000, guid: dc520b2863d04e6189f392ffd91df03b, type: 2}
+    - rid: 6177227235671408644
+      type: {class: InvincibilityScopeAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        ProtectPlayer: 0
+        ProtectOwner: 1
+        Sequence:
+          WaitForCompletion: 1
+          Actions:
+          - rid: 6177227235671408645
+    - rid: 6177227235671408645
+      type: {class: PlaySpellDeclarationAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Declaration: {fileID: 11400000, guid: dc520b2863d04e6189f392ffd91df03b, type: 2}

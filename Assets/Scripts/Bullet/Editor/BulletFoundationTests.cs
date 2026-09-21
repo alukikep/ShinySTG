@@ -176,6 +176,62 @@ public class BulletFoundationTests
         }
     }
 
+    [TestCase(0f, 180f, 60, false)]
+    [TestCase(6f, 0f, 60, false)]
+    [TestCase(6f, 180f, 30, true)]
+    [TestCase(6f, 180f, 60, true)]
+    [TestCase(6f, 180f, 120, true)]
+    public void HomingAssistCanReachTargetFromCircularOrbit(float assistDistance, float turnRate, int fps, bool shouldReach)
+    {
+        var previous = CollisionService.Instance;
+        var instance = typeof(CollisionService).GetProperty("Instance");
+        var root = new GameObject("Homing orbit service");
+        var go = new GameObject("Homing orbit bullet");
+        var enemy = new GameObject("Homing orbit target");
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        try
+        {
+            var service = root.AddComponent<CollisionService>();
+            instance.SetValue(null, service);
+            typeof(CollisionService).GetField("_grid", flags).SetValue(service,
+                new UniformGrid(4f, Vector2.one * -100f, Vector2.one * 100f));
+            var health = enemy.AddComponent<ShinySTG.EnemyAI.EnemyHealth>();
+            typeof(ShinySTG.EnemyAI.EnemyHealth).GetField("_currentHp", flags).SetValue(health, 1f);
+            var bullet = go.AddComponent<Bullet>();
+            bullet.Speed = 10f;
+            bullet.transform.position = Vector3.right * (bullet.Speed / Mathf.PI);
+            bullet.SteerAngle = Mathf.PI / 2f;
+            var modifier = new HomingEnemyModifier
+            {
+                SearchRadius = 100f, TurnRate = turnRate, AssistDistance = assistDistance
+            };
+            typeof(HomingEnemyModifier).GetField("_target", flags).SetValue(modifier, health);
+            var apply = typeof(Bullet).GetMethod("ApplyTurn", flags);
+            float dt = 1f / fps;
+            bool reached = false;
+            for (int frame = 0; frame < fps * 5; frame++)
+            {
+                modifier.Modify(bullet, dt);
+                apply.Invoke(bullet, new object[] { dt });
+                bullet.transform.position += new Vector3(Mathf.Cos(bullet.SteerAngle), Mathf.Sin(bullet.SteerAngle)) * bullet.Speed * dt;
+                if (bullet.Position.sqrMagnitude <= 0.25f * 0.25f)
+                {
+                    reached = true;
+                    break;
+                }
+            }
+            Assert.That(reached, Is.EqualTo(shouldReach));
+            Assert.That(bullet.Speed, Is.EqualTo(10f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemy);
+            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(root);
+            instance.SetValue(null, previous);
+        }
+    }
+
     [Test]
     public void ClearingActiveModifierExitsAndUnsubscribesOnce()
     {
