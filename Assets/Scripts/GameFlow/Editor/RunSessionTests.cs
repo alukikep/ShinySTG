@@ -79,6 +79,44 @@ namespace ShinySTG.GameFlow.Editor
                         controller.EndLevel(LevelEndReason.Aborted);
                         Assert.AreEqual(0, single.Results.Count);
                     }
+
+                    // 连续两关共用玩家：资源和累计分数保留，每关重新建立得分基线。
+                    var twoStages = new RunSession(request);
+                    using (var settlement = new StageSettlement(controller, actualPlayer, twoStages))
+                    {
+                        controller.BeginLevel();
+                        actualPlayer.Resources.AddScore(40);
+                        controller.EndLevel(LevelEndReason.Cleared);
+                        var publish = typeof(LevelController).GetMethod("PublishEnd",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        publish.Invoke(controller, null);
+                        Assert.IsTrue(controller.IsBattleCleanupPending);
+                        Assert.AreEqual(40, twoStages.Results[0].Score);
+                        Assert.IsTrue(twoStages.TryAdvanceStage());
+                        int lives = actualPlayer.Health.Lives;
+                        int bombs = actualPlayer.Resources.Bombs;
+                        long total = actualPlayer.Resources.Score;
+                        using (BattleRestriction.Acquire())
+                        {
+                            controller.Definition = second.Level;
+                            controller.BeginLevel();
+                            Assert.IsTrue(BattleRestriction.IsActive, "揭幕前宿主限制必须保持");
+                            Assert.IsFalse(controller.IsBattleCleanupPending);
+                            Assert.AreEqual(1, twoStages.Results.Count);
+                            Assert.AreEqual(lives, actualPlayer.Health.Lives);
+                            Assert.AreEqual(bombs, actualPlayer.Resources.Bombs);
+                            Assert.AreEqual(total, actualPlayer.Resources.Score);
+                        }
+                        Assert.IsFalse(BattleRestriction.IsActive);
+                        actualPlayer.Resources.AddScore(60);
+                        controller.EndLevel(LevelEndReason.Cleared);
+                        publish.Invoke(controller, null);
+                        publish.Invoke(controller, null);
+                        Assert.IsTrue(twoStages.IsComplete);
+                        Assert.AreEqual(2, twoStages.Results.Count);
+                        Assert.AreEqual(60, twoStages.Results[1].Score);
+                        Assert.AreEqual(total + 60, twoStages.Results[1].TotalScore);
+                    }
                 }
                 finally { Object.DestroyImmediate(levelObject); }
             }

@@ -109,6 +109,7 @@ namespace ShinySTG.Hitbox
 
         void LateUpdate()
         {
+            if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             if (BulletPool.Instance == null)
             {
                 TickItemsVsPlayer();

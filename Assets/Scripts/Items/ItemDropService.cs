@@ -74,6 +74,7 @@ namespace ShinySTG.Items
 
         void Update()
         {
+            if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             var player = ShinySTG.Player.Player.Instance;
             for (int i = _active.Count - 1; i >= 0; i--)
                 if (_active[i] == null || !_active[i].Tick(Time.deltaTime, this, player)) ReturnAt(i);

@@ -20,10 +20,8 @@ namespace ShinySTG.UI
         float _repeatInterval = 0.1f;
 
         StartMenuController _controller;
-        bool _armed;
+        readonly KeyboardMenuNavigation _navigation = new();
         bool _focused = true;
-        int _heldDirection;
-        float _nextRepeat;
 
         void Awake() => _controller = GetComponent<StartMenuController>();
         void OnEnable() => ResetInput();
@@ -37,9 +35,7 @@ namespace ShinySTG.UI
 
         void ResetInput()
         {
-            _armed = false;
-            _heldDirection = 0;
-            _nextRepeat = 0f;
+            _navigation.Reset();
         }
 
         void Update()
@@ -53,36 +49,12 @@ namespace ShinySTG.UI
             bool up = Input.GetKey(_upKey);
             bool down = Input.GetKey(_downKey);
             bool confirm = Input.GetKey(_confirmKey) || Input.GetKey(_alternateConfirmKey);
-            if (!_armed)
-            {
-                _armed = !up && !down && !confirm;
-                return;
-            }
-            // 确认优先，避免同一帧移动并确认另一个选项。
-            if (Input.GetKeyDown(_confirmKey) || Input.GetKeyDown(_alternateConfirmKey))
-            {
-                ResetInput();
-                _controller.Confirm();
-                return;
-            }
-            int direction = up == down ? 0 : down ? 1 : -1;
-            if (direction == 0)
-            {
-                _heldDirection = 0;
-                return;
-            }
-            float now = Time.unscaledTime;
-            if (direction != _heldDirection)
-            {
-                _heldDirection = direction;
-                _nextRepeat = now + Mathf.Max(0.05f, _repeatDelay);
-                _controller.MoveSelection(direction);
-            }
-            else if (now >= _nextRepeat)
-            {
-                _nextRepeat = now + Mathf.Max(0.02f, _repeatInterval);
-                _controller.MoveSelection(direction);
-            }
+            _navigation.Read(up, down, confirm,
+                Input.GetKeyDown(_confirmKey) || Input.GetKeyDown(_alternateConfirmKey),
+                false, false, Time.unscaledTime, _repeatDelay, _repeatInterval,
+                out int direction, out bool accepted, out _);
+            if (accepted) _controller.Confirm();
+            else if (direction != 0) _controller.MoveSelection(direction);
 #endif
         }
     }

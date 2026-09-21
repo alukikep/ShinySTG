@@ -91,6 +91,30 @@ namespace ShinySTG.Level
         public bool IsBattleCleanupPending => _cleanupPending;
         public int AttemptId { get; private set; }
         public LevelEndReason? EndReason { get; private set; }
+        public bool IsAwaitingContinue { get; private set; }
+        bool _clearBeforeContinue;
+
+        /// <summary>保留本轮时间轴和 Encounter，拦截尚未定案的通关。</summary>
+        public bool TryAwaitContinue(int attemptId)
+        {
+            if (attemptId != AttemptId || _completed || IsAwaitingContinue
+                || (!_running && _pendingEnd != LevelEndReason.Cleared)) return false;
+            _clearBeforeContinue = _pendingEnd == LevelEndReason.Cleared;
+            _pendingEnd = null;
+            _running = false;
+            IsAwaitingContinue = true;
+            return true;
+        }
+
+        public bool TryResumeContinue(int attemptId)
+        {
+            if (attemptId != AttemptId || !IsAwaitingContinue || _completed) return false;
+            IsAwaitingContinue = false;
+            _running = true;
+            if (_clearBeforeContinue) TryEndLevel(LevelEndReason.Cleared, attemptId);
+            _clearBeforeContinue = false;
+            return true;
+        }
 
         public bool IsRunning   => _running;
         public bool IsCompleted => _completed;
@@ -169,7 +193,8 @@ namespace ShinySTG.Level
         /// <summary>延迟回调应携带开始时的 AttemptId，防止结束重开后的新一轮。</summary>
         public bool TryEndLevel(LevelEndReason reason, int attemptId)
         {
-            if (attemptId != AttemptId || _completed || (!_running && !_pendingEnd.HasValue)) return false;
+            if (attemptId != AttemptId || _completed || (!_running && !_pendingEnd.HasValue && !IsAwaitingContinue)) return false;
+            if (IsAwaitingContinue && reason == LevelEndReason.Cleared) return false;
             if (reason != LevelEndReason.Cleared && reason != LevelEndReason.Failed && reason != LevelEndReason.Aborted)
                 throw new ArgumentOutOfRangeException(nameof(reason));
             if (!_pendingEnd.HasValue)
@@ -188,6 +213,8 @@ namespace ShinySTG.Level
         void ResetEndState()
         {
             AttemptId++;
+            IsAwaitingContinue = false;
+            _clearBeforeContinue = false;
             _pendingEnd = null;
             EndReason = null;
         }
@@ -200,6 +227,7 @@ namespace ShinySTG.Level
             EndReason = reason;
             _pendingEnd = null;
             _completed = true;
+            IsAwaitingContinue = false;
             _battleRestriction ??= BattleRestriction.Acquire();
             _cleanupPending = true;
             // 回调可能来自碰撞遍历；仅标记，取消及回池延后到 Update。
@@ -209,6 +237,7 @@ namespace ShinySTG.Level
 
         void Update()
         {
+            if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             if (_cleanupPending) ClearBattle();
             if (_pendingEnd.HasValue)
             {

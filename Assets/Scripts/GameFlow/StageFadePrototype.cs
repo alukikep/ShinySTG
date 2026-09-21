@@ -26,12 +26,40 @@ namespace ShinySTG.GameFlow
         Coroutine _routine;
         readonly Vector3[] _areaCorners = new Vector3[4];
         Rect _screenArea;
-        public bool IsPlaying => _routine != null;
+        bool _flowOwned;
+        public bool IsPlaying => _routine != null || _flowOwned;
         public RectTransform BattleArea => _battleArea;
 
         public void ConfigureBattleArea(RectTransform area) => _battleArea = area;
 
         public void Configure(Camera gameplayCamera) => _gameplayCamera = gameplayCamera;
+
+        // 正式流程复用已配置的 BattleArea 和机体绘制；没有有效配置时由宿主降级为全屏渐变。
+        public bool TryBeginFlow()
+        {
+            if (!isActiveAndEnabled || IsPlaying) return false;
+            var player = PlayerController.Instance;
+            _camera = _gameplayCamera != null ? _gameplayCamera : Camera.main;
+            _source = player != null ? player.GetComponent<SpriteRenderer>() : null;
+            Canvas.ForceUpdateCanvases();
+            if (_source == null || _source.sprite == null || _source.drawMode != SpriteDrawMode.Simple
+                || _camera == null || !_camera.isActiveAndEnabled || !_camera.orthographic
+                || _camera.targetTexture != null || _camera.targetDisplay != 0 || !TryReadBattleArea()) return false;
+            EnsureCanvas();
+            _canvas.gameObject.SetActive(true);
+            _curtain.color = Color.clear;
+            _flowOwned = true;
+            SyncBody();
+            return true;
+        }
+
+        public IEnumerator FadeForFlow(bool covered)
+        {
+            if (!_flowOwned) throw new System.InvalidOperationException("关间转场已取消。");
+            yield return Fade(covered ? 0f : 1f, covered ? 1f : 0f);
+            if (!_flowOwned) throw new System.InvalidOperationException("关间转场已取消。");
+            yield return null;
+        }
 
         [ContextMenu("Play Fade Prototype (Play Mode)")]
         public void PlayPrototype()
@@ -98,7 +126,7 @@ namespace ShinySTG.GameFlow
             var flow = GameFlowController.Instance;
             if (_source == null || _camera == null || !_camera.isActiveAndEnabled
                 || !TryReadBattleArea()
-                || (flow != null && (flow.IsLoading || flow.Failure != null)))
+                || (!_flowOwned && flow != null && (flow.IsLoading || flow.Failure != null)))
             {
                 Cancel();
                 return;
@@ -207,6 +235,7 @@ namespace ShinySTG.GameFlow
 
         void ResetVisuals()
         {
+            _flowOwned = false;
             _routine = null;
             if (_canvas != null) _canvas.gameObject.SetActive(false);
             _source = null;

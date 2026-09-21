@@ -36,6 +36,12 @@ namespace ShinySTG.Audio
         public MusicChannel CurrentChannel => _current;
         public BgmTrack CurrentTrack => _current?.CurrentTrack;
 
+        void EnsureChannels()
+        {
+            if (_channelA == null) _channelA = CreateChannel("MusicA");
+            if (_channelB == null) _channelB = CreateChannel("MusicB");
+        }
+
         public MusicPlayer(AudioSystem owner)
         {
             _owner = owner;
@@ -52,6 +58,7 @@ namespace ShinySTG.Audio
 
         public void PlayTrack(BgmTrack track, float crossfadeDuration = 1.5f)
         {
+            EnsureChannels();
             StopPlaylistInternal();
 
             if (track == null || track.Clip == null)
@@ -73,12 +80,13 @@ namespace ShinySTG.Audio
             next.Play(track, track.DefaultVolume * bgmBusVolume);
 
             _current = next;
-            if (_paused || _applicationPaused) next.Source.Pause();
+            if ((_paused || _applicationPaused) && next.Source != null) next.Source.Pause();
             StartCrossfade(outgoing, next, crossfadeDuration);
         }
 
         public void PlayPlaylist(BgmPlaylist playlist)
         {
+            EnsureChannels();
             if (playlist == null || playlist.Tracks == null || playlist.Tracks.Length == 0)
             {
                 Stop(playlist != null ? playlist.CrossfadeDuration : 1.5f);
@@ -133,7 +141,7 @@ namespace ShinySTG.Audio
                     _playlistCursor = indexInOrder;
                     PlayTrackInternal(track, crossfade);
                     // 播放列表由列表自身推进，忽略单曲的循环设置。
-                    _current.Source.loop = false;
+                    if (_current != null && _current.Source != null) _current.Source.loop = false;
                     _playlistCo = _owner.StartCoroutine(WaitForTrackEndAndAdvance(_current, crossfade));
                     return;
                 }
@@ -173,15 +181,17 @@ namespace ShinySTG.Audio
 
         void ApplyPause()
         {
+            EnsureChannels();
+            if (_channelA == null || _channelB == null) return;
             if (_paused || _applicationPaused)
             {
-                _channelA.Source.Pause();
-                _channelB.Source.Pause();
+                if (_channelA.Source != null) _channelA.Source.Pause();
+                if (_channelB.Source != null) _channelB.Source.Pause();
             }
             else
             {
-                _channelA.Source.UnPause();
-                _channelB.Source.UnPause();
+                if (_channelA.Source != null) _channelA.Source.UnPause();
+                if (_channelB.Source != null) _channelB.Source.UnPause();
             }
         }
 
@@ -194,6 +204,7 @@ namespace ShinySTG.Audio
 
         public void Stop(float fadeOut = 1.5f)
         {
+            EnsureChannels();
             StopPlaylistInternal();
             CancelCrossfade();
             var outgoing = _current != null ? _current : _fading;
@@ -261,6 +272,7 @@ namespace ShinySTG.Audio
 
             // 从实际播放进度判断，暂停不推进，也不重复计算淡入时间。
             int version = _transitionVersion;
+            if (channel == null || channel.Source == null) yield break;
             float leadTime = Mathf.Clamp(nextCrossfade, 0f, (track.Clip.length - channel.Source.time) * 0.5f);
             yield return null;
             while (_activePlaylist != null && channel == _current && version == _transitionVersion)

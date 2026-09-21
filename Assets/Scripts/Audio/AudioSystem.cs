@@ -56,6 +56,9 @@ namespace ShinySTG.Audio
         protected override void Awake()
         {
             base.Awake();
+            // Singleton<T>.Awake 销毁重复实例后不会中断派生类 Awake；
+            // 必须在这里立即退出，避免重复实例继续创建 MusicA/MusicB。
+            if (Instance != this) return;
             InitBuses();
             Sfx = new SfxRouter(this);
             Music = new MusicPlayer(this);

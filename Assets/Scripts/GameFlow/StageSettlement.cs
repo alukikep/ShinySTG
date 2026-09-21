@@ -13,9 +13,12 @@ namespace ShinySTG.GameFlow
         long _startingScore;
         int _attemptId;
         bool _disposed;
+        readonly Func<int, bool> _offerContinue;
 
-        public StageSettlement(LevelController level, PlayerController player, RunSession session)
+        public StageSettlement(LevelController level, PlayerController player, RunSession session,
+            Func<int, bool> offerContinue = null)
         {
+            _offerContinue = offerContinue;
             _level = level != null ? level : throw new ArgumentNullException(nameof(level));
             _player = player != null ? player : throw new ArgumentNullException(nameof(player));
             _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -34,7 +37,11 @@ namespace ShinySTG.GameFlow
             if (_player.Health.IsDead) OnFailed();
         }
 
-        void OnFailed() => _level.TryEndLevel(LevelEndReason.Failed, _attemptId);
+        void OnFailed()
+        {
+            if (_disposed || (_offerContinue?.Invoke(_attemptId) ?? false)) return;
+            _level.TryEndLevel(LevelEndReason.Failed, _attemptId);
+        }
 
         void OnEnded(LevelDefinition definition, LevelEndReason reason)
         {

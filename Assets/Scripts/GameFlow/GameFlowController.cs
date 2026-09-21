@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ShinySTG.Audio;
 using ShinySTG.Player;
 using ShinySTG.UI;
+using ShinySTG.Level;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -18,8 +19,14 @@ namespace ShinySTG.GameFlow
         public GameStartRequest CurrentRequest { get; private set; }
         public RunSession CurrentSession { get; private set; }
         public string Failure { get; private set; }
+        public bool IsShowingResults { get; private set; }
 
         ScreenWipeTransition _transition;
+        GameplayBootstrap _bootstrap;
+        IDisposable _stageRestriction;
+        Vector2 _resultsScroll;
+        int _resultSelection;
+        bool _resultsInputReady;
         IDisposable _controlLock;
         string _menuScenePath = "Assets/Scenes/StartMenu.unity";
         float _previousTimeScale = 1f;
@@ -83,6 +90,11 @@ namespace ShinySTG.GameFlow
 
         void BeginOperation(GameStartRequest request)
         {
+            _bootstrap?.PauseMenu?.CloseForTransition();
+            IsShowingResults = false;
+            _bootstrap = null;
+            ReleaseControl();
+            ReleaseStageRestriction();
             IsLoading = true;
             Failure = null;
             CurrentRequest = request;
@@ -133,6 +145,7 @@ namespace ShinySTG.GameFlow
             // 先稳定显示，减少从角色选择进入关卡时的可感知卡顿。
             yield return null;
             bootstrap.Prepare(CurrentRequest);
+            _bootstrap = bootstrap;
             // 动态生成对象的 Start 和 HUD 的 LateUpdate 在揭幕前完成；额外让一帧
             // 消化首次初始化、Canvas rebuild 和资源上传。
             yield return null;
@@ -149,12 +162,96 @@ namespace ShinySTG.GameFlow
             IsLoading = false;
         }
 
+        bool IsCurrentClear(GameplayBootstrap bootstrap, RunSession session, int attempt)
+            => bootstrap != null && bootstrap == _bootstrap && session == CurrentSession
+                && bootstrap.Level != null && bootstrap.Level.AttemptId == attempt
+                && bootstrap.Level.EndReason == LevelEndReason.Cleared;
+
+        IEnumerator FinishStage(GameplayBootstrap bootstrap, RunSession session, int attempt)
+        {
+            StageFadePrototype fade = null;
+            try
+            {
+                // 结束事件仍在派发、回池仍可能待处理；至少跨一帧再消费结算。
+                yield return null;
+                while (IsCurrentClear(bootstrap, session, attempt) && bootstrap.Level.IsBattleCleanupPending)
+                    yield return null;
+                if (!IsCurrentClear(bootstrap, session, attempt)) yield break;
+                if (!session.IsCurrentStageRecorded)
+                    throw new InvalidOperationException("通关结果未记录，无法推进关卡。");
+
+                // 同帧掉命但仍有残机时，等待复活完成，避免把死亡状态带到下一关。
+                while (bootstrap.SpawnedPlayer != null && bootstrap.SpawnedPlayer.Health.IsDying)
+                {
+                    if (!IsCurrentClear(bootstrap, session, attempt)) yield break;
+                    if (bootstrap.SpawnedPlayer.Health.IsDead)
+                        throw new InvalidOperationException("通关后的玩家已死亡。");
+                    yield return null;
+                }
+                if (bootstrap.SpawnedPlayer == null || bootstrap.SpawnedPlayer.Health.IsDead)
+                    throw new InvalidOperationException("通关后的玩家不可用。");
+                if (session.IsComplete)
+                {
+                    _controlLock = PlayerControlLock.Acquire();
+                    IsShowingResults = true;
+                    _resultsInputReady = false;
+                    _resultSelection = 0;
+                    _resultsScroll = Vector2.zero;
+                    yield break;
+                }
+
+                _stageRestriction = BattleRestriction.Acquire();
+                foreach (var root in bootstrap.gameObject.scene.GetRootGameObjects())
+                foreach (var candidate in root.GetComponentsInChildren<StageFadePrototype>(false))
+                    if (fade == null && candidate.TryBeginFlow()) fade = candidate;
+                yield return fade != null ? fade.FadeForFlow(true) : _transition.Fade(true);
+                if (!IsCurrentClear(bootstrap, session, attempt)) yield break;
+                if (!CurrentRequest.Validate(out var error)) throw new InvalidOperationException(error);
+                ResetAudio();
+                if (!session.TryAdvanceStage()) throw new InvalidOperationException("无法推进关卡序列。");
+                bootstrap.PrepareNextStage(session.CurrentStage);
+                bootstrap.Level.BeginLevel();
+                if (!bootstrap.Level.IsRunning) throw new InvalidOperationException("下一关启动失败。");
+                int nextAttempt = bootstrap.Level.AttemptId;
+                yield return null;
+                yield return fade != null ? fade.FadeForFlow(false) : _transition.Fade(false);
+                if (bootstrap == null || bootstrap.Level == null || bootstrap.Level.AttemptId != nextAttempt
+                    || !bootstrap.Level.IsRunning)
+                    throw new InvalidOperationException("换关期间关卡被重置。");
+            }
+            finally
+            {
+                if (fade != null) fade.Cancel();
+                _transition.ResetTransition();
+                // 异常时维持限制，交由返回标题或销毁释放。
+                if (Failure == null) ReleaseStageRestriction();
+                IsLoading = false;
+            }
+        }
+
+        public void RestartRun()
+        {
+            if (IsLoading || (!IsShowingResults && !(_bootstrap != null && _bootstrap.PauseMenu != null
+                && _bootstrap.PauseMenu.IsOpen)) || CurrentRequest == null) return;
+            if (!CurrentRequest.Validate(out var error)) { Failure = error; return; }
+            if (!Application.CanStreamedLevelBeLoaded(CurrentRequest.Stage.ScenePath))
+            {
+                Failure = "目标场景未加入 Build Settings：" + CurrentRequest.Stage.ScenePath;
+                return;
+            }
+            // 使用本局固定的角色与关卡顺序，重新加载以彻底重置玩家资源。
+            _bootstrap?.Level?.EndLevel(LevelEndReason.Aborted);
+            BeginOperation(CurrentRequest);
+            StartCoroutine(RunGuarded(LoadGame()));
+        }
+
         static void ResetAudio()
         {
             var audio = AudioSystem.Instance;
-            audio?.EventHub?.DisableAutoSwitch();
-            audio?.EventHub?.SwitchToSilence(0f);
-            audio?.Sfx?.StopAll();
+            if (audio == null) return;
+            audio.EventHub?.DisableAutoSwitch();
+            audio.EventHub?.SwitchToSilence(0f);
+            audio.Sfx?.StopAll();
         }
 
         // 展开嵌套 IEnumerator，使初始化/过渡异常也进入可返回菜单的失败状态。
@@ -178,6 +275,7 @@ namespace ShinySTG.GameFlow
                     if (failure != null)
                     {
                         Failure = failure.Message;
+                        _stageRestriction ??= BattleRestriction.Acquire();
                         IsLoading = false;
                         Debug.LogException(failure, this);
                         yield break;
@@ -209,6 +307,9 @@ namespace ShinySTG.GameFlow
 
         IEnumerator LoadMenu()
         {
+            _bootstrap?.PauseMenu?.CloseForTransition();
+            IsShowingResults = false;
+            _bootstrap = null;
             ShinySTG.Level.LevelController.Instance?.EndLevel(ShinySTG.Level.LevelEndReason.Aborted);
             yield return _transition.Cover();
             ResetAudio();
@@ -219,11 +320,17 @@ namespace ShinySTG.GameFlow
             Time.timeScale = 1f;
             _ownsTimeScale = false;
             ReleaseControl();
+            ReleaseStageRestriction();
             IsLoading = false;
         }
 
         void OnGUI()
         {
+            if (Failure == null && IsShowingResults && !IsLoading)
+            {
+                DrawResults();
+                return;
+            }
             if (Failure == null) return;
             GUI.depth = -1000;
             var area = new Rect((Screen.width - 560f) / 2f, (Screen.height - 200f) / 2f, 560f, 200f);
@@ -237,18 +344,66 @@ namespace ShinySTG.GameFlow
 
         void Update()
         {
+            if (!IsLoading && Failure == null && !IsShowingResults && _bootstrap != null
+                && CurrentSession != null && _bootstrap.Level != null
+                && _bootstrap.Level.EndReason == LevelEndReason.Cleared)
+            {
+                IsLoading = true;
+                StartCoroutine(RunGuarded(FinishStage(_bootstrap, CurrentSession, _bootstrap.Level.AttemptId)));
+            }
 #if ENABLE_LEGACY_INPUT_MANAGER
             if (Failure != null && !IsLoading && Input.GetKeyDown(KeyCode.Escape)) ReturnToMenu();
+            if (Failure == null && IsShowingResults && !IsLoading)
+            {
+                if (!_resultsInputReady)
+                {
+                    _resultsInputReady = !Input.GetKey(KeyCode.Z) && !Input.GetKey(KeyCode.Return)
+                        && !Input.GetKey(KeyCode.Escape);
+                    return;
+                }
+                if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+                    _resultSelection = 1 - _resultSelection;
+                if (Input.GetKeyDown(KeyCode.Escape)) ReturnToMenu();
+                else if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Return))
+                {
+                    if (_resultSelection == 0) RestartRun(); else ReturnToMenu();
+                }
+            }
 #endif
         }
 
+        void DrawResults()
+        {
+            GUI.depth = -900;
+            float width = Mathf.Min(620f, Screen.width - 24f);
+            float height = Mathf.Min(520f, Screen.height - 24f);
+            GUILayout.BeginArea(new Rect((Screen.width - width) / 2f, (Screen.height - height) / 2f,
+                width, height), GUI.skin.box);
+            GUILayout.Label("ALL CLEAR / 全关通关", new GUIStyle(GUI.skin.label)
+                { fontSize = 26, alignment = TextAnchor.MiddleCenter });
+            var results = CurrentSession.Results;
+            GUILayout.Label($"TOTAL SCORE / 总分    {results[results.Count - 1].TotalScore:N0}");
+            _resultsScroll = GUILayout.BeginScrollView(_resultsScroll);
+            foreach (var result in results)
+                GUILayout.Label($"STAGE {result.StageIndex + 1}  {result.StageId}     {result.Score:N0}");
+            GUILayout.EndScrollView();
+            if (GUILayout.Button((_resultSelection == 0 ? "> " : "") + "Restart run / 重新开始本局", GUILayout.Height(40)))
+                RestartRun();
+            if (GUILayout.Button((_resultSelection == 1 ? "> " : "") + "Return to title / 返回标题", GUILayout.Height(40)))
+                ReturnToMenu();
+            GUILayout.Label("↑ / ↓   Z / Enter     Esc: Title");
+            GUILayout.EndArea();
+        }
+
         void ReleaseControl() { _controlLock?.Dispose(); _controlLock = null; }
+        void ReleaseStageRestriction() { _stageRestriction?.Dispose(); _stageRestriction = null; }
 
         void OnDestroy()
         {
             if (Instance != this) return;
             StopAllCoroutines();
             ReleaseControl();
+            ReleaseStageRestriction();
             if (_ownsTimeScale) Time.timeScale = _previousTimeScale;
             Instance = null;
         }

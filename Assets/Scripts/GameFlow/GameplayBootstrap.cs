@@ -20,6 +20,7 @@ namespace ShinySTG.GameFlow
         public LevelController Level => _level;
         public PlayerController SpawnedPlayer { get; private set; }
         StageSettlement _settlement;
+        public GameplayPauseController PauseMenu { get; private set; }
 
         void Awake()
         {
@@ -54,9 +55,24 @@ namespace ShinySTG.GameFlow
             if (SpawnedPlayer == null || SpawnedPlayer.Health == null || SpawnedPlayer.Health.IsDead)
                 throw new InvalidOperationException("玩家初始化失败或初始生命为零。");
             _settlement?.Dispose();
-            _settlement = new StageSettlement(_level, SpawnedPlayer, GameFlowController.Instance.CurrentSession);
+            if (PauseMenu == null)
+            {
+                PauseMenu = gameObject.AddComponent<GameplayPauseController>();
+                PauseMenu.Bind(this, GameFlowController.Instance);
+            }
+            _settlement = new StageSettlement(_level, SpawnedPlayer, GameFlowController.Instance.CurrentSession,
+                PauseMenu.TryOfferContinue);
             _level.BeginLevel();
             if (!_level.IsRunning) throw new InvalidOperationException("关卡启动失败。");
+        }
+
+        /// <summary>换关沿用本次玩家和结算订阅，不重新初始化资源。</summary>
+        public void PrepareNextStage(StageDefinition stage)
+        {
+            if (stage == null || stage.Level == null || _level == null || _level.IsRunning
+                || _level.IsBattleCleanupPending || SpawnedPlayer == null || SpawnedPlayer.Health.IsDead)
+                throw new InvalidOperationException("下一关准备条件不满足。");
+            _level.Definition = stage.Level;
         }
 
         void OnDestroy() => _settlement?.Dispose();

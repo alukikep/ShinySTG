@@ -20,6 +20,12 @@ namespace ShinySTG.Dialogue
         void Update()
         {
             if (_service == null) return;
+            if (ShinySTG.GameFlow.GameplayPause.BlocksDialogueInput)
+            {
+                _armed = false;
+                _service.SetFastForward(false);
+                return;
+            }
             var handle = _service.ActiveHandle;
             if (handle != _observed)
             {

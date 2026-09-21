@@ -65,7 +65,8 @@ namespace ShinySTG.Laser
         public LaserData Data;             // 渲染参数/默认生命周期/默认宽度
 
         // ─── 修饰器状态 ───
-        [HideInInspector] public bool _hasGrazed;  // 本条激光是否已对玩家触发过擦弹(防多次)
+        [HideInInspector] public bool _hasGrazed;  // 保留旧序列化字段，记录本次发射是否擦弹过
+        internal float NextGrazeTime { get; set; } // 使用本条激光的 Timer，离开擦弹范围不重置
 
         // ─── 池引用 ───
         public LaserPool SourcePool;
@@ -99,6 +100,7 @@ namespace ShinySTG.Laser
             CurveNodes = null;
             BaseCurveNodes = null;
             _hasGrazed = false;
+            NextGrazeTime = 0f;
 
             VisualWidth     = data != null ? data.VisualWidth     : 0.8f;
             CollisionWidth  = data != null ? data.CollisionWidth  : 0.15f;
@@ -143,6 +145,7 @@ namespace ShinySTG.Laser
         // ═══════════════════════════════════════════════════════════
         void LateUpdate()
         {
+            if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             float dt = Time.deltaTime;
 
             // ── 1. 位置/角度更新(参考材料 §8) ──

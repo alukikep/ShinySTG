@@ -39,6 +39,24 @@ namespace ShinySTG.UI
             ResetTransition();
         }
 
+        public IEnumerator Fade(bool covered)
+        {
+            if (!IsReady) throw new InvalidOperationException("转场画布不可用。");
+            IsPlaying = true;
+            SetPosition(0f);
+            _curtain.gameObject.SetActive(true);
+            float duration = covered ? _coverDuration : _revealDuration;
+            for (float elapsed = 0f; elapsed < duration; elapsed += Time.unscaledDeltaTime)
+            {
+                float alpha = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                _curtain.color = new Color(0f, 0f, 0f, covered ? alpha : 1f - alpha);
+                yield return null;
+            }
+            _curtain.color = covered ? Color.black : Color.clear;
+            if (!covered) ResetTransition();
+            yield return null;
+        }
+
         public IEnumerator Play(bool rightToLeft, Action covered)
         {
             if (!IsReady || IsPlaying) yield break;

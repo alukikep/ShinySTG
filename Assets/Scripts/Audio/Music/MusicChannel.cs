@@ -6,10 +6,12 @@ namespace ShinySTG.Audio
     /// 单个 BGM 通道 —— 一个 AudioSource,负责播放一首 BGM。
     /// 由 MusicPlayer 持有 N 个通道(交叉淡化需要至少 2 个)。
     /// </summary>
+    [RequireComponent(typeof(AudioSource))]
     public class MusicChannel : MonoBehaviour
     {
         AudioSource _source;
         public AudioSource Source => _source;
+        public bool IsSourceAlive => _source != null;
 
         /// <summary>当前正在播放的 BgmTrack(可空)。</summary>
         public BgmTrack CurrentTrack { get; private set; }
@@ -19,7 +21,8 @@ namespace ShinySTG.Audio
 
         void Awake()
         {
-            _source = gameObject.AddComponent<AudioSource>();
+            _source = GetComponent<AudioSource>();
+            if (_source == null) return;
             _source.playOnAwake = false;
             _source.loop = true;
             _source.spatialBlend = 0f;
@@ -29,6 +32,7 @@ namespace ShinySTG.Audio
         /// <summary>开始播放指定 track(立即切到目标音量)。</summary>
         public void Play(BgmTrack track, float volume)
         {
+            if (_source == null) return;
             _source.Stop();
             CurrentTrack = track;
             TargetVolume = volume;
@@ -48,17 +52,20 @@ namespace ShinySTG.Audio
         public void SetTargetVolume(float v)
         {
             TargetVolume = v;
-            _source.volume = v;
+            if (_source != null) _source.volume = v;
         }
 
         public void Stop()
         {
-            _source.Stop();
-            _source.clip = null;
+            if (_source != null)
+            {
+                _source.Stop();
+                _source.clip = null;
+            }
             CurrentTrack = null;
             TargetVolume = 0f;
         }
 
-        public bool IsPlaying => _source.isPlaying;
+        public bool IsPlaying => _source != null && _source.isPlaying;
     }
 }

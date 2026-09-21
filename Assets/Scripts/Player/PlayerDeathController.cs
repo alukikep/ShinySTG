@@ -23,6 +23,7 @@ namespace ShinySTG.Player
         float _blinkInterval = 0.08f;
 
         public event Action OnDeathPresentationComplete;
+        public bool IsDeathPresentationComplete { get; private set; }
         PlayerHealth _health;
         PlayerOptions _options;
         Renderer[] _renderers;
@@ -76,6 +77,7 @@ namespace ShinySTG.Player
         void StartDeath()
         {
             if (_routine != null) return;
+            IsDeathPresentationComplete = false;
             _blink = false;
             SetHidden(true);
             _options?.SetVisible(false);
@@ -112,6 +114,7 @@ namespace ShinySTG.Player
                 remaining -= Time.deltaTime;
             }
             _routine = null;
+            IsDeathPresentationComplete = true;
             OnDeathPresentationComplete?.Invoke();
             if (isActiveAndEnabled && _health.Lives > 0) Respawn();
         }

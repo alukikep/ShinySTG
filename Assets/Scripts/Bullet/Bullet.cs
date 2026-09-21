@@ -328,6 +328,7 @@ public class Bullet : MonoBehaviour
 
     void Update()
     {
+        if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
         float dt = Time.deltaTime;
         if (!(dt > 0f)) return;
         Lifetime += dt;

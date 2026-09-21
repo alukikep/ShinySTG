@@ -20,7 +20,7 @@ namespace ShinySTG.Player
     ///   - 期间玩家闪白(可视化留给外部 Renderer,本类只暴露事件)
     ///
     /// 擦弹 (GrazeCount):
-    ///   - 由 CollisionService.OnPlayerGrazeByEnemyBullet 事件累加
+    ///   - 普通子弹擦弹事件与激光服务共用 RecordGraze 入口累加
     ///   - 不影响残机 / 火力 / 无敌,仅作为 STG 经典的高分元素与成就统计
     ///   - 提供 DebugTriggerGraze() 调试入口(跳过真实碰撞直接累加,供 UI 测试用)
     /// </summary>
@@ -71,7 +71,7 @@ namespace ShinySTG.Player
         public float InvincibleRemaining { get; private set; }
 
         [field: Header("Graze")]
-        [field: Tooltip("累计擦弹数(被敌人弹擦过判定外圈的次数)。由 CollisionService.OnPlayerGrazeByEnemyBullet 自动累加。\n经典 STG 用法:高分元素、徽章成就、UI 飘字。")]
+        [field: Tooltip("累计擦弹数，包含敌方子弹与激光。用于计分、成就与 HUD 显示。")]
         [field: SerializeField] public int GrazeCount { get; private set; }
 
         readonly HashSet<string> _invincibilityLocks = new();
@@ -129,15 +129,20 @@ namespace ShinySTG.Player
         /// <summary>CollisionService 触发时回调:累加 GrazeCount + 广播事件。</summary>
         void HandleGraze(Bullet bullet, PlayerHealth player)
         {
+            if (player != this) return;
+            RecordGraze(bullet != null ? (Vector2)bullet.transform.position : (Vector2)transform.position);
+        }
+
+        /// <summary>子弹与激光共用的擦弹计数、HUD 通知及音效入口；调用方负责判定与冷却。</summary>
+        public void RecordGraze(Vector2 position)
+        {
+            if (!CanInteract || ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             if (ShinySTG.Level.BattleRestriction.IsActive) return;
-            // 参数 bullet / player 当前不读 —— 这里只关心"擦弹发生了"这一信号;
-            // 后续若需要按弹类型 / 玩家状态做差异化(例如对追踪弹擦弹额外加分),可在此扩展。
             GrazeCount++;
             OnGraze?.Invoke(GrazeCount);
             if (_grazeSfx != null)
             {
-                Vector2? pos = bullet != null ? (Vector2?)bullet.transform.position : (Vector2?)transform.position;
-                ShinySTG.Audio.AudioMix.PlaySfx(_grazeSfx, position: pos);
+                ShinySTG.Audio.AudioMix.PlaySfx(_grazeSfx, position: position);
             }
         }
 

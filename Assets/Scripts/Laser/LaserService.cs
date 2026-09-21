@@ -15,15 +15,14 @@ namespace ShinySTG.Laser
     ///   - 中心化服务避免给 CollisionService 加大量特例判断。
     ///
     /// 阵营过滤:复用 CollisionTeam(Enemy 阵营激光撞 Player 阵营玩家)。
-    /// 擦弹:借鉴 CollisionService 的膨胀环思路(经典 STG 擦弹 = 外圈碰 1 次)。
+    /// 擦弹:外圈检测，每条激光独立按时间间隔计数。
     /// </summary>
     public class LaserService : MonoBehaviour
     {
         public static LaserService Instance { get; private set; }
 
         [Header("Player")]
-        [Tooltip("玩家 Hitbox 引用(由 Player 总控 Awake 时自动注册,也可手动拖)。\n" +
-                 "若 Player.Instance.Hitbox 存在,Awake 也会自动抓。")]
+        [Tooltip("玩家 Hitbox 引用，可手动指定；为空时自动获取当前玩家，支持开局后动态创建。")]
         public HitboxComponent PlayerHitbox;
 
         [Tooltip("玩家判定半径(世界单位)。激光走点-线段距离,需要半径。\n" +
@@ -42,6 +41,9 @@ namespace ShinySTG.Laser
         [Tooltip("擦弹环厚度(世界单位)。\n" +
                  "经典推荐 0.4(STG 玩家判定约 0.1,环厚度约为判定半径的 4 倍)。")]
         public float GrazePadding = 0.4f;
+
+        [Min(0.01f), Tooltip("同一条激光重复擦弹的最短间隔（游戏秒）；首次立即计数，离开范围不重置冷却。")]
+        public float GrazeInterval = 0.3f;
 
         [Header("Culling")]
         [Tooltip("激光出界(超出 BoundsService.CullingArea)是否提前回收。\n" +
@@ -88,11 +90,16 @@ namespace ShinySTG.Laser
 
         void LateUpdate()
         {
-            if (PlayerHitbox == null || _pool == null) return;
+            if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
+
+            // 玩家可能在 Awake 之后创建；池也可能晚于服务初始化或在场景切换时重建。
+            if (_pool == null) _pool = LaserPool.Instance;
             // ★ 使用全限定名避免与 namespace ShinySTG.Player.Player 类同名陷阱(CONTRIBUTING §4.7)
             // ★ PlayerHealth 没有静态 Instance —— 它是 [RequireComponent] 挂在 Player 总控上的子组件,
             //   正确访问路径:ShinySTG.Player.Player.Instance?.Health(对齐 CollisionService.cs 的 _playerHitbox 抓取方式)。
             var playerObj = ShinySTG.Player.Player.Instance;
+            if (PlayerHitbox == null && playerObj != null) PlayerHitbox = playerObj.Hitbox;
+            if (PlayerHitbox == null || _pool == null) return;
             var player = playerObj != null ? playerObj.Health : null;
             if (player == null) return;
 
@@ -148,14 +155,18 @@ namespace ShinySTG.Laser
                     continue;
                 }
 
-                // ── 擦弹(每条激光最多擦 1 次) ──
-                if (GrazeEnabled && !laser._hasGrazed)
+                // 只奖励可受伤时贴近有效判定的行为；一次检测最多计数一次，不补发历史次数。
+                if (GrazeEnabled && grazePad > 0f && laser.CollisionEnabled && !invincible
+                    && !ShinySTG.Level.BattleRestriction.IsActive
+                    && (!laser._hasGrazed || laser.Timer >= laser.NextGrazeTime))
                 {
                     float r = PlayerRadius + laser.CollisionWidth + grazePad;
                     bool grazed = CheckLaserRingOverlap(laser, pPos, r);
                     if (grazed)
                     {
                         laser._hasGrazed = true;
+                        laser.NextGrazeTime = laser.Timer + Mathf.Max(0.01f, GrazeInterval);
+                        player.RecordGraze(pPos);
                         OnPlayerGrazedByLaser?.Invoke(laser, player);
                         // 擦弹不回收,激光继续飞行(经典 STG 行为,与 CollisionService 一致)
                     }

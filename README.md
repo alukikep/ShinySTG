@@ -5,7 +5,7 @@ ShinySTG 是一个 Unity 弹幕射击项目，采用数据驱动、组合式多�
 ## 开始使用
 
 1. 使用 `ProjectSettings/ProjectVersion.txt` 指定的 Unity 版本打开项目。
-2. 打开目标场景，确认场景中存在玩家、`BulletPool`、`BoundsService`；运行关卡时还需要 `LevelController`。
+2. 正式开局和连续关卡按 [游戏流程说明](./Assets/Scripts/GameFlow/README.md) 配置，从 StartMenu 进入；Gameplay 由 Bootstrap 创建玩家，不要预放第二个玩家。独立测试场景按测试需要配置玩家、对象池、舞台边界及关卡控制器。
 3. 通过 ScriptableObject 配置敌人行为、弹幕、关卡和音频，避免把关卡内容硬编码进 MonoBehaviour。
 
 关卡制作从 [`LEVEL_EDITOR.md`](./LEVEL_EDITOR.md) 开始；修改代码前阅读

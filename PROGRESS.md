@@ -68,10 +68,18 @@
 ### 关卡系统
 1. `LevelDefinition` SO 资产
 2. `LevelRuntime` 按时间轴驱动
-3. 5 个正式 `SpawnEntry`(Simple / Wave / Sustain / Boss Encounter / PlaySFX);旧 `BossSpawnEntry` 仅保留资产兼容
+3. 普通刷怪、波次、持续生成、Boss Encounter、音效、背景和通关条目；旧 `BossSpawnEntry` 仅保留资产兼容
 4. 2 个内置 `SpawnPositionStrategy`(Fixed / Random)
-5. 关卡事件(OnLevelStart / OnLevelComplete / OnBossSpawned / OnBossDefeated)
+5. 关卡生命周期与带原因的结束事件，区分通关、失败和中止
 6. `BulletPool` 自动兜底
+
+### 游戏流程
+1. 角色选择与关卡序列开局，共用 Gameplay 场景
+2. 单关内存结算、结束清场和战斗限制
+3. 自动换关、局部渐变及全屏回退，保留玩家位置和资源
+4. 末关结果页：总分、各关成绩、重开本局、返回标题
+
+配置与验收见 [游戏流程](./Assets/Scripts/GameFlow/README.md)。Game Over、续关、暂停菜单和成绩存档尚未实现。
 
 ### 关卡可视化编辑器
 1. 菜单 `STG → Level Editor`

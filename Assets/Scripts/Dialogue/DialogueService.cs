@@ -62,6 +62,7 @@ namespace ShinySTG.Dialogue
 
         void Update()
         {
+            if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             if (!IsPlaying) return;
             if (_view == null || !_view.IsReady)
             {
@@ -84,6 +85,7 @@ namespace ShinySTG.Dialogue
 
         public void Confirm()
         {
+            if (ShinySTG.GameFlow.GameplayPause.BlocksDialogueInput) return;
             if (!IsPlaying || _lastConfirmFrame == Time.frameCount) return;
             _lastConfirmFrame = Time.frameCount;
             try
@@ -97,7 +99,7 @@ namespace ShinySTG.Dialogue
 
         public void SetFastForward(bool held)
         {
-            _fastForwardHeld = IsPlaying && held;
+            _fastForwardHeld = IsPlaying && held && !ShinySTG.GameFlow.GameplayPause.BlocksDialogueInput;
             if (!_fastForwardHeld) _fastForwardElapsed = 0f;
         }
 
