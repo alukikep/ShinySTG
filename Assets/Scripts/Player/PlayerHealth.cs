@@ -76,6 +76,9 @@ namespace ShinySTG.Player
 
         readonly HashSet<string> _invincibilityLocks = new();
         bool _settlingHit;
+        float _deathbombRemaining;
+        float _deathbombDamage;
+        public bool IsDeathbombWindowOpen => _deathbombRemaining > 0f;
 
         public bool IsInvincible => InvincibleRemaining > 0f || _invincibilityLocks.Count > 0;
         public bool IsDead       => Lives <= 0;
@@ -124,6 +127,8 @@ namespace ShinySTG.Player
             {
                 CollisionService.Instance.OnPlayerGrazeByEnemyBullet -= HandleGraze;
             }
+            _deathbombRemaining = 0f;
+            _deathbombDamage = 0f;
         }
 
         /// <summary>CollisionService 触发时回调:累加 GrazeCount + 广播事件。</summary>
@@ -167,6 +172,16 @@ namespace ShinySTG.Player
                     if (_invincibilityLocks.Count == 0) OnInvincibleEnd?.Invoke();
                 }
             }
+            if (_deathbombRemaining > 0f && !ShinySTG.GameFlow.GameplayPause.IsPaused)
+            {
+                _deathbombRemaining -= Time.deltaTime;
+                if (_deathbombRemaining <= 0f)
+                {
+                    _deathbombRemaining = 0f;
+                    CommitHit(_deathbombDamage);
+                    _deathbombDamage = 0f;
+                }
+            }
         }
 
         public void AddInvincibility(string sourceKey)
@@ -191,6 +206,31 @@ namespace ShinySTG.Player
             if (!CanInteract || IsInvincible || ShinySTG.Level.BattleRestriction.IsActive) return;
             if (damage <= 0f) return;
             if (Lives <= 0) return;
+            if (IsDeathbombWindowOpen) return;
+
+            var bomb = ShinySTG.Player.Player.Instance?.Bomb;
+            float window = bomb != null ? bomb.DeathbombWindow : 0f;
+            if (window > 0f && !IsDeathbombWindowOpen)
+            {
+                _deathbombDamage = damage;
+                _deathbombRemaining = window;
+                return;
+            }
+            CommitHit(damage);
+        }
+
+        internal bool TryResolveDeathbomb()
+        {
+            if (!IsDeathbombWindowOpen) return false;
+            _deathbombRemaining = 0f;
+            _deathbombDamage = 0f;
+            return true;
+        }
+
+        void CommitHit(float damage)
+        {
+            if (!CanInteract || IsInvincible || ShinySTG.Level.BattleRestriction.IsActive) return;
+            if (damage <= 0f || Lives <= 0) return;
 
             _settlingHit = true;
             IsDying = true; // 在任何外部回调前防止重入。

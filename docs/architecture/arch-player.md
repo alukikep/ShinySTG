@@ -50,7 +50,7 @@ IsDead 仍表示生命耗尽；IsDying 覆盖失去一命后的演出和等待�
 CanInteract 同时检查 Health 启用、生命和死亡流程，供移动、射击、碰撞、擦弹及拾取判断。
 无敌与可交互状态分开：复活无敌不禁止移动、射击或拾取。
 
-有效受击先锁定死亡状态，再按原约定发出扣命前 OnLifeLost 和扣命后 OnLivesChanged，
+实际提交受击时先锁定死亡状态，再按原约定发出扣命前 OnLifeLost 和扣命后 OnLivesChanged，
 防止事件重入重复扣命或提前复活。OnAllLivesLost 仍在归零时通知，不代表演出已结束。
 OnDeathPresentationComplete 在特效及额外等待结束、自动重生之前通知；需要延后 Game Over
 的宿主监听它并检查生命。OnRevive 与复活无敌计时只在实际重新出现时开始。
@@ -61,10 +61,31 @@ AddLife 只修改生命；等待期间加命影响结束时的重生决定，终
 演出使用游戏时间，不暂停世界；禁用协调组件取消等待并回收自己仍持有的那次特效，
 重新启用时若仍处于死亡状态会重新开始演出，但不重复已执行的死亡指令。
 
-死亡指令使用现有 GlobalCommandExecutor 和 PlayerDeath 上下文，在受击的下一帧执行，
+死亡指令使用现有 GlobalCommandExecutor 和 PlayerDeath 上下文，在实际扣命的下一帧执行，
 避免清弹修改碰撞正在遍历的池。位置相关指令读取玩家执行时位置，重生移动发生在其后；
 外部脚本不应在死亡等待期间移动玩家。死亡状态门控不占用对话控制锁，重生后长按可继续射击，
 但仍受对话锁及其松键规则限制。
+
+## Bomb 与决死窗口
+
+PlayerResources 负责库存增减与通知，PlayerBomb 负责释放条件、效果和动作宿主；
+BombDefinition 提供共享配置，未指定资产时保留组件字段回退。伤害通过 EnemyHealth 与
+BossHealth 的既有入口结算，清弹通过池的阵营过滤回收，不直接销毁对象。
+
+Bomb 复用 GameActionRunner，不另建动作执行体系；序列内部串行，Parallel 提供并行。
+当前宿主的 Starting 不等待开始序列，Active 由持续时间推进，Ending 仅支持瞬时结束动作；
+ActionSequence.WaitForCompletion 尚未参与 Bomb 阶段切换。正常结束和禁用会释放 Runner。
+配置与当前限制见 [玩家操作说明](../../Assets/Scripts/Player/README.md#bomb-与动作序列)。
+
+Deathbomb 的待结算受击由 PlayerHealth 持有，窗口不等于 IsDying 或无敌锁，
+不改变 CanInteract。重复受击不刷新窗口；成功消费 Bomb 后取消待结算受击，
+不回滚生命或已发送事件。窗口使用游戏时间，暂停冻结；窗口为零沿用立即结算。
+窗口开启不检查库存或 Bomb 是否忙碌，成功释放仍遵守正常释放条件。
+
+窗口到期重新检查可交互、无敌和 BattleRestriction 后提交生命结算；禁用 Health
+清除待结算状态。因此现有结束流程可能在窗口扣命之前定案，尚无等待待结算受击的协调。
+OnLifeLost、OnLivesChanged、OnAllLivesLost 均在实际提交时通知，死亡表现随后开始。
+操作与验收见 [Deathbomb](../../Assets/Scripts/Player/README.md#deathbomb决死-bomb)。
 
 ## 道具与玩家资源
 

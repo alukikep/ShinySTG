@@ -122,9 +122,20 @@
   - **命中 → 不立刻回收**(对齐东方正作 + 子弹碰撞行为):激光是"持续判定",玩家撞到激光只扣血,激光继续走完五段状态机自然回池。**帧内去重**:同一条激光一帧内只扣 1 次血(`_hitThisFrame: HashSet<LaserEntity>`,每帧 `LateUpdate` 开头 `Clear`)—— 玩家若持续站在激光上,**每帧扣 1 次血**(典型"激光穿身")
   - 命中 → 非无敌期 `ShinySTG.Player.Player.Instance.OnHit(1f)` + 触发 `OnPlayerHitByLaser` 事件(每条激光每帧最多触发 1 次,见帧内去重)
   - **无敌期不再吞噬激光**:`ConsumeLasersWhenInvincible` 字段保留(向后兼容旧资产),但当前实现下其分支退化为 no-op —— 无敌时激光继续走生命周期,玩家不扣血
-  - 擦弹:借鉴 `CollisionService` 的膨胀环思路,激光擦过判定外圈时触发 `OnPlayerGrazedByLaser` 事件,激光继续飞行(每条激光整个生命周期最多擦 1 次,`_hasGrazed` 标志位)
+  - 擦弹:激光进入判定外圈时使用 `LaserGeometry.CheckCurvedGraze` / 点到线段距离检测;仅在 `CollisionEnabled`、玩家可交互且非无敌时计数。首次擦弹立即触发,同一条激光之后按 `GrazeInterval`(默认 0.3 秒)最多触发一次,避免每帧累加;激光继续飞行。`LaserEntity._hasGrazed` 与 `NextGrazeTime` 在每次 `Init` 时重置,对象池复用不会继承上次擦弹状态
+  - 擦弹计数: `LaserService` 触发 `PlayerHealth.RecordGraze(...)`,与普通子弹共用 `GrazeCount`、`OnGraze` 和擦弹音效入口;随后广播 `OnPlayerGrazedByLaser` 供激光专属系统订阅。暂停、战斗限制、死亡和无敌期间不累计
   - 出界: 读 `BoundsService.Instance.ContainsCulling(laser.Position)`,出界立刻加入回收队列(避免长期占用池)
-  - **玩家自动注册**: `Awake` 自动抓 `ShinySTG.Player.Player.Instance.Hitbox`,无需手动拖
+  - **玩家自动注册**: `Awake` 自动抓 `ShinySTG.Player.Player.Instance.Hitbox`;玩家由 `GameplayBootstrap` 延迟创建时,`LateUpdate` 会补抓引用,无需手动拖
+
+#### 13.2.1 激光擦弹计数规则
+
+激光擦弹不是按帧直接加分,而是按每条激光独立计时。服务每帧仍执行几何检测,但满足以下条件才触发一次擦弹:
+
+1. 激光当前处于允许碰撞的生命周期阶段(`CollisionEnabled` 为 true),且玩家位于判定半径之外、擦弹半径之内。
+2. 玩家可交互、未处于无敌状态,且没有暂停或战斗限制。
+3. 该激光是首次擦弹,或其 `Timer` 已达到 `NextGrazeTime`。首次立即计数,后续间隔由 `LaserService.GrazeInterval` 控制,默认 0.3 秒。
+
+命中伤害区时走受击分支,不同时产生擦弹。激光离开擦弹范围不会清除冷却;这样快速进出不会反复刷分。激光回收到对象池并再次发射时,`LaserEntity.Init` 会清除 `_hasGrazed` 和 `NextGrazeTime`。
 
 - **`FireLaserAction: EnemyAction`**(`[SRName("Action/Fire Laser")]`)** —— BehaviorFlow 接入层:
   - 字段: `Pattern: LaserPattern` / `FireRate: float` / `AimOffsetDeg: float` / `ExtraModifierPrefabs: LaserModifier[]`

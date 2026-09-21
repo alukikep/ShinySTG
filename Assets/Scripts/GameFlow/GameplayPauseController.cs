@@ -48,7 +48,7 @@ namespace ShinySTG.GameFlow
         {
             if (_bootstrap == null || _flow == null || _view == null) return;
             var level = _bootstrap.Level;
-            if (_flow.IsLoading || _flow.IsShowingResults || _flow.Failure != null || level == null
+            if (_flow.IsLoading || _flow.IsShowingResults || _flow.IsShowingStageResults || _flow.Failure != null || level == null
                 || level.IsCompleted || (_waiting && (level.AttemptId != _attempt || !level.IsAwaitingContinue)))
             {
                 CloseForTransition();

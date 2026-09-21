@@ -19,6 +19,8 @@ GameObject:
   - component: {fileID: 2304667728455461477}
   - component: {fileID: 2729543475542053067}
   - component: {fileID: 831294475090668861}
+  - component: {fileID: 1017728775282314963}
+  - component: {fileID: -1964697009188031178}
   m_Layer: 0
   m_Name: NatsuhaA
   m_TagString: Untagged
@@ -142,7 +144,7 @@ MonoBehaviour:
   _grazeSfx: {fileID: 11400000, guid: 86d9a8bf46acc6f4dac803ee44fb5f39, type: 2}
   _powerUpSfx: {fileID: 0}
   InitialLives: 3
-  InitialPower: 4
+  InitialPower: 2
   MaxPower: 4
   SpawnInvincibleDuration: 3
   ReviveInvincibleDuration: 3
@@ -207,6 +209,7 @@ MonoBehaviour:
   FireKey: 122
   FireKeyAlt: 32
   FocusKey: 304
+  BombKey: 120
 --- !u!114 &2304667728455461477
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -281,3 +284,37 @@ MonoBehaviour:
   _fadeDuration: 0.08
   _sortingLayer: Default
   _sortingOrder: 30
+--- !u!114 &1017728775282314963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2591661161833823007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09db6c7547f0ce743aafde59db21a75e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _definition: {fileID: 11400000, guid: 43cb72ec13ec3534296441df47efc68c, type: 2}
+  _clearEnemyProjectiles: 1
+  _includeLasers: 1
+  _damageAllEnemies: 1
+  _enemyDamage: 100
+  _invincibilityDuration: 2
+  _duration: 2
+  _damageInterval: 0
+  _bombSfx: {fileID: 0}
+--- !u!114 &-1964697009188031178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2591661161833823007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51da652b0e402a942abcef256f0522c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _initialBombs: 3

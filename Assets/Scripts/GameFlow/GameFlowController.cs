@@ -20,7 +20,14 @@ namespace ShinySTG.GameFlow
         public RunSession CurrentSession { get; private set; }
         public string Failure { get; private set; }
         public bool IsShowingResults { get; private set; }
+        public bool IsShowingStageResults => _stageResultSession != null;
 
+        StageResultView _stageResultView;
+        RunSession _stageResultSession;
+        GameplayBootstrap _stageResultBootstrap;
+        int _stageResultAttempt;
+        readonly KeyboardMenuNavigation _stageResultNavigation = new();
+        bool _focused = true;
         ScreenWipeTransition _transition;
         GameplayBootstrap _bootstrap;
         IDisposable _stageRestriction;
@@ -56,6 +63,9 @@ namespace ShinySTG.GameFlow
             _transition = canvasObject.AddComponent<ScreenWipeTransition>();
             _transition.Configure(image);
             _transition.ResetTransition();
+            var resultsObject = new GameObject("StageResults", typeof(RectTransform));
+            resultsObject.transform.SetParent(transform, false);
+            _stageResultView = resultsObject.AddComponent<StageResultView>();
         }
 
         public bool TryStartGame(CharacterDefinition character, StageDefinition stage, out string error)
@@ -90,6 +100,7 @@ namespace ShinySTG.GameFlow
 
         void BeginOperation(GameStartRequest request)
         {
+            HideStageResults();
             _bootstrap?.PauseMenu?.CloseForTransition();
             IsShowingResults = false;
             _bootstrap = null;
@@ -169,7 +180,6 @@ namespace ShinySTG.GameFlow
 
         IEnumerator FinishStage(GameplayBootstrap bootstrap, RunSession session, int attempt)
         {
-            StageFadePrototype fade = null;
             try
             {
                 // 结束事件仍在派发、回池仍可能待处理；至少跨一帧再消费结算。
@@ -190,9 +200,25 @@ namespace ShinySTG.GameFlow
                 }
                 if (bootstrap.SpawnedPlayer == null || bootstrap.SpawnedPlayer.Health.IsDead)
                     throw new InvalidOperationException("通关后的玩家不可用。");
+                if (!IsCurrentClear(bootstrap, session, attempt)) yield break;
+                _controlLock ??= PlayerControlLock.Acquire();
+                _stageResultBootstrap = bootstrap;
+                _stageResultSession = session;
+                _stageResultAttempt = attempt;
+                _stageResultNavigation.Reset();
+                _stageResultView.Show(session.Results[session.CurrentStageIndex], session.IsComplete);
+            }
+            finally { IsLoading = false; }
+        }
+
+        IEnumerator AdvanceAfterStageResult(GameplayBootstrap bootstrap, RunSession session, int attempt)
+        {
+            StageFadePrototype fade = null;
+            try
+            {
+                if (!IsCurrentClear(bootstrap, session, attempt)) yield break;
                 if (session.IsComplete)
                 {
-                    _controlLock = PlayerControlLock.Acquire();
                     IsShowingResults = true;
                     _resultsInputReady = false;
                     _resultSelection = 0;
@@ -224,7 +250,11 @@ namespace ShinySTG.GameFlow
                 if (fade != null) fade.Cancel();
                 _transition.ResetTransition();
                 // 异常时维持限制，交由返回标题或销毁释放。
-                if (Failure == null) ReleaseStageRestriction();
+                if (Failure == null)
+                {
+                    ReleaseStageRestriction();
+                    if (!IsShowingResults) ReleaseControl();
+                }
                 IsLoading = false;
             }
         }
@@ -275,6 +305,7 @@ namespace ShinySTG.GameFlow
                     if (failure != null)
                     {
                         Failure = failure.Message;
+                        HideStageResults();
                         _stageRestriction ??= BattleRestriction.Acquire();
                         IsLoading = false;
                         Debug.LogException(failure, this);
@@ -307,6 +338,7 @@ namespace ShinySTG.GameFlow
 
         IEnumerator LoadMenu()
         {
+            HideStageResults();
             _bootstrap?.PauseMenu?.CloseForTransition();
             IsShowingResults = false;
             _bootstrap = null;
@@ -344,7 +376,12 @@ namespace ShinySTG.GameFlow
 
         void Update()
         {
-            if (!IsLoading && Failure == null && !IsShowingResults && _bootstrap != null
+            if (IsShowingStageResults && !IsCurrentClear(_stageResultBootstrap, _stageResultSession, _stageResultAttempt))
+            {
+                HideStageResults();
+                ReleaseControl();
+            }
+            if (!IsLoading && Failure == null && !IsShowingResults && !IsShowingStageResults && _bootstrap != null
                 && CurrentSession != null && _bootstrap.Level != null
                 && _bootstrap.Level.EndReason == LevelEndReason.Cleared)
             {
@@ -352,6 +389,14 @@ namespace ShinySTG.GameFlow
                 StartCoroutine(RunGuarded(FinishStage(_bootstrap, CurrentSession, _bootstrap.Level.AttemptId)));
             }
 #if ENABLE_LEGACY_INPUT_MANAGER
+            if (!_focused) return;
+            if (Failure == null && IsShowingStageResults && !IsLoading)
+            {
+                _stageResultNavigation.Read(false, false, Input.GetKey(KeyCode.Z), Input.GetKeyDown(KeyCode.Z),
+                    false, false, Time.unscaledTime, .35f, .1f, out _, out bool confirm, out _);
+                if (confirm) ConfirmStageResult();
+                return;
+            }
             if (Failure != null && !IsLoading && Input.GetKeyDown(KeyCode.Escape)) ReturnToMenu();
             if (Failure == null && IsShowingResults && !IsLoading)
             {
@@ -395,6 +440,33 @@ namespace ShinySTG.GameFlow
             GUILayout.EndArea();
         }
 
+        void ConfirmStageResult()
+        {
+            if (!IsShowingStageResults || IsLoading || Failure != null) return;
+            var bootstrap = _stageResultBootstrap;
+            var session = _stageResultSession;
+            int attempt = _stageResultAttempt;
+            HideStageResults();
+            if (!IsCurrentClear(bootstrap, session, attempt)) { ReleaseControl(); return; }
+            IsLoading = true;
+            StartCoroutine(RunGuarded(AdvanceAfterStageResult(bootstrap, session, attempt)));
+        }
+
+        void HideStageResults()
+        {
+            if (_stageResultView != null) _stageResultView.Hide();
+            _stageResultSession = null;
+            _stageResultBootstrap = null;
+            _stageResultNavigation.Reset();
+        }
+
+        void OnApplicationFocus(bool focused)
+        {
+            _focused = focused;
+            _stageResultNavigation.Reset();
+            _resultsInputReady = false;
+        }
+
         void ReleaseControl() { _controlLock?.Dispose(); _controlLock = null; }
         void ReleaseStageRestriction() { _stageRestriction?.Dispose(); _stageRestriction = null; }
 
@@ -402,6 +474,7 @@ namespace ShinySTG.GameFlow
         {
             if (Instance != this) return;
             StopAllCoroutines();
+            HideStageResults();
             ReleaseControl();
             ReleaseStageRestriction();
             if (_ownsTimeScale) Time.timeScale = _previousTimeScale;

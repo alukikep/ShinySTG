@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ecec27d3a781b042aefcf3083ae498b, type: 3}
+  m_Name: BombDefinition
+  m_EditorClassIdentifier: 
+  Duration: 3
+  InvincibilityDuration: 3
+  ClearEnemyProjectiles: 1
+  IncludeLasers: 1
+  DamageAllEnemies: 1
+  EnemyDamage: 50
+  DamageInterval: 1
+  BombSfx: {fileID: 0}
+  StartActions:
+    WaitForCompletion: 1
+    Actions:
+    - rid: 6177227232335888391
+  ActiveActions:
+    WaitForCompletion: 1
+    Actions:
+    - rid: 6177227232335888392
+  EndActions:
+    WaitForCompletion: 1
+    Actions:
+    - rid: 6177227232335888394
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177227232335888391
+      type: {class: FirePatternGameAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Pattern: {fileID: 11400000, guid: 26034384889d4d64ba69afc21b49597a, type: 2}
+        RepeatCount: 1
+        Interval: 1
+    - rid: 6177227232335888392
+      type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Commands:
+        - rid: 6177227232335888393
+    - rid: 6177227232335888393
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1
+    - rid: 6177227232335888394
+      type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Commands:
+        - rid: 6177227232335888395
+    - rid: 6177227232335888395
+      type: {class: SpawnDropsCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        Profile: {fileID: 11400000, guid: 9d28ef3de5397d54482d1bc36a6f6957, type: 2}
+        OnPhaseCompleted: 1
+        OnBossDeath: 1

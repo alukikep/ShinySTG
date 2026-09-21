@@ -28,5 +28,13 @@ namespace ShinySTG.Player
             Bombs += Math.Min(amount, int.MaxValue - Bombs);
             OnBombsChanged?.Invoke(Bombs);
         }
+
+        public bool TryConsumeBomb()
+        {
+            if (Bombs <= 0) return false;
+            Bombs--;
+            OnBombsChanged?.Invoke(Bombs);
+            return true;
+        }
     }
 }

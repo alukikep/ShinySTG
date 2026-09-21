@@ -22,6 +22,7 @@ namespace ShinySTG.Player
         public KeyCode FireKey     = KeyCode.Z;
         public KeyCode FireKeyAlt  = KeyCode.Space;
         public KeyCode FocusKey    = KeyCode.LeftShift;
+        public KeyCode BombKey     = KeyCode.X;
 
         void Update()
         {
@@ -44,6 +45,7 @@ namespace ShinySTG.Player
                 Player.Instance.Shooting.FireHeld =
                     Input.GetKey(FireKey) || Input.GetKey(FireKeyAlt);
             }
+            if (Input.GetKeyDown(BombKey)) Player.Instance.Bomb?.TryUse();
         }
     }
 }

@@ -27,6 +27,7 @@ namespace ShinySTG.Player
     [RequireComponent(typeof(PlayerHealth))]
     [RequireComponent(typeof(PlayerOptions))]
     [RequireComponent(typeof(PlayerHitbox))]
+    [RequireComponent(typeof(PlayerBomb))]
 
     public class Player : MonoBehaviour
     {
@@ -38,12 +39,14 @@ namespace ShinySTG.Player
         public PlayerOptions  Options  { get; private set; }
         public PlayerHitbox   Hitbox   { get; private set; }
         public PlayerResources Resources { get; private set; }
+        public PlayerBomb Bomb { get; private set; }
 
         // ─── PlayerInput(新版 Input System)回调 ─────────────
         // 由 PlayerInput 组件(Behavior = Invoke C# Events)调用。
         public void OnPlayer(Vector2 v) { if (Movement != null) Movement.MoveInput = v; }
         public void OnAttack(bool held) { if (Shooting != null) Shooting.FireHeld = held; }
         public void OnFocus(bool held) { if (Movement != null) Movement.FocusHeld = held; }
+        public void OnBomb(bool pressed) { if (pressed) Bomb?.TryUse(); }
 
         void Awake()
         {
@@ -62,6 +65,7 @@ namespace ShinySTG.Player
             Options  = GetComponent<PlayerOptions>();
             Hitbox   = GetComponent<PlayerHitbox>();
             Resources = GetComponent<PlayerResources>();
+            Bomb = GetComponent<PlayerBomb>();
             if (GetComponent<PlayerHitboxIndicator>() == null)
                 gameObject.AddComponent<PlayerHitboxIndicator>();
             if (GetComponent<PlayerDeathController>() == null)
