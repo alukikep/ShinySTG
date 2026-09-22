@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Id: stage-1
   ScenePath: Assets/Scenes/Gameplay.unity
-  Level: {fileID: 11400000, guid: 34cfcc19c0648af4a95739b38f7d081c, type: 2}
+  Level: {fileID: 11400000, guid: c564fd075fc89634dacfc085eff97fe0, type: 2}
   SpawnPosition: {x: -2.22, y: -1.62, z: -0.15460053}

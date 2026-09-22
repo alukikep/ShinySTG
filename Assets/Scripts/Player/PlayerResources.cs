@@ -29,6 +29,15 @@ namespace ShinySTG.Player
             OnBombsChanged?.Invoke(Bombs);
         }
 
+        /// <summary>将 Bomb 库存设置为指定数量，并通知 HUD。</summary>
+        public void SetBombs(int amount)
+        {
+            int next = Mathf.Max(0, amount);
+            if (next == Bombs) return;
+            Bombs = next;
+            OnBombsChanged?.Invoke(Bombs);
+        }
+
         public bool TryConsumeBomb()
         {
             if (Bombs <= 0) return false;

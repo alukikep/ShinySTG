@@ -29,6 +29,8 @@ Project 右键 `Create > STG > Background > Loop Cue` 创建循环配置。在 N
 
 工具只修改所选 Camera 的 Clear Flags 和 Culling Mask，保留位置、旋转、正交尺寸和视口。背景相机复制创建时的视口和 Target Display，并先于战斗相机绘制；以后手动修改战斗视口或输出显示器时，需要同步背景相机。背景使用默认立方体材质，无 Collider、无额外 AudioListener；专用灯光只照射背景层，已有场景灯光仍可能影响背景。
 
+背景物体及其所有子物体必须使用 `Background3D` Layer。若部分物体仍保留在 Default 或其它图层，它们不会由背景相机统一绘制，可能表现为贴在战斗相机画面上的 2D 图片、远近关系异常或完全不可见。修改层级后要检查 Prefab 根节点和每一级子物体，并重新进入 Play 验证。
+
 当前 SampleScene 的 Main Camera 正交尺寸为 9.5，位置为 (0, 1, -10)。不要为了配合背景更改这些战斗参数。现有 Canvas 是 Screen Space Overlay，保持原配置即可。
 
 ## 双相机验收
@@ -114,13 +116,14 @@ Project 右键 `Create > STG > Background > Loop Cue` 创建循环配置。在 N
 
 绑定禁用时解除全部订阅并停止背景；重新启用时，如果关卡运行中则重置背景，如果已经完成则保持停止。不会补播禁用期间错过的 Cue，也不做时间轴追帧。未启动且 AutoStart=false 时背景保留手动预览行为，真正 BeginLevel 后才重置。编辑器关卡 Preview（包含 Play 中使用预览 Runtime）不会触发真实背景；请在实际 Play 关卡中验收。
 
-源码：[LevelBackgroundBinding.cs](./LevelBackgroundBinding.cs)、[PlayBackgroundCueEntry.cs](../Level/SpawnEntries/PlayBackgroundCueEntry.cs)。配置写入使用标准 Inspector，支持 Undo/dirty；本功能不自动修改场景或 LevelDefinition。
+源码：[LevelBackgroundBinding.cs](./LevelBackgroundBinding.cs)、[PlayBackgroundCueEntry.cs](../Level/SpawnEntries/PlayBackgroundCueEntry.cs)。配置写入使用标准 Inspector，支持 Undo/dirty；本功能不自动修改场景；关卡 SO 可配置 InitialBackground，在加载揭幕后立即应用。
 
 ## 排查与移除
 
 - 菜单不存在：等待编译结束并查看 Console；代码位于 [Editor/BackgroundPrototypeSetup.cs](./Editor/BackgroundPrototypeSetup.cs)。
 - 提示缺少 Layer：检查名称大小写，必须为 `Background3D`。
 - 背景看不到：检查原来的全屏不透明 Sprite 或 UI Image 是否遮住背景，不要关闭整个 UI Canvas；检查两台相机是否启用、目标显示器与视口是否一致。
+- 背景物体像贴在相机上或只有部分物体有伪 3D：优先检查物体及其子物体是否全部位于 `Background3D` Layer；再确认它们由 BackgroundCamera 绘制，而不是被 Main Camera、Canvas 或其它相机单独绘制。
 - 方柱挡住玩家：检查 Main Camera 是否排除了 Background3D、Clear Flags 是否为 Depth Only，以及新增背景物体的所有子物体是否都在背景层。
 - 重复执行：同一场景已有同名根节点时会跳过，不会覆盖已有原型。
 - 多场景编辑：工具配置所选相机所在场景。其它场景的相机可能参与同一屏幕绘制，先单独打开目标场景验收。
@@ -204,3 +207,4 @@ BossEncounter 的 StartActions 或阶段 EnterActions 中添加 `Game Action/Swi
 验收：第 5 秒自动换景且敌人继续生成；Boss 等淡入完成后开战；换景中暂停/恢复、重开、结束均正常；Cue 接管后旧动作失败但新播放继续；重复重开不重复订阅。测试无效配置时 Console 记录失败属于预期。背景底色覆盖开关仍默认关闭。
 
 源码：[SwitchBackgroundEntry.cs](../Level/SpawnEntries/SwitchBackgroundEntry.cs)、[SwitchBackgroundAction.cs](../GameActions/SwitchBackgroundAction.cs)。
+

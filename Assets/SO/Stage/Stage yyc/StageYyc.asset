@@ -12,11 +12,49 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 06157d8671accc948848521680b5dff2, type: 3}
   m_Name: Stageyyc
   m_EditorClassIdentifier: 
-  Entries: []
+  Entries:
+  - rid: 6177227253805481988
+  - rid: 6177227253805481990
+  - rid: 6177227253805481994
   Duration: 60
   Pool: {fileID: 0}
+  InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
   AutoSwitchBgm: 1
   AudioBinding: {fileID: 0}
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 6177227253805481988
+      type: {class: MusicControlEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 0
+        OneShot: 1
+        Duration: 0
+        Action: 0
+        Playlist: {fileID: 11400000, guid: f7dc6ba21aca8694491596078af2405a, type: 2}
+        Track: {fileID: 0}
+        Crossfade: 1.5
+    - rid: 6177227253805481990
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 4
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
+        SpawnPosition: {x: 0, y: 0}
+        SpawnPositionStrategy:
+          rid: 6177227253805481991
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227253805481991
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0, y: 0}
+    - rid: 6177227253805481994
+      type: {class: PlayBackgroundLoopEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 0
+        OneShot: 1
+        Duration: 0
+        Cue: {fileID: 11400000, guid: c5749634185e694438ae0a27781c4c7a, type: 2}

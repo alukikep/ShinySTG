@@ -56,6 +56,12 @@ namespace ShinySTG.Background
             return true;
         }
 
+        public void ApplyDefinitionImmediate(BackgroundDefinition definition)
+        {
+            if (!Application.isPlaying || definition == null) return;
+            SwitchBackground(definition, 0f, 0f);
+        }
+
         public BackgroundPlaybackHandle Play(BackgroundCue cue)
         {
             if (!Application.isPlaying || !isActiveAndEnabled || cue == null)
@@ -230,3 +236,4 @@ namespace ShinySTG.Background
         static bool Finite(Vector3 value) => Finite(value.x) && Finite(value.y) && Finite(value.z);
     }
 }
+

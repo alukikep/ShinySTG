@@ -19,12 +19,16 @@ namespace ShinySTG.Player
         float _respawnDelay = 0.3f;
         [SerializeField, Tooltip("重生位置；留空使用初始出生位置。")]
         Transform _respawnPoint;
+        [SerializeField, Min(0), Tooltip("玩家复活时重置为该数量的 Bomb。")]
+        int _respawnBombs;
         [SerializeField, Min(0.01f), Tooltip("重生无敌期间本体闪烁的间隔秒数。")]
         float _blinkInterval = 0.08f;
 
         public event Action OnDeathPresentationComplete;
         public bool IsDeathPresentationComplete { get; private set; }
         PlayerHealth _health;
+        PlayerBomb _bomb;
+        PlayerResources _resources;
         PlayerOptions _options;
         Renderer[] _renderers;
         bool[] _originalHidden;
@@ -39,6 +43,8 @@ namespace ShinySTG.Player
         void Awake()
         {
             _health = GetComponent<PlayerHealth>();
+            _bomb = GetComponent<PlayerBomb>();
+            _resources = GetComponent<PlayerResources>();
             _options = GetComponent<PlayerOptions>();
             _spawnPosition = transform.position;
             _renderers = GetComponentsInChildren<Renderer>(true);
@@ -79,6 +85,7 @@ namespace ShinySTG.Player
             if (_routine != null) return;
             IsDeathPresentationComplete = false;
             _blink = false;
+            _bomb?.ResetForDeath();
             SetHidden(true);
             _options?.SetVisible(false);
             _routine = StartCoroutine(DeathSequence());
@@ -127,6 +134,8 @@ namespace ShinySTG.Player
             SetHidden(false);
             _options?.SetVisible(true, true);
             if (!_health.CompleteRevive()) return false;
+            _resources ??= GetComponent<PlayerResources>();
+            _resources?.SetBombs(_respawnBombs);
             _blink = true;
             _blinkElapsed = 0f;
             return true;

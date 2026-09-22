@@ -1,5 +1,6 @@
 using SerializeReferenceEditor;
 using UnityEngine;
+using ShinySTG.Background;
 
 namespace ShinySTG.Level
 {
@@ -30,6 +31,10 @@ namespace ShinySTG.Level
                  "用法:Boss 关卡挂专属弹 prefab 时配一个,普通关卡留空走场景默认池。")]
         public BulletPool Pool;
 
+        [Header("Background")]
+        [Tooltip("关卡加载时立即应用的初始背景。为空时沿用场景当前背景。")]
+        public BackgroundDefinition InitialBackground;
+
         [Header("Audio")]
         [Tooltip("勾上后,BeginLevel 时若场景里有 AudioSystem,会按 AudioBinding 自动切歌(" +
                  "OnLevelStart → AudioBinding.Playlist,OnBossSpawned → AudioBinding.BossMusic," +
@@ -42,3 +47,4 @@ namespace ShinySTG.Level
         public ShinySTG.Audio.LevelAudioBinding AudioBinding;
     }
 }
+

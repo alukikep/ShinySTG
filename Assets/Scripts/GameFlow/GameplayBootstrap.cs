@@ -1,5 +1,6 @@
 using System;
 using ShinySTG.Level;
+using ShinySTG.Background;
 using UnityEngine;
 using PlayerController = ShinySTG.Player.Player;
 
@@ -47,7 +48,16 @@ namespace ShinySTG.GameFlow
             if (BulletPool.Instance == null || ShinySTG.Hitbox.CollisionService.Instance == null)
                 throw new InvalidOperationException("游戏场景缺少 BulletPool 或 CollisionService。");
             _level.Definition = request.Stage.Level;
+            ApplyInitialBackground(_level.Definition);
             SpawnedPlayer = Instantiate(request.Character.PlayerPrefab, request.Stage.SpawnPosition, Quaternion.identity);
+        }
+
+        static void ApplyInitialBackground(LevelDefinition definition)
+        {
+            if (definition == null || definition.InitialBackground == null) return;
+            var binding = FindObjectOfType<LevelBackgroundBinding>();
+            if (binding == null) return;
+            binding.ApplyInitialBackground(definition.InitialBackground);
         }
 
         public void Begin()
@@ -78,3 +88,4 @@ namespace ShinySTG.GameFlow
         void OnDestroy() => _settlement?.Dispose();
     }
 }
+

@@ -151,6 +151,22 @@ namespace ShinySTG.Player
             EnterState(BombState.Ready, 0f);
         }
 
+        /// <summary>玩家死亡时清理当前 Bomb，不执行正常结束动作。</summary>
+        internal void ResetForDeath()
+        {
+            if (_invincibilityRemaining > 0f)
+                Player.Instance?.Health?.RemoveInvincibility(InvincibilityKey);
+            _actionRunner?.Dispose();
+            _actionRunner = null;
+            _activeHandle = null;
+            _spawnedBullets.Clear();
+            _beforeFireBullets.Clear();
+            _invincibilityRemaining = 0f;
+            _stateRemaining = 0f;
+            _damageTimer = 0f;
+            EnterState(BombState.Ready, 0f);
+        }
+
         void OnDisable()
         {
             if (_invincibilityRemaining > 0f) Player.Instance?.Health?.RemoveInvincibility(InvincibilityKey);

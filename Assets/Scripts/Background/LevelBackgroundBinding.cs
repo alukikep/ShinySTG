@@ -53,6 +53,12 @@ namespace ShinySTG.Background
                 Debug.LogWarning($"[Background] 关卡 Cue 播放失败：{handle.Failure}", this);
         }
 
+        public void ApplyInitialBackground(BackgroundDefinition definition)
+        {
+            if (!Application.isPlaying || !isActiveAndEnabled || _boundBackground == null || definition == null) return;
+            _boundBackground.ApplyDefinitionImmediate(definition);
+        }
+
         public BackgroundPlaybackHandle PlayForRuntime(LevelRuntime runtime, BackgroundCue cue)
         {
             if (!Application.isPlaying || !isActiveAndEnabled || _level == null || !_level.IsRunning
@@ -137,3 +143,4 @@ namespace ShinySTG.Background
         }
     }
 }
+

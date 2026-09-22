@@ -65,6 +65,7 @@ Player 会在运行时补齐，采用无特效、等待 0.3 秒后回到初始�
 - Respawn Delay：特效结束后额外等待的时间，不是特效播放总时长。
 - Respawn Point：重生位置；留空使用玩家初始位置。
 - Blink Interval：重生无敌期间本体闪烁间隔。无敌时长仍在 PlayerHealth 配置。
+- Respawn Bombs：复活时将 Bomb 库存重置为该数量；死亡时当前进行中的 Bomb 会立即终止。
 
 实际扣命时立即禁止操作并隐藏本体与子机；下一帧执行指令并在原地播放特效。
 启用 Deathbomb 时，中弹先等待决死窗口，见下方说明。

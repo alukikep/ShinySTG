@@ -214,3 +214,4 @@ namespace ShinySTG.Background
         static bool Finite(Vector4 value) => Finite(value.x) && Finite(value.y) && Finite(value.z) && Finite(value.w);
     }
 }
+

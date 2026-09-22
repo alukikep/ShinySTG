@@ -255,6 +255,7 @@ MonoBehaviour:
   _deathEffectPrefab: {fileID: 8445010616754556486, guid: 234b2213d1cc4eb3bff14b488f1b5627, type: 3}
   _respawnDelay: 0.3
   _respawnPoint: {fileID: 0}
+  _respawnBombs: 3
   _blinkInterval: 0.08
   references:
     version: 2
