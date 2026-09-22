@@ -33,6 +33,9 @@ namespace ShinySTG.EnemyAI
         [Tooltip("最大血量。默认 1,普通小怪一击必杀。")]
         public float MaxHp = 1f;
 
+        [Min(0), Tooltip("被玩家击败时获得的分数；自毁、离场和清场不计分。")]
+        public int ScoreValue = 100;
+
         [Tooltip("运行时当前血量(Inspector 只读)。")]
         [SerializeField] float _currentHp;
 

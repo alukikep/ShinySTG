@@ -23,7 +23,8 @@ Unity 2022.3：保存当前场景，运行 `STG > Game Flow > Setup First Playab
 开局会检查所有关卡的时间轴、出生位置和场景路径，当前要求整个序列使用同一个 Gameplay 场景。
 GameStartRequest 固定本局关卡列表顺序，Stage 仍表示首关以兼容原调用方。
 GameFlowController.CurrentSession 暴露本局进度和只读结果集合，返回标题时清空。
-实时分数仍由 PlayerResources 持有；StageResult 保存本关得分与累计分数、资源快照，Power 使用整数单位保存。
+实时分数仍由 PlayerResources 持有；Player 上的 ScoreManager 负责汇总击杀、擦弹和道具拾取分数。
+敌人分值、擦弹分值和道具分值均可在对应组件或 ItemDefinition 中配置。StageResult 保存本关得分与累计分数、资源快照，Power 使用整数单位保存。
 
 通关后 GameFlowController 等待结算、清场及必要的复活完成，显示本关得分和累计分数；松开并重新按 Z 后才推进下一关。计分界面运行时创建，无需重新配置场景。换关沿用同一玩家、当前位置和全部资源；Stage.SpawnPosition 仅在首次生成玩家时使用。计分界面与渐变期间锁定玩家操作，战斗限制持续到下一关揭幕完成，时间轴在此之前不推进。
 场景内已有启用且有效的 StageFadePrototype / BattleArea 配置时，正式流程复用其局部渐变与机体绘制；未配置时自动使用全屏渐变，无需修改已有场景。下一关通过关卡开始事件重置背景并重新绑定音乐，具体换景仍由时间轴条目控制。

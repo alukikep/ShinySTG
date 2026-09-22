@@ -15,7 +15,7 @@ namespace ShinySTG.Items
         public Color Tint = Color.white;
         [Min(0.01f), Tooltip("道具显示宽度，世界单位。")]
         public float Size = 0.3f;
-        [Min(1), Tooltip("点数道具的单个分值；其他类型忽略。")]
+        [Min(0), Tooltip("拾取该道具获得的分数；0 表示不计分。")]
         public int ScoreValue = 100;
     }
 }

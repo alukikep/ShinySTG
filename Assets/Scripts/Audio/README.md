@@ -33,6 +33,20 @@
 在 `STG -> Level Editor` 打开关卡后，可用工具栏的 `+ Create AudioBinding` 自动创建并关联资产。
 完整关卡操作见 [`LEVEL_EDITOR.md`](../../../LEVEL_EDITOR.md#音频集成)。
 
+### 时间轴音乐控制
+
+关卡也可以直接在 `LevelDefinition.Entries` 中添加 `音乐/Music Control` 条目，按时间轴编排 BGM，不需要额外的音乐绑定资产。可用操作包括：
+
+| 操作 | 资源 | 说明 |
+|---|---|---|
+| `PlayPlaylist` | `BgmPlaylist` | 播放列表，顺序、随机、循环和曲间淡化由 Playlist 决定 |
+| `PlayTrack` | `BgmTrack` | 播放单曲，使用条目的 `Crossfade` 淡化 |
+| `Pause` | — | 只暂停音乐，关卡时间轴继续推进 |
+| `Resume` | — | 恢复当前单曲或播放列表 |
+| `Stop` | — | 停止音乐，使用条目的 `Crossfade` 淡出 |
+
+条目默认只触发一次；`TriggerTime` 决定执行时间。`Pause` 不会设置时间轴 blocker，因此不会暂停敌人生成、演出或其他 Entry。
+
 ## 资产速查
 
 ### SfxCue
@@ -98,6 +112,8 @@ float volume = AudioMix.GetBusVolume(AudioBusKind.Bgm);
 AudioMix.MuteBus(AudioBusKind.Sfx, true);
 AudioMix.MuteAll(true);
 ```
+
+时间轴条目等价调用上述 `AudioMix` 音乐接口；没有 `AudioSystem` 时调用会静默跳过。
 
 ## FirePattern 开火音
 

@@ -8,6 +8,8 @@ namespace ShinySTG.Presentation.SpellDeclaration
     {
         [Tooltip("宣言横幅显示的符卡名称。")]
         public string DisplayName;
+        [Tooltip("可选的完整标题 PNG；配置后优先显示图片。")]
+        public Sprite TitleImage;
         [Tooltip("宣言立绘；留空时只显示横幅。")]
         public Sprite Portrait;
         [Tooltip("宣言开始时播放的非循环短音效；取消视觉时声音自然结束。")]

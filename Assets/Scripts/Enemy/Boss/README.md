@@ -23,6 +23,9 @@ ExitCommands → ExitActions。死亡仍执行当前阶段退出指令，随后�
 4. 按需配置开场、阶段入场/退场、击破和收尾动作。
 5. 关卡中添加 BossEncounterEntry 引用此资产；直接场景测试则在 Boss 组件指定 Encounter。
 
+Boss prefab 的 `BossHealth.ScoreValue` 是完整击破奖励，默认 10000；血管切换不会重复发放该奖励。
+血管击破目前只推进 Encounter 生命周期，不单独发放分数。最终死亡事件由玩家的 `ScoreManager` 统一计入。
+
 场景直接放置入口没有 LevelRuntime，需要关卡上下文的背景等动作应通过关卡条目运行。
 资产校验会拒绝空阶段列表、空阶段及无效血管，不能通过 prefab 上的旧数值补全。
 

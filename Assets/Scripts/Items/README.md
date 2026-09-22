@@ -25,7 +25,8 @@
 ## 效果与触发规则
 
 小 P 增加 0.01 Power，大 P 增加 1.00；内部以百分单位保存，射击和子机继续读取向下取整的
-`PowerLevel`。沿用旧 InitialPower/MaxPower 配置，满火力仍收取但不换分。点数道具按自身分值加分，
+`PowerLevel`。沿用旧 InitialPower/MaxPower 配置。每个 `ItemDefinition` 的 `ScoreValue` 都在成功拾取
+后生效，适用于小 P、大 P、点数、Bomb 和 1UP；设为 0 表示不计分。满火力仍收取 Power，道具分数仍照常发放。
 Bomb 和 1UP 分别增加一个库存和残机。Bomb 不包含释放逻辑。
 
 `PlayerResources` 保存分数和 Bomb 库存；旧玩家在 Awake 自动补齐组件。需要配置初始 Bomb 时，
@@ -51,7 +52,7 @@ Bomb 和 1UP 分别增加一个库存和残机。Bomb 不包含释放逻辑。
 ## 验证
 
 进入 Play Mode，选中 DropProfile 后执行 **Spawn Selected Profile (Play Mode)**，在玩家上方生成。
-示例资产含小 P ×10，其他各 ×1；未封顶时收齐增加 1.10 Power、100 分、1 Bomb、1 残机。
+示例资产含小 P ×10，其他各 ×1；未封顶时收齐增加 1.10 Power、各道具配置的分数、1 Bomb、1 残机。
 
 - 小 P 累计 100 个增加精确 1.00 Power，仅跨整数时变更射击等级。
 - 调整拾取/吸附范围，不改变受伤范围；吸附关闭后仍可直接拾取。

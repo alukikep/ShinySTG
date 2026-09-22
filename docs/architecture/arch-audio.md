@@ -27,6 +27,7 @@
 - `AudioBus` —— 总线配置(兼容 Unity AudioMixerGroup + PlayerPrefs 持久化)。
 - `AudioBank` —— SfxCue 分组容器(纯 Inspector 组织用,不强制走)。
 - `LevelAudioBinding` —— 关卡与 BGM 的绑定资产。`LevelController.BeginLevel()` 在 `AutoSwitchBgm` 开启时自动交给 `AudioEventHub`。
+- `MusicControlEntry` —— 关卡时间轴音乐命令。直接配置在 `LevelDefinition.Entries` 中，可播放 Playlist/Track、暂停、恢复或停止音乐。
 
 **多态扩展点(走 `[Serializable, SRName]` 下拉,与 FireExtension / EnemyAction / BossPhase 同套路):**
 
@@ -69,6 +70,13 @@ Health 的受击、死亡声仍保留，迁移同一种声音时应移除旧配�
 - 关卡间切换:ReloadLevel / 切下一关时调 `TryBind` 是幂等的,自动解订旧订阅 + 订阅新 LevelController。
 - 无 AudioSystem 时静默跳过(`AudioSystem.Instance == null` → TryBind 不跑,关卡正常运行不受影响)。
 
+**时间轴音乐控制:**
+
+- `MusicControlEntry` 通过 `AudioMix` 调用 `PlayPlaylist`、`PlayTrack`、`PauseMusic`、`ResumeMusic` 和 `StopMusic`。
+- 条目由 `LevelRuntime` 按 `TriggerTime` 触发，默认一次性执行，不需要 `LevelAudioBinding`。
+- `Pause` 只暂停 `MusicPlayer` 的声部和 Playlist 推进，不添加 `ILevelTimelineProcess`，所以关卡时间、敌人生成和其他 Entry 继续运行。
+- 当项目逐步迁移到 Entry 编排时，旧的 `LevelAudioBinding` 自动切歌链仍可兼容运行；同一关卡同时配置两套入口时，触发结果会叠加，应选择一种作为主入口。
+
 
 
 ---
@@ -82,5 +90,5 @@ Health 的受击、死亡声仍保留，迁移同一种声音时应移除旧配�
 - [bullet](./arch-bullet.md) — BulletModifier 染色 / 命中可挂 SfxCue(可选)
 - [player](./arch-player.md) — PlayerHealth / PlayerShooting 嵌入 SfxCue
 - [boss](./arch-boss.md) — BossHealth 嵌入 SfxCue
-- [level](./arch-level.md) — SpawnEntry/PlaySFX 与 LevelAudioBinding
+- [level](./arch-level.md) — SpawnEntry/PlaySFX/MusicControlEntry 与关卡时间轴
 - [Assets/Scripts/Audio/README.md](../../Assets/Scripts/Audio/README.md) — 本板块是架构视角;子系统 Inspector / SO 创建步骤见 Audio 子系统 README

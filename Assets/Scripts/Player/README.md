@@ -1,5 +1,13 @@
 # 玩家配置
 
+## 基础计分
+
+玩家根对象会自动补齐 `ScoreManager`。它监听普通敌人和 Boss 的最终死亡事件，以及
+`PlayerHealth.OnGraze`，并将分数写入 `PlayerResources`。玩家 `ScoreManager` 上的 `Graze Score`
+配置每次有效擦弹的分值，默认是 10；擦弹仍沿用现有碰撞冷却。普通敌人的 `EnemyHealth.ScoreValue`
+默认是 100，Boss 的 `BossHealth.ScoreValue` 默认是 10000。只有血量归零触发的死亡才计击杀分，
+敌人自毁、出界和关卡清场不计分。
+
 ## Bomb 与动作序列
 
 在玩家根对象上确认已有 PlayerBomb 和 PlayerResources；已有 prefab 请手动检查，

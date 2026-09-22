@@ -37,7 +37,7 @@ namespace ShinySTG.Presentation.SpellDeclaration
             _distance = definition.SlideDistance;
             try
             {
-                _view.Show(definition.DisplayName, definition.Portrait);
+                _view.Show(definition.DisplayName, definition.Portrait, definition.TitleImage);
                 AudioMix.PlaySfx(definition.Sfx);
                 Advance(0f);
             }

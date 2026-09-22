@@ -72,6 +72,7 @@ namespace ShinySTG.Player
                 gameObject.AddComponent<PlayerDeathController>();
             // 旧 prefab 无需重新挂组件；新增组件也可预先配置初始 Bomb 库存。
             if (Resources == null) Resources = gameObject.AddComponent<PlayerResources>();
+            if (GetComponent<ScoreManager>() == null) gameObject.AddComponent<ScoreManager>();
         }
 
         void OnDestroy()

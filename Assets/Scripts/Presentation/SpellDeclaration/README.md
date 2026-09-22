@@ -13,7 +13,7 @@ SpellDeclarationDefinition 配置，在对应阶段的播放动作中引用它�
    也可以将 `Assets/Prefabs/UI/SpellDeclaration.prefab` 直接拖进 Hierarchy；两种方式选一种即可。
    prefab 自带 Canvas、视图和服务。仅在 Project 中创建 prefab 或配置资产，不会让场景拥有播放器。
    多场景同时加载时也应只启用一个服务。菜单不会重复创建当前场景已有的服务，场景创建支持 Undo。
-2. 使用 `Create > STG > Spell Declaration` 创建配置，填写符卡名称、立绘和非循环短音效。
+2. 使用 `Create > STG > Spell Declaration` 创建配置，填写符卡名称、立绘和非循环短音效。需要艺术化标题时，将完整 PNG 指定到 `Title Image`；配置后优先显示图片，文字名称可留作兼容或回退。
    可先复制 [示例配置](../../../SO/Presentation/SpellDeclarationSample.asset)。示例只有英文横幅，立绘与音效留空。
 3. 在 BossEncounter 的 `Phases` 中找到目标阶段，给 `EnterActions` 添加
    `Game Action/Play Spell Declaration`，在 Declaration 中引用该符卡配置，保持外层 `WaitForCompletion` 开启。
@@ -23,7 +23,13 @@ SpellDeclarationDefinition 配置，在对应阶段的播放动作中引用它�
 
 也可以选中 Encounter 资产，执行 `Assets > STG > Add Sample Spell Declaration to First Phase`。
 这会给索引 0 的空进入动作添加 Boss 无敌作用域和示例宣言，支持 Undo，标记资产 dirty 后由用户保存。
-已有进入动作时不会覆盖。使用前需完成 Encounter 的 Boss prefab 和阶段配置。
+    已有进入动作时不会覆盖。使用前需完成 Encounter 的 Boss prefab 和阶段配置。
+
+## 关卡时间轴标题
+
+普通关卡也可以在 `LevelDefinition.Entries` 添加 `演出/播放标题`（`PlayPresentationEntry`）。
+设置 `TriggerTime`、`Presentation` 后，条目会复用同一个宣言服务播放标题；`BlockTimeline` 开启时，
+关卡时间轴会等待演出完成再继续，关闭时标题与时间轴并行。场景仍只需要一个启用的宣言 prefab。
 
 示例资产缺失时执行 `STG > UI > Create Spell Declaration Sample Assets`，由 Unity 生成缺失的
 prefab 和示例配置，保留已有资产。这个菜单只创建 Project 资产；仍需按第 1 步把视图加入战斗场景。
@@ -32,10 +38,10 @@ prefab 和示例配置，保留已有资产。这个菜单只创建 Project 资�
 
 [宣言 prefab](../../../Prefabs/UI/SpellDeclaration.prefab) 使用 1200 × 900 参考分辨率的 Overlay Canvas。
 调整 Portrait 与 Banner 的 RectTransform 可改变最终停留位置；服务只改变二者的水平偏移和整体透明度。
-可以在 prefab 模式暂时将 CanvasGroup Alpha 设为 1、填入预览文字和立绘检查布局，播放时会重置。
+可以在 prefab 模式暂时将 CanvasGroup Alpha 设为 1、填入预览文字、标题图片和立绘检查布局，播放时会重置。
 调整 Canvas 排序以适配项目其他 UI。宣言不接收鼠标射线。
 
-默认字体与现有 HUD 一致；显示中文或日文符卡名时，应为 Title 指定包含相应字符的 TMP 字体或 fallback。
+未使用标题图片时，默认字体与现有 HUD 一致；显示中文或日文符卡名时，应为 Title 指定包含相应字符的 TMP 字体或 fallback。
 立绘可以留空，视图仍需保留 Portrait Image 引用。没有随代码提供角色美术或音频资源。
 宣言名称来自 Declaration 配置，不读取 BossPhase.DisplayName。
 不同配置共用相同布局与滑入/淡出形式；完全不同的布局或动画形式需要扩展视图与播放逻辑。

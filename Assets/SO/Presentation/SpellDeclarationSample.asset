@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: SpellDeclarationSample
   m_EditorClassIdentifier: 
   DisplayName: Spell Card - Butterfly Dream
-  Portrait: {fileID: 0}
+  TitleImage: {fileID: 0}
+  Portrait: {fileID: 1628679372, guid: 4cf5f446260378943a89c95cd9a3fa12, type: 3}
   Sfx: {fileID: 0}
   EnterDuration: 0.35
   HoldDuration: 1.2

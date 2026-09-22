@@ -12,7 +12,7 @@
 负责按时间轴生成敌人并协调 Boss 遭遇。普通生成复用 prefab 自身行为，Encounter 通过 Boss 的公开生命周期接口协调阶段与演出。
 
 **职责分工:**
-- `LevelDefinition`(SO 资产) —— 持有 `Entries: SpawnEntry[]`(多态下拉)+ `Duration`(总时长)+ `Pool`(可选专用 BulletPool)+ `AutoSwitchBgm`(是否参与自动切歌)+ `AudioBinding`(关卡级 BGM 绑定,可选)。
+- `LevelDefinition`(SO 资产) —— 持有 `Entries: SpawnEntry[]`(多态下拉)+ `Duration`(总时长)+ `Pool`(可选专用 BulletPool)+ 兼容旧版的 `AutoSwitchBgm`/`AudioBinding`。
 - `LevelController`(场景单例,`Singleton<T>`) —— 持有 `Definition` + `Runtime`,提供关卡事件(OnLevelStart / OnLevelEnded / OnLevelComplete / OnEnemySpawned / OnBossSpawned / OnBossDefeated)。`BeginLevel` 调 `AudioEventHub.TryBind(definition)` 启用关卡级自动切歌。
 
 **协作边界:**
@@ -26,10 +26,11 @@
 
 **扩展点:**
 
-- **新条目类型**(等玩家到位 / 周期性 / 全清触发 / 概率触发 / **时间点 SFX** / ...):新建 `SpawnEntry` 子类 + `[SRName("Entry/<名字>")]`,在 `ShouldTrigger` / `OnTrigger` 两个钩子实现,无需改 `LevelController`(详见 `Assets/Scripts/Level/`)。
+- **新条目类型**(等玩家到位 / 周期性 / 全清触发 / 概率触发 / **时间点 SFX / 标题演出** / ...):新建 `SpawnEntry` 子类 + `[SRName("Entry/<名字>")]`,在 `ShouldTrigger` / `OnTrigger` 两个钩子实现,无需改 `LevelController`(详见 `Assets/Scripts/Level/`)。`PlayPresentationEntry` 复用 `SpellDeclarationService` 播放标题图片或文字，并可通过 `BlockTimeline` 等待演出结束。
 - **Boss Encounter 扩展**:血管、阶段、Signals 与演出统一配置在 `BossEncounterDefinition`,运行时协调放在 `BossEncounterRuntime`;旧 `BossSpawnEntry` 已弃用,不作为新配置入口，旧 prefab 战斗配置不再回退。
 - **可视化时间轴编辑器**:已实现时间轴 / 列表 / 详情面板 + Preview + Scene Gizmos。详见 [关卡编辑器](./arch-level-editor.md)。
 - **关卡级 BGM 自动切歌**:在 `LevelDefinition.AudioBinding` 挂 `LevelAudioBinding` 资产,`BeginLevel` 时 `AudioEventHub.TryBind` 自动订阅事件切歌。详见 [audio](./arch-audio.md)。
+- **时间轴音乐**:在 `Entries` 中添加 `MusicControlEntry`，按 `TriggerTime` 播放、暂停、恢复或停止音乐；`Pause` 只暂停音乐，不阻塞关卡时间轴。详见 [audio](./arch-audio.md)。
 
 
 ---

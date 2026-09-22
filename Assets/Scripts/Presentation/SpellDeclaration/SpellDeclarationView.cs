@@ -11,6 +11,8 @@ namespace ShinySTG.Presentation.SpellDeclaration
         CanvasGroup _root;
         [SerializeField, Tooltip("符卡名称。")]
         TMP_Text _title;
+        [SerializeField, Tooltip("可选的标题图片；配置后优先于文字标题。")]
+        Image _titleImage;
         [SerializeField, Tooltip("包含名称与底图的横幅节点。")]
         RectTransform _banner;
         [SerializeField, Tooltip("立绘图片；播放时可不提供 Sprite。")]
@@ -27,8 +29,9 @@ namespace ShinySTG.Presentation.SpellDeclaration
                 if (!isActiveAndEnabled) return "SpellDeclarationView 组件或其所在对象/父对象未启用。";
                 if (_root == null) return "View 的 Root 未绑定 CanvasGroup。";
                 if (!_root.gameObject.activeInHierarchy) return "Root 所在对象或父对象未启用。";
-                if (_title == null) return "View 的 Title 未绑定 TMP 文本组件。";
-                if (!_title.isActiveAndEnabled) return "Title 文本组件或其所在对象/父对象未启用。";
+                if (_title == null && _titleImage == null) return "View 未绑定 TMP 标题或标题图片。";
+                if (_title != null && !_title.isActiveAndEnabled) return "Title 文本组件或其所在对象/父对象未启用。";
+                if (_titleImage != null && !_titleImage.isActiveAndEnabled) return "标题图片组件或其所在对象/父对象未启用。";
                 if (_banner == null) return "View 的 Banner 未绑定 RectTransform。";
                 if (!_banner.gameObject.activeInHierarchy) return "Banner 所在对象或父对象未启用。";
                 if (_portrait == null) return "View 的 Portrait 未绑定 Image（Sprite 可以留空）。";
@@ -48,11 +51,11 @@ namespace ShinySTG.Presentation.SpellDeclaration
             _captured = true;
         }
 
-        public void Show(string title, Sprite portrait)
+        public void Show(string title, Sprite portrait, Sprite titleImage = null)
         {
             Clear();
-            _title.text = title ?? string.Empty;
-            _title.maxVisibleCharacters = int.MaxValue;
+            if (_title != null) { _title.text = title ?? string.Empty; _title.maxVisibleCharacters = int.MaxValue; }
+            if (_titleImage != null) { _titleImage.sprite = titleImage; _titleImage.enabled = titleImage != null; }
             _portrait.sprite = portrait;
             _portrait.enabled = portrait != null;
             _portrait.preserveAspect = true;
@@ -74,6 +77,7 @@ namespace ShinySTG.Presentation.SpellDeclaration
             CaptureLayout();
             if (_root != null) { _root.alpha = 0f; _root.interactable = false; _root.blocksRaycasts = false; }
             if (_title != null) { _title.text = string.Empty; _title.maxVisibleCharacters = int.MaxValue; }
+            if (_titleImage != null) { _titleImage.sprite = null; _titleImage.enabled = false; }
             if (_banner != null && _captured) _banner.anchoredPosition = _bannerPosition;
             if (_portrait != null)
             {

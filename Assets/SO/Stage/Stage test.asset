@@ -18,6 +18,8 @@ MonoBehaviour:
   - rid: 6177227147044978688
   - rid: 6177227147044978689
   - rid: 6177227213694566412
+  - rid: 6177227253805481984
+  - rid: 6177227253805481987
   Duration: 60
   Pool: {fileID: 0}
   AutoSwitchBgm: 1
@@ -28,7 +30,7 @@ MonoBehaviour:
     - rid: 6177227137434517512
       type: {class: BossEncounterEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 0
+        TriggerTime: 2.573333
         OneShot: 1
         Duration: 0
         Encounter: {fileID: 11400000, guid: 0565d4896c423b047928942d426c8a87, type: 2}
@@ -38,7 +40,7 @@ MonoBehaviour:
     - rid: 6177227145319809027
       type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 2.973333
+        TriggerTime: 5.3066664
         OneShot: 1
         Duration: 6
         SpawnInterval: 0.5
@@ -55,20 +57,38 @@ MonoBehaviour:
     - rid: 6177227147044978688
       type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 9.360001
+        TriggerTime: 11.560002
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: ae2148d9e49ce4e41a2fc36956c0f75c, type: 2}
     - rid: 6177227147044978689
       type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 12.413332
+        TriggerTime: 14.119999
         OneShot: 1
         Duration: 0
         Cue: {fileID: 11400000, guid: fa3fa37bc1664014888346ed10715666, type: 2}
     - rid: 6177227213694566412
       type: {class: CompleteLevelEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 15.8533325
+        TriggerTime: 16.826668
         OneShot: 1
         Duration: 0
+    - rid: 6177227253805481984
+      type: {class: PlayPresentationEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 0
+        OneShot: 1
+        Duration: 0
+        Presentation: {fileID: 11400000, guid: dc520b2863d04e6189f392ffd91df03b, type: 2}
+        BlockTimeline: 1
+    - rid: 6177227253805481987
+      type: {class: MusicControlEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 0
+        OneShot: 1
+        Duration: 0
+        Action: 1
+        Playlist: {fileID: 0}
+        Track: {fileID: 11400000, guid: 72e9b40837fd6bc45854b8cab3bfae1e, type: 2}
+        Crossfade: 1.5

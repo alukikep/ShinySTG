@@ -15,6 +15,7 @@ namespace ShinySTG.Level.Editor
         public static readonly Color ColorWave   = new Color(0.40f, 0.60f, 0.95f); // 蓝
         public static readonly Color ColorBoss   = new Color(0.95f, 0.50f, 0.35f); // 橙红
         public static readonly Color ColorSfx    = new Color(0.55f, 0.85f, 0.95f); // 青(SFX)
+        public static readonly Color ColorMusic  = new Color(0.75f, 0.55f, 0.95f); // 紫(BGM)
         public static readonly Color ColorOther  = new Color(0.65f, 0.65f, 0.65f); // 灰
         public static readonly Color ColorSelected = new Color(1f, 0.85f, 0.30f);
         public static readonly Color ColorTimelineBg = new Color(0.18f, 0.18f, 0.18f);
@@ -74,6 +75,7 @@ namespace ShinySTG.Level.Editor
                 case WaveSpawnEntry   _: return ColorWave;
                 case BossEncounterEntry _: return ColorBoss;
                 case PlaySfxSpawnEntry _: return ColorSfx;
+                case MusicControlEntry _: return ColorMusic;
                 default:                    return ColorOther;
             }
         }

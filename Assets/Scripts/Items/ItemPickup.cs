@@ -81,6 +81,8 @@ namespace ShinySTG.Items
                 case ItemKind.Bomb: player.Resources.AddBombs(); break;
                 case ItemKind.OneUp: player.Health.AddLife(); break;
             }
+            if (_definition.ScoreValue > 0 && player.Resources != null)
+                player.Resources.AddScore(_definition.ScoreValue);
             return true;
         }
 

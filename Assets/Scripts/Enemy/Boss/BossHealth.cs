@@ -53,6 +53,9 @@ namespace ShinySTG.EnemyAI.Boss
             public bool DiscardOverflow;
         }
 
+        [Min(0), Tooltip("Boss 被完整击败时获得的分数。")]
+        public int ScoreValue = 10000;
+
         [NonSerialized] public HealthBar[] Bars;
         [NonSerialized] public float LegacyMaxHp;
 
