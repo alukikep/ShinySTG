@@ -75,3 +75,8 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 ## Boss 背景演出
 
 在 Actions 中选择 Game Action/Play Background Cue，指定 Cue，场景复用当前关卡上的 LevelBackgroundBinding。动作按真实过渡完成结束，外层 WaitForCompletion 决定是否阻塞宿主。外部接管、播放失败或缺少绑定会终止本组动作并记录 Failure；取消仅影响自己启动的句柄。详细配置和验收见 [背景操作指南](../Background/README.md#boss-背景演出4b)。
+
+### Behaviour Flow 无敌
+
+在 Behaviour Flow 的 Actions 中选择 Action/Invincibility。Owner 保护行为流宿主上的 EnemyHealth 或 BossHealth，Player 保护当前玩家，OwnerAndPlayer 同时保护两者。在 Children 中添加要执行的行为；无敌窗口会持续到 Duration 和 Children 都完成，取两者较晚的结束点。Duration=0 时由 Children 完成决定；Children 提前完成时，剩余 Duration 继续保持无敌。自然切换、ForceExit、死亡和对象销毁都会释放本 Action 自己的无敌锁。
+

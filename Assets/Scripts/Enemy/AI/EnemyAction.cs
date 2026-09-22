@@ -62,6 +62,9 @@ namespace ShinySTG.EnemyAI
         /// </summary>
         public float CurrentDuration => _currentDuration;
 
+        public virtual bool IsComplete => false;
+        public virtual bool UsesDuration => true;
+
         [NonSerialized] float _currentDuration = 1f;
 
         /// <summary>由 <see cref="BehaviorFlowRuntime.AdvanceTo"/> 在 OnEnter 之前调用,写入抽样结果。</summary>

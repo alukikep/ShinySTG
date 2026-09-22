@@ -13,9 +13,11 @@ namespace ShinySTG.Items
             public ItemDefinition Item;
             [Min(0), Tooltip("生成实体的数量。")]
             public int Count = 1;
+            [Range(0f, 1f), Tooltip("该条目在一次掉落中的命中概率；1 为必定掉落。命中后生成全部数量。")]
+            public float DropChance = 1f;
         }
 
-        [Tooltip("可同时生成多种道具；空项和非正数量被忽略。")]
+        [Tooltip("可同时生成多种道具；每个条目独立按概率抽样，空项和非正数量被忽略。")]
         public Entry[] Entries;
         [Tooltip("撒出中心方向，90 度为向上。")]
         public float DirectionDegrees = 90f;

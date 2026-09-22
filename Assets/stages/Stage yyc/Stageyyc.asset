@@ -15,7 +15,9 @@ MonoBehaviour:
   Entries:
   - rid: 6177227253805481988
   - rid: 6177227253805481990
+  - rid: 6177227258094157844
   - rid: 6177227253805481994
+  - rid: 6177227258094157824
   Duration: 60
   Pool: {fileID: 0}
   InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
@@ -37,12 +39,12 @@ MonoBehaviour:
     - rid: 6177227253805481990
       type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 4
+        TriggerTime: 5.6399994
         OneShot: 1
         Duration: 3
         SpawnInterval: 0.5
-        EnemyPrefab: {fileID: 548806225898117785, guid: e9032dae3bb94304a916d12c33719b55, type: 3}
-        SpawnPosition: {x: 0, y: 0}
+        EnemyPrefab: {fileID: 548806225898117785, guid: 874e39357888a164ca740abdf7ebc273, type: 3}
+        SpawnPosition: {x: -10, y: 5}
         SpawnPositionStrategy:
           rid: 6177227253805481991
         InitialRotation: 0
@@ -50,11 +52,35 @@ MonoBehaviour:
     - rid: 6177227253805481991
       type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
       data:
-        Offset: {x: 0, y: 0}
+        Offset: {x: 0.2, y: 0.2}
     - rid: 6177227253805481994
       type: {class: PlayBackgroundLoopEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 2.7866666
+        OneShot: 1
+        Duration: 0
+        Cue: {fileID: 11400000, guid: c423f0ca9737ccf4499347f59252595f, type: 2}
+    - rid: 6177227258094157824
+      type: {class: PlayBackgroundCueEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
         TriggerTime: 0
         OneShot: 1
         Duration: 0
-        Cue: {fileID: 11400000, guid: c5749634185e694438ae0a27781c4c7a, type: 2}
+        Cue: {fileID: 11400000, guid: cc307ce4576916d4cb1bd21ce5a7d025, type: 2}
+    - rid: 6177227258094157844
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 9.8
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 6602a55c176d3ac47975ccc87351a219, type: 3}
+        SpawnPosition: {x: 9, y: 5}
+        SpawnPositionStrategy:
+          rid: 6177227258094157845
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227258094157845
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: -0.2, y: 0.2}

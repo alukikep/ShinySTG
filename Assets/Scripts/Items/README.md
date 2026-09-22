@@ -10,7 +10,7 @@
    `CollisionService` 和玩家；拾取不依赖 `BulletPool`。服务的 Transform 不影响道具运动。
 3. 普通敌人的 `Enemy` 组件填写 **Death Drops**；Boss 的阶段 **Exit Commands** 添加
    **Command/Spawn Drops** 并指定 Profile。
-4. 在 `DropProfile` 的 Entries 中逐项选择道具和数量，调整撒出方向与速度。
+4. 在 `DropProfile` 的 Entries 中逐项选择道具、数量和掉落概率，调整撒出方向与速度。
 5. 在 `PlayerHitbox` 的 Items 分组配置拾取范围，以及 `Fast Attraction Size`（高速）和
    `Slow Attraction Size`（低速 / Focus）吸附范围，两个分量分别表示宽和高。
    选中玩家时，青色框表示拾取；编辑模式下黄色框表示高速吸附、紫色框表示低速吸附，
@@ -21,6 +21,9 @@
 
 道具定义未配置 Sprite 时使用彩色方块占位；小 P 红、大 P 浅红且较大、点数蓝、Bomb 绿、1UP 紫。
 可直接替换 Sprite，不需要道具 prefab。道具定义与掉落配置在运行期间作为只读模板。
+
+每个 `Entry` 独立进行一次掉落概率抽样；命中后生成该条目的全部 `Count` 个道具。
+概率为 1 时必定掉落，旧资产新增字段默认值为 1，因此保持原有行为。
 
 ## 效果与触发规则
 

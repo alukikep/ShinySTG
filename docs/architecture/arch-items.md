@@ -2,7 +2,8 @@
 
 ## 职责与数据边界
 
-ItemDefinition 定义道具外观与效果，DropProfile 定义一次掉落的组成和散布。
+ItemDefinition 定义道具外观与效果，DropProfile 定义一次掉落的组成和散布。每个 Entry 独立按概率抽样；
+条目命中后生成其全部 Count 数量，概率默认 1 以兼容已有资产。
 两者作为只读资产复用，运动、吸附与已拾取状态保存在每个 ItemPickup 实例中。
 道具数量表示实体个数，与单个道具的奖励价值分离。
 

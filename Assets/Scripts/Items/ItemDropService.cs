@@ -52,6 +52,8 @@ namespace ShinySTG.Items
             foreach (var entry in profile.Entries)
             {
                 if (entry == null || entry.Item == null) continue;
+                float chance = Mathf.Clamp01(entry.DropChance);
+                if (chance <= 0f || (chance < 1f && Random.value > chance)) continue;
                 for (int i = 0; i < entry.Count; i++)
                 {
                     ItemPickup item = null;

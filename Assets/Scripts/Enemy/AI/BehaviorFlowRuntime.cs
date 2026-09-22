@@ -68,7 +68,7 @@ namespace ShinySTG.EnemyAI
             // ★ vX 起 Duration 走 ActionDurationConfig 多态策略(可 Fixed / Random Range)——
             //   抽样结果已缓存在 current.CurrentDuration(Tick 进入前由 AdvanceTo 写入),
             //   本 Tick 直接读缓存,不再重复抽样。
-            if (_elapsedInCurrent >= current.CurrentDuration)
+            if (current.IsComplete || (current.UsesDuration && _elapsedInCurrent >= current.CurrentDuration))
             {
                 // OnExit 可能自毁宿主并重入 ForceExit；先撤下当前动作。
                 int next = _index + 1;

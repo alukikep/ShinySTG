@@ -61,8 +61,8 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackgroundFogEnd: 100
-    - _BackgroundFogStart: 35
+    - _BackgroundFogEnd: 30
+    - _BackgroundFogStart: 20
     - _BackgroundFogStrength: 1
     - _BumpScale: 1
     - _Cutoff: 0.5
