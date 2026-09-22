@@ -12,6 +12,7 @@ LevelEditorWindow          窗口装配与协调
 ├─ LevelEditorCommands     Duplicate/Delete/Focus 等共享命令
 ├─ Views/                  列表、时间轴、详情与 Preview
 ├─ Drawers/                不同 SpawnEntry 的显示策略
+├─ LevelEditorValidator    只读配置校验与状态汇总
 └─ Gizmos/                 Scene 视图辅助绘制
 ```
 
@@ -73,6 +74,12 @@ Duplicate/Delete 实现。
 | Scene 辅助图形 | `LevelSceneGizmos` 或自定义 Drawer |
 
 新增 `SpawnEntry` 子类通常会自动进入 `+ Add` 菜单，不需要修改窗口代码。
+
+## 配置校验
+
+`LevelEditorValidator.Validate(LevelDefinition)` 提供编辑器侧只读校验。窗口打开或重绘时，
+状态栏汇总显示 Error/Warning 数量。新增 Entry 类型时，如果有通用的必填引用约束，应在校验器中增加对应规则；
+校验器不得为了“修复”问题而改写资产，也不替代运行时的深层配置验证。
 
 ## 时间轴绘制约束
 

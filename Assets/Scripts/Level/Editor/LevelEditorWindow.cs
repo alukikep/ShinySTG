@@ -23,6 +23,7 @@ namespace ShinySTG.Level.Editor
         LevelTimelineView      _timelineView;
         LevelEntryDetailView   _detailView;
         ILevelEditorPreview    _preview;
+        List<LevelEditorIssue> _validationIssues = new();
 
         public static LevelDefinition CurrentDefinition;
         public static SpawnEntry      CurrentSelected;
@@ -111,6 +112,12 @@ namespace ShinySTG.Level.Editor
 
             CurrentDefinition = _definition;
             CurrentSelected   = _ctx?.Selected;
+            RefreshValidation();
+        }
+
+        void RefreshValidation()
+        {
+            _validationIssues = LevelEditorValidator.Validate(_definition);
         }
 
         // ─── OnGUI ─────────────────────────────────────────────
@@ -124,6 +131,7 @@ namespace ShinySTG.Level.Editor
             DrawStatusBar();
 
             CurrentSelected = _ctx.Selected;
+            RefreshValidation();
         }
 
         void DrawEmptyState()
@@ -434,8 +442,18 @@ namespace ShinySTG.Level.Editor
             string sel = _ctx.Selected != null
                 ? $"selected: #{_ctx.IndexOf(_ctx.Selected)} {_ctx.Selected.GetType().Name}"
                 : "selected: none";
+            int errors = 0;
+            int warnings = 0;
+            foreach (var issue in _validationIssues)
+            {
+                if (issue.Severity == LevelEditorIssueSeverity.Error) errors++;
+                else warnings++;
+            }
+            string validation = errors > 0 || warnings > 0
+                ? $" · validation: {errors} errors, {warnings} warnings"
+                : " · validation: OK";
             GUI.Label(new Rect(rect.x + 4, rect.y, rect.width - 8, rect.height),
-                      $"{count} entries · duration {_definition.Duration:F0}s · {sel}",
+                      $"{count} entries · duration {_definition.Duration:F0}s · {sel}{validation}",
                       LevelEditorStyles.RulerLabel);
         }
 

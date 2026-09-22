@@ -40,7 +40,6 @@ namespace ShinySTG.Level.Editor.Views.Preview
         {
             Stop();
             _def = def;
-            _current = this;  // 让 Stub.TickSustained 能拿到 elapsed
             if (_def == null) return;
 
             // 1. 建 PreviewRoot(临时父物体,放在场景里)
@@ -52,7 +51,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
             ResetFired();
 
             // 3. 建 Stub runtime(接管 Track/Untrack + Sustained 列表)
-            _runtime = new StubLevelRuntime(_def);
+            _runtime = new StubLevelRuntime(_def, this);
 
             // 4. SetTime 把 _elapsed 调到 startTime(已触发的条目会重新触发)
             SetTime(startTime);
@@ -66,8 +65,6 @@ namespace ShinySTG.Level.Editor.Views.Preview
             _paused  = false;
             _elapsed = 0f;
             ResetFired();
-            if (_current == this) _current = null;
-
             _runtime?.ClearPreviewState();
 
             // 销毁所有生成的临时实例
@@ -166,6 +163,7 @@ namespace ShinySTG.Level.Editor.Views.Preview
         /// </summary>
         class StubLevelRuntime : LevelRuntime
         {
+            readonly LevelEditorPlayer _player;
             readonly List<GameObject> _tracked = new();
             readonly List<SpawnEntry> _sustained = new();
             readonly List<ILevelTimelineProcess> _processes = new();
@@ -181,7 +179,10 @@ namespace ShinySTG.Level.Editor.Views.Preview
                 }
             }
 
-            public StubLevelRuntime(LevelDefinition def) : base(def) { }
+            public StubLevelRuntime(LevelDefinition def, LevelEditorPlayer player) : base(def)
+            {
+                _player = player;
+            }
 
             public override void Track(GameObject go)
             {
@@ -212,11 +213,8 @@ namespace ShinySTG.Level.Editor.Views.Preview
             {
                 if (_sustained.Count == 0) return;
 
-                // elapsed 来自 Player 自己;我们调 OnTick 时把 elapsed 传给 t 参数(LevelRuntime 协议)
-                // 但 Player 的 elapsed 不暴露给 Stub。最简方案:Stub 自己读 Player 的 Elapsed。
-                // —— Player 是 outer 类,通过构造注入比较绕。直接传 elapsed:
-                var player = LevelEditorPlayer.Current;  // 静态引用,见下方
-                float elapsed = player?.CurrentTime ?? 0f;
+                // 由创建此 runtime 的 Player 提供时间，避免多个编辑器窗口之间共享状态。
+                float elapsed = _player?.CurrentTime ?? 0f;
 
                 for (int i = _sustained.Count - 1; i >= 0; i--)
                 {
@@ -257,10 +255,5 @@ namespace ShinySTG.Level.Editor.Views.Preview
             }
         }
 
-        // ─── Stub 用的"current Player"引用 ──────────────────
-        // Stub.TickSustained 需要知道 elapsed,直接拿 Player.CurrentTime
-        // (Player 不用传 this 给 Stub 的构造,避免循环依赖)
-        static LevelEditorPlayer _current;
-        public static LevelEditorPlayer Current => _current;
     }
 }

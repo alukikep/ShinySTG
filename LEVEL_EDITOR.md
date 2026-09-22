@@ -119,6 +119,16 @@
 
 音频资产配置见 [`Assets/Scripts/Audio/README.md`](./Assets/Scripts/Audio/README.md)。
 
+## 配置校验
+
+编辑器状态栏会显示当前关卡的校验结果：
+
+- `Error`：通常表示条目无法按预期运行，例如空条目、负时间、缺少敌人 Prefab、Boss Encounter 或演出配置。
+- `Warning`：表示可以运行但需要确认，例如缺少通关条目、Play SFX 没有 Cue、条目超出关卡 Duration，或自动切歌没有 AudioBinding。
+- `validation: OK`：当前内置检查没有发现问题。
+
+校验是只读的，不会自动修改或保存资产。它只覆盖编辑器当前已知的通用配置问题；条目内部更深层的 Encounter、Prefab、行为流和演出服务依赖仍需要在 Preview 或运行场景中确认。
+
 ## 常见问题
 
 ### Play 后没有生成内容

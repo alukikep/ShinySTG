@@ -42,6 +42,7 @@ namespace ShinySTG.Level.Editor.Views
         float    _dragStartEntryTime;
         float    _dragStartEntryDuration;
         SpawnEntry _dragEntry;
+        bool     _dragUndoRecorded;
 
         // 缓存:每帧算的 lane 分配(避免每次重算)
         readonly Dictionary<SpawnEntry, int> _laneOf = new();
@@ -252,6 +253,7 @@ namespace ShinySTG.Level.Editor.Views
             switch (e.GetTypeForControl(controlId))
             {
                 case EventType.MouseDown:
+                    if (e.button != 0) break;
                     if (trackRect.Contains(e.mousePosition))
                     {
                         var hit = HitTestBlock(trackRect, e.mousePosition);
@@ -262,6 +264,7 @@ namespace ShinySTG.Level.Editor.Views
                             _dragStartMouseX = e.mousePosition.x;
                             _dragStartEntryTime     = hit.Entry.TriggerTime;
                             _dragStartEntryDuration = hit.Entry.Duration;
+                            _dragUndoRecorded = false;
 
                             _dragKind = hit.IsRightEdge ? DragKind.ResizeDuration : DragKind.MoveTime;
                             GUIUtility.hotControl = controlId;
@@ -287,18 +290,39 @@ namespace ShinySTG.Level.Editor.Views
                         float dx = e.mousePosition.x - _dragStartMouseX;
                         float dt = dx / _pxPerSec;
 
+                        float value = _dragKind == DragKind.MoveTime
+                            ? Mathf.Max(0f, _dragStartEntryTime + dt)
+                            : Mathf.Max(0f, _dragStartEntryDuration + dt);
+                        float currentValue = _dragKind == DragKind.MoveTime
+                            ? _dragEntry.TriggerTime : _dragEntry.Duration;
+                        if (value == currentValue)
+                        {
+                            e.Use();
+                            break;
+                        }
+
+                        // 首次实际变化时保存完整快照；RecordObject 的帧末差异
+                        // 不能覆盖后续拖动帧，需要保证 Undo/Redo 恢复整个手势。
+                        if (!_dragUndoRecorded)
+                        {
+                            string undoName = _dragKind == DragKind.MoveTime
+                                ? "Move Spawn Entry"
+                                : "Resize Spawn Entry Duration";
+                            Undo.IncrementCurrentGroup();
+                            Undo.RegisterCompleteObjectUndo(_ctx.Definition, undoName);
+                            _dragUndoRecorded = true;
+                        }
+
                         if (_dragKind == DragKind.MoveTime)
                         {
-                            Undo.RecordObject(_ctx.Definition, "Move Spawn Entry");
-                            _dragEntry.TriggerTime = Mathf.Max(0f, _dragStartEntryTime + dt);
+                            _dragEntry.TriggerTime = value;
                         }
                         else if (_dragKind == DragKind.ResizeDuration)
                         {
-                            Undo.RecordObject(_ctx.Definition, "Resize Spawn Entry Duration");
-                            float newDuration = Mathf.Max(0f, _dragStartEntryDuration + dt);
-                            _dragEntry.Duration = newDuration;
+                            _dragEntry.Duration = value;
                         }
                         EditorUtility.SetDirty(_ctx.Definition);
+                        LevelEditorCommands.RefreshViews(_ownerWindow);
                         e.Use();
                     }
                     break;
@@ -308,6 +332,7 @@ namespace ShinySTG.Level.Editor.Views
                     {
                         _dragKind  = DragKind.None;
                         _dragEntry = null;
+                        _dragUndoRecorded = false;
                         GUIUtility.hotControl = 0;
                         e.Use();
                     }

@@ -9,10 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 88f4c1c65d0deb341988851d570d1e79, type: 3}
-  m_Name: StageYyc
+  m_Script: {fileID: 11500000, guid: 06157d8671accc948848521680b5dff2, type: 3}
+  m_Name: Stageyyc
   m_EditorClassIdentifier: 
-  Id: 
-  ScenePath: 
-  Level: {fileID: 0}
-  SpawnPosition: {x: 0, y: -3, z: 0}
+  Entries: []
+  Duration: 60
+  Pool: {fileID: 0}
+  AutoSwitchBgm: 1
+  AudioBinding: {fileID: 0}
+  references:
+    version: 2
+    RefIds: []
