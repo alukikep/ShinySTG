@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea1136b335f1e429973dab1d865f75, type: 3}
+  m_Name: y3-main l
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 74477406864887423, guid: 13f23973deec31f45bf860b783a3c236, type: 3}
+  ModifierPrefabs:
+  - rid: 6177227276687245317
+  - rid: 6177227276687245318
+  - rid: 6177227276687245343
+  FireExtensions: []
+  FireSounds: []
+  Speed: 0
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 6177227276687245313
+  Damage: 1
+  Count: 4
+  Radius: 2
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 6177227276687245313
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 0.7, g: 0.85, b: 1, a: 1}
+        FogStartScale: 1
+        Easing: 0
+    - rid: 6177227276687245317
+      type: {class: OrbitBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 1
+        FixedCenter: {x: 0, y: 0}
+        AngularSpeed: 90
+    - rid: 6177227276687245318
+      type: {class: FireOnDurationBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Pattern: {fileID: 11400000, guid: 29f47bbae5423cd4092e9406bce3b0df, type: 2}
+        InheritOwnerTeam: 1
+        ExtraModifiers: []
+        Extra:
+          rid: -2
+        Interval: 0.6
+        MaxShots: -1
+    - rid: 6177227276687245343
+      type: {class: FireOnDurationBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Pattern: {fileID: 11400000, guid: 93d7020761c4d714eaf622e865409960, type: 2}
+        InheritOwnerTeam: 1
+        ExtraModifiers: []
+        Extra:
+          rid: -2
+        Interval: 0.4
+        MaxShots: -1

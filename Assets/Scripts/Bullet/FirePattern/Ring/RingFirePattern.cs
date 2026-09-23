@@ -29,7 +29,7 @@ public class RingFirePattern : FirePattern
             // Radius 是环形起始偏移(本地,沿每发子弹方向),与 Base.PositionOffset 正交叠加。
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
             // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
-            SpawnBullet(pool, from + offset, rad, Speed, AngularSpeed, Damage, team, extraModifiers);
+            SpawnBullet(pool, from + offset, rad, Speed, AngularSpeed, Damage, team, extraModifiers, ownerHitbox != null ? ownerHitbox.transform.root : null);
         }
     }
 

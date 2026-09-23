@@ -146,11 +146,11 @@ public abstract class FirePattern : ScriptableObject
     protected Bullet SpawnBullet(BulletPool pool, Vector2 pos, float rad,
                                  float speed, float angularSpeed, float damage,
                                  ShinySTG.Hitbox.CollisionTeam team,
-                                 BulletModifier[] extraModifiers)
+                                 BulletModifier[] extraModifiers, Transform ownerTransform = null)
     {
         var combined = CombineArrays(ModifierPrefabs, extraModifiers);
         // 透传 SpawnFog:每个子 pattern 各自带自己的雾化配置,CompositeFirePattern 不会被子覆盖。
-        return pool.Get(BulletPrefab, pos, rad, speed, angularSpeed, damage, team, combined, SpawnFog);
+        return pool.Get(BulletPrefab, pos, rad, speed, angularSpeed, damage, team, combined, SpawnFog, ownerTransform);
     }
 
     /// <summary>把 pattern 的 modifier 和调用方追加的 modifier 拼成一个数组。null-safe。</summary>

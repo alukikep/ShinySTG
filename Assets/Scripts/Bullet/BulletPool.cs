@@ -64,7 +64,7 @@ public class BulletPool : MonoBehaviour
     /// <param name="ownerTeam">发射者阵营(透传给子弹 Hitbox.Team)。null = Neutral(不参与碰撞)。</param>
     public Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed,
                       float damage, ShinySTG.Hitbox.CollisionTeam ownerTeam)
-        => Get(prefab, pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, null, null);
+        => Get(prefab, pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, null, null, null);
 
     /// <summary>
     /// 取一颗子弹,并按指定 prefab 数组挂载 BulletModifier。
@@ -77,7 +77,7 @@ public class BulletPool : MonoBehaviour
     public Bullet Get(Bullet prefab, Vector2 pos, float fireAngleRad, float speed, float angularSpeed,
                       float damage, ShinySTG.Hitbox.CollisionTeam ownerTeam,
                       BulletModifier[] modifiersToAttach,
-                      SpawnFogConfig spawnFog = null)
+                      SpawnFogConfig spawnFog = null, Transform ownerTransform = null)
     {
         // prefab 为空时兜底使用 DefaultPrefab(避免某些 Pattern 未配置时崩溃)
         if (ShinySTG.Level.BattleRestriction.IsActive) return null;
@@ -92,7 +92,7 @@ public class BulletPool : MonoBehaviour
         var b = stack.Count > 0 ? stack.Pop() : Instantiate(usePrefab, transform);
         b.SourcePrefab = usePrefab;
         b.gameObject.SetActive(true);
-        b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, spawnFog);
+        b.Init(pos, fireAngleRad, speed, angularSpeed, damage, ownerTeam, spawnFog, ownerTransform);
         AttachModifiers(b, modifiersToAttach);
         _active.Add(b);
         return b;

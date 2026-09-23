@@ -23,11 +23,12 @@ MonoBehaviour:
   - rid: 6177227271247495188
   - rid: 6177227271247495193
   - rid: 6177227272475115520
+  - rid: 6177227276687245337
   Duration: 60
   Pool: {fileID: 0}
   InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
   AutoSwitchBgm: 1
-  AudioBinding: {fileID: 11400000, guid: 209957078539f8d478396fde76de8a27, type: 2}
+  AudioBinding: {fileID: 0}
   references:
     version: 2
     RefIds:
@@ -146,10 +147,20 @@ MonoBehaviour:
     - rid: 6177227272475115520
       type: {class: SwitchBackgroundEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 24.220001
+        TriggerTime: 25.013334
         OneShot: 1
         Duration: 0
         Background: {fileID: 11400000, guid: a6c2ea4efc211534682ef046944085eb, type: 2}
         FadeOut: 3
         FadeIn: 3
         TransitionStyle: 1
+    - rid: 6177227276687245337
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 0
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
+        SpawnPosition: {x: -4, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}

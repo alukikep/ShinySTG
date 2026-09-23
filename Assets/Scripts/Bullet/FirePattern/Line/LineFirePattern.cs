@@ -27,7 +27,7 @@ public class LineFirePattern : FirePattern
         {
             float rad = FireExtensionResolver.ResolveBulletPipeline(extensions, from, i, Count, rotationRad);
             // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
-            SpawnBullet(pool, from, rad, speed, AngularSpeed, Damage, team, extraModifiers);
+            SpawnBullet(pool, from, rad, speed, AngularSpeed, Damage, team, extraModifiers, ownerHitbox != null ? ownerHitbox.transform.root : null);
             speed += DeltaSpeed;
         }
     }

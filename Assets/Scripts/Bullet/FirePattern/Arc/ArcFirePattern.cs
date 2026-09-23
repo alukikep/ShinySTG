@@ -29,15 +29,16 @@ public class ArcFirePattern : FirePattern
             float rad = FireExtensionResolver.ResolveBulletPipeline(extensions, from, i, Count, rotationRad) + start + step * i;
             // Radius 是扇形起始偏移(本地,沿每发子弹方向),与 Base.PositionOffset 正交叠加。
             Vector2 offset = Radius * new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
-            FireOne(from + offset, rad, pool, team, extraModifiers);
+            FireOne(from + offset, rad, pool, team, extraModifiers,
+                ownerHitbox != null ? ownerHitbox.transform.root : null);
         }
     }
 
     void FireOne(Vector2 pos, float rad, BulletPool pool, ShinySTG.Hitbox.CollisionTeam team,
-                 BulletModifier[] extraModifiers)
+                 BulletModifier[] extraModifiers, Transform ownerTransform)
     {
         // 走 SpawnBullet 会自动挂 ModifierPrefabs + extraModifiers
-        SpawnBullet(pool, pos, rad, Speed, AngularSpeed, Damage, team, extraModifiers);
+        SpawnBullet(pool, pos, rad, Speed, AngularSpeed, Damage, team, extraModifiers, ownerTransform);
     }
 
     public override int GetFireCount() => Mathf.Max(0, Count);

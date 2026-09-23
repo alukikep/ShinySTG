@@ -22,6 +22,7 @@ public class Bullet : MonoBehaviour
     [HideInInspector] public bool  HasGrazed;    // 本弹是否已对玩家触发过擦弹(防一颗弹多次擦;Init 时重置)
 
     [HideInInspector] public Bullet SourcePrefab; // 记录本弹属于哪个 prefab 的桶（仅用于池归还路由，不影响逻辑）
+    [HideInInspector] public Transform OwnerTransform;
 
     // ─── 出生雾化(per-instance 状态) ───
     [HideInInspector] public float FogElapsed;          // 雾化计时器
@@ -75,6 +76,8 @@ public class Bullet : MonoBehaviour
     }
 
     public Vector2 Position => transform.position;
+    [HideInInspector] public bool ReturnRequested;
+    public void RequestReturn() => ReturnRequested = true;
 
     /// <summary>是否与某 hitbox 相撞(便捷入口)。Hitbox 未配置时返回 false。</summary>
     public bool Overlaps(HitboxComponent other) =>
@@ -121,9 +124,12 @@ public class Bullet : MonoBehaviour
         FogCfg = null;
         FogElapsed = FogDuration = Lifetime = 0f;
         Speed = AngularSpeed = SteerAngle = Damage = 0f;
+        OwnerTransform = null;
         _hasModifierTurn = false;
         _modifierTurn = 0f;
+        _overrideMovement = false;
         HasGrazed = false;
+        ReturnRequested = false;
         if (Hitbox != null)
         {
             Hitbox.IsFogged = false;
@@ -170,6 +176,16 @@ public class Bullet : MonoBehaviour
     readonly List<BulletModifier> _modifiers = new();
     bool _hasModifierTurn;
     float _modifierTurn;
+    bool _overrideMovement;
+    Vector2 _movementPosition;
+    float _movementAngle;
+
+    public void SetModifierMovement(Vector2 position, float angle)
+    {
+        _overrideMovement = true;
+        _movementPosition = position;
+        _movementAngle = angle;
+    }
 
     // 后调用的转向覆盖本帧先前转向；有效时长由 modifier 窗口裁剪。
     public void SetModifierTurn(float radiansPerSecond, float activeTime)
@@ -282,11 +298,13 @@ public class Bullet : MonoBehaviour
     /// <param name="ownerTeam">发射者阵营(用于把子弹 Hitbox.Team 设为同阵营)</param>
     /// <param name="spawnFog">出生雾化配置(可空)。null 或 Duration=0 = 不雾化。</param>
     public void Init(Vector2 position, float fireAngleRad, float speed, float angularSpeed,
-                     float damage, CollisionTeam ownerTeam, SpawnFogConfig spawnFog = null)
+                     float damage, CollisionTeam ownerTeam, SpawnFogConfig spawnFog = null,
+                     Transform ownerTransform = null)
     {
         ResetForPool();
         unchecked { SpawnVersion++; }
         transform.position = position;
+        OwnerTransform = ownerTransform;
         // 视觉补偿:美术贴图默认尖头朝 +Y(朝上),代码约定 SteerAngle=0 指向 +X(朝右)。
         // 因此需要 -90° 的旋转偏移,才能让贴图尖头对齐飞行方向(否则向下发射时子弹会变横)。
         transform.rotation = Quaternion.Euler(0, 0, fireAngleRad * Mathf.Rad2Deg - 90f);
@@ -373,6 +391,11 @@ public class Bullet : MonoBehaviour
         for (int i = 0; i < _modifiers.Count; i++)
         {
             _modifiers[i].Modify(this, dt);
+            if (ReturnRequested)
+            {
+                BulletPool.Instance?.Return(this);
+                return;
+            }
             if (!gameObject.activeInHierarchy || SpawnVersion != version) return;
         }
 
@@ -380,8 +403,17 @@ public class Bullet : MonoBehaviour
         ApplyTurn(dt);
 
         // 3. 按当前方向移动
-        Vector2 dir = new Vector2(Mathf.Cos(SteerAngle), Mathf.Sin(SteerAngle));
-        transform.position += (Vector3)(dir * Speed * dt);
+        if (_overrideMovement)
+        {
+            transform.position = _movementPosition;
+            SteerAngle = _movementAngle;
+            _overrideMovement = false;
+        }
+        else
+        {
+            Vector2 dir = new Vector2(Mathf.Cos(SteerAngle), Mathf.Sin(SteerAngle));
+            transform.position += (Vector3)(dir * Speed * dt);
+        }
 
         // 4. 用方向同步旋转（让贴图朝向飞行方向）
         //    与 Init() 同源:贴图尖头朝 +Y,所以需要 -90° 的视觉补偿偏移。
