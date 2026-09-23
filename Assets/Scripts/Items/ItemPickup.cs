@@ -44,9 +44,11 @@ namespace ShinySTG.Items
             _age += dt;
             bool canCollect = CanCollect(player);
             if (!canCollect) _attracting = false;
-            else if (!player.Hitbox.AttractionEnabled) _attracting = false;
-            else if (
-                     HitboxMath.AABBOverlap(Bounds, player.Hitbox.AttractionBounds)) _attracting = true;
+            else if (!_attracting &&
+                     (service.IsAutoCollecting ||
+                      (player.Hitbox.AttractionEnabled &&
+                       HitboxMath.AABBOverlap(Bounds, player.Hitbox.AttractionBounds))))
+                _attracting = true;
 
             Vector2 position = transform.position;
             if (_attracting)

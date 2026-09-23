@@ -18,9 +18,15 @@ namespace ShinySTG.Items
         public float Lifetime = 30f;
         [Tooltip("低于该世界 Y 坐标时回收。")]
         public float DespawnBelowY = -22f;
+        [Header("上线收点")]
+        [Tooltip("玩家位于收点线上方时，持续吸附场上及后续生成的道具。")]
+        public bool EnableAutoCollect = true;
+        [Tooltip("收点线的世界 Y 坐标；玩家达到或超过该高度时持续收点。")]
+        public float AutoCollectLineY = 3f;
         readonly List<ItemPickup> _active = new();
         readonly Stack<ItemPickup> _pool = new();
         public IReadOnlyList<ItemPickup> ActiveItems => _active;
+        public bool IsAutoCollecting { get; private set; }
         Sprite _fallback;
         Texture2D _texture;
 
@@ -78,8 +84,28 @@ namespace ShinySTG.Items
         {
             if (ShinySTG.GameFlow.GameplayPause.IsPaused) return;
             var player = ShinySTG.Player.Player.Instance;
+            UpdateAutoCollectState(player);
             for (int i = _active.Count - 1; i >= 0; i--)
                 if (_active[i] == null || !_active[i].Tick(Time.deltaTime, this, player)) ReturnAt(i);
+        }
+
+        void UpdateAutoCollectState(ShinySTG.Player.Player player)
+        {
+            IsAutoCollecting = EnableAutoCollect && ItemPickup.CanCollect(player)
+                && player.transform.position.y >= AutoCollectLineY;
+        }
+
+        public void ResetAutoCollectState() => IsAutoCollecting = false;
+
+        void OnDrawGizmosSelected()
+        {
+            if (!EnableAutoCollect) return;
+            var bounds = ShinySTG.Stage.BoundsService.Instance;
+            float left = bounds != null ? bounds.PlayableMin.x : -3.5f;
+            float right = bounds != null ? bounds.PlayableMax.x : 3.5f;
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(new Vector3(left, AutoCollectLineY, 0f),
+                new Vector3(right, AutoCollectLineY, 0f));
         }
 
         // 碰撞遍历结束后调用，不在 TryCollect 内修改活跃集合。
@@ -98,7 +124,11 @@ namespace ShinySTG.Items
             _pool.Push(item);
         }
 
-        void OnDisable() => ReturnAll();
+        void OnDisable()
+        {
+            IsAutoCollecting = false;
+            ReturnAll();
+        }
 
         public void ReturnAll()
         {

@@ -1,12 +1,27 @@
 using NUnit.Framework;
 using ShinySTG.Level;
 using ShinySTG.Level.SpawnEntries;
+using ShinySTG.Level.Editor;
 using UnityEngine;
 
 namespace ShinySTG.GameFlow.Editor
 {
     public sealed class CompleteLevelEntryTests
     {
+        [Test]
+        public void CompletionEntryWithFiniteLevelDurationProducesConfigurationWarning()
+        {
+            var definition = ScriptableObject.CreateInstance<LevelDefinition>();
+            try
+            {
+                definition.Duration = 60f;
+                definition.Entries = new SpawnEntry[] { new CompleteLevelEntry { TriggerTime = 90f } };
+                var issues = LevelEditorValidator.Validate(definition);
+                Assert.IsTrue(issues.Exists(issue => issue.Message.Contains("Duration 大于 0")));
+            }
+            finally { Object.DestroyImmediate(definition); }
+        }
+
         [Test]
         public void CompletionStopsLaterEntriesAndResetAllowsReplay()
         {

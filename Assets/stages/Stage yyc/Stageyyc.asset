@@ -24,7 +24,8 @@ MonoBehaviour:
   - rid: 6177227271247495193
   - rid: 6177227272475115520
   - rid: 6177227276687245337
-  Duration: 60
+  - rid: 6177227276687245346
+  Duration: 0
   Pool: {fileID: 0}
   InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
   AutoSwitchBgm: 1
@@ -147,7 +148,7 @@ MonoBehaviour:
     - rid: 6177227272475115520
       type: {class: SwitchBackgroundEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 25.013334
+        TriggerTime: 75
         OneShot: 1
         Duration: 0
         Background: {fileID: 11400000, guid: a6c2ea4efc211534682ef046944085eb, type: 2}
@@ -164,3 +165,9 @@ MonoBehaviour:
         SpawnPosition: {x: -4, y: 12}
         InitialRotation: 0
         OverrideFlow: {fileID: 0}
+    - rid: 6177227276687245346
+      type: {class: CompleteLevelEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 90
+        OneShot: 1
+        Duration: 0

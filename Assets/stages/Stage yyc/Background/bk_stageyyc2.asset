@@ -15,9 +15,9 @@ MonoBehaviour:
   ContentPrefab: {fileID: 3275371859117195254, guid: f645c6144e8c0bf42893e5d0d28ef6a8, type: 3}
   LowerImage: {fileID: 11400000, guid: bd7e3fca943f68a428b8756abd985c0f, type: 2}
   UpperImage: {fileID: 0}
-  CameraPosition: {x: 0, y: 0, z: -10}
+  CameraPosition: {x: 0, y: 0.5, z: -10}
   CameraEulerAngles: {x: -30, y: 0, z: 0}
   FieldOfView: 50
-  ScrollSpeed: 8
+  ScrollSpeed: 3
   OverrideClearColor: 0
   ClearColor: {r: 0.06, g: 0.08, b: 0.12, a: 1}

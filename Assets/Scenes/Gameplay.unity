@@ -2400,6 +2400,8 @@ MonoBehaviour:
   AttractionSpeed: 10
   Lifetime: 30
   DespawnBelowY: -22
+  EnableAutoCollect: 1
+  AutoCollectLineY: 6
 --- !u!1 &845098522
 GameObject:
   m_ObjectHideFlags: 0

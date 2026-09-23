@@ -30,6 +30,12 @@
 modifier 执行期间若子弹被回收或同一实例已重新生成，旧一轮 Update 停止继续处理。
 移动采用当前速度和方向按帧更新；时间窗口裁剪不等于对整条运动轨迹进行分段积分。
 
+`OrbitBulletModifier` 是位置型运动 modifier，配置入口为 `Modifier/Orbit`。`Mode=FixedPosition`
+时围绕 `FixedCenter` 做圆周运动；`Mode=FiringEnemy` 时围绕发射者 Transform 做圆周运动。
+两种模式都只需设置 `AngularSpeed`（度/秒，正值逆时针），半径在 modifier 首次生效时按
+子弹当前位置到圆心的距离自动计算。发射者引用沿 FirePattern → BulletPool → Bullet 传递，
+并在回池时清理。若发射者已销毁，`FiringEnemy` 模式会直接请求回收子弹，不会退回固定坐标。
+
 内置 Steer 与 Homing 通过 `SetModifierTurn` 提交按有效时长计算的本帧转角，
 后调用的转向覆盖之前的提交。没有提交时，Bullet 才按 AngularSpeed 对整帧积分。
 这保证窗口末帧的转角不会被退出清理吞掉，也不会因使用整帧时长而多转。

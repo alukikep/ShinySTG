@@ -83,6 +83,7 @@ namespace ShinySTG.Player
         void StartDeath()
         {
             if (_routine != null) return;
+            ShinySTG.Items.ItemDropService.Instance?.ResetAutoCollectState();
             IsDeathPresentationComplete = false;
             _blink = false;
             _bomb?.ResetForDeath();
