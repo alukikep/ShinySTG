@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ShinySTG.Level;
 using ShinySTG.Level.SpawnEntries;
 using UnityEditor;
@@ -101,6 +102,52 @@ namespace ShinySTG.Level.Editor
             // 会指向别的 entry 或越界(取决于新数组长度)
             LevelEditorPrefs.LastSelectedEntryIndex = -1;
 
+            EditorUtility.SetDirty(ctx.Definition);
+            return true;
+        }
+
+        /// <summary>
+        /// 按触发时间整理条目。时间相同的条目保持原数组顺序，确保同帧触发语义不变。
+        /// 返回 true 表示数组顺序确实发生了变化。
+        /// </summary>
+        public static bool SortByTriggerTime(LevelEditorContext ctx)
+        {
+            if (ctx?.Definition?.Entries == null || ctx.Definition.Entries.Length < 2)
+                return false;
+
+            var entries = ctx.Definition.Entries;
+            var sorted = new List<SpawnEntry>(entries);
+            var originalIndices = new Dictionary<SpawnEntry, int>();
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i] != null && !originalIndices.ContainsKey(entries[i]))
+                    originalIndices.Add(entries[i], i);
+            }
+            sorted.Sort((a, b) =>
+            {
+                if (ReferenceEquals(a, b)) return 0;
+                if (a == null) return 1;
+                if (b == null) return -1;
+                int timeCompare = a.TriggerTime.CompareTo(b.TriggerTime);
+                if (timeCompare != 0) return timeCompare;
+                return originalIndices[a].CompareTo(originalIndices[b]);
+            });
+
+            bool changed = false;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (!ReferenceEquals(entries[i], sorted[i]))
+                {
+                    changed = true;
+                    break;
+                }
+            }
+            if (!changed) return false;
+
+            Undo.RecordObject(ctx.Definition, "Sort Spawn Entries by Time");
+            ctx.Definition.Entries = sorted.ToArray();
+            if (ctx.Selected != null)
+                LevelEditorPrefs.LastSelectedEntryIndex = ctx.IndexOf(ctx.Selected);
             EditorUtility.SetDirty(ctx.Definition);
             return true;
         }

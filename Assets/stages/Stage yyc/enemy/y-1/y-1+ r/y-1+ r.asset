@@ -1,0 +1,104 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cc563725aafb1d408110d33cec35c14, type: 3}
+  m_Name: y-1+ r
+  m_EditorClassIdentifier: 
+  Actions:
+  - rid: 6177227258094157828
+  - rid: 6177227258094157833
+  - rid: 6177227258094157839
+  - rid: 6177227258094157842
+  Loop: 0
+  StartDelay: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177227258094157828
+      type: {class: InvincibilityAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227258094157829
+        _legacyDuration: 1
+        Target: 0
+        Children:
+        - rid: 6177227258094157830
+    - rid: 6177227258094157829
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.7
+    - rid: 6177227258094157830
+      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227258094157831
+        _legacyDuration: 1
+        Move:
+          rid: 6177227258094157832
+    - rid: 6177227258094157831
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.5
+    - rid: 6177227258094157832
+      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Direction: 2
+        CustomAngleDeg: 0
+        Speed: 8
+        Profile: 3
+        AccelerationTime: 0.1
+        BrakingTime: 0.1
+    - rid: 6177227258094157833
+      type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227258094157834
+        _legacyDuration: 1
+        Pattern: {fileID: 11400000, guid: 00c8d18be5079264e867d15924f92249, type: 2}
+        FireRate: 10
+        OneShot: 1
+        AimOffsetDeg: 0
+        ExtraModifierPrefabs: []
+    - rid: 6177227258094157834
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 0.5
+    - rid: 6177227258094157839
+      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227258094157840
+        _legacyDuration: 1
+        Move:
+          rid: 6177227258094157841
+    - rid: 6177227258094157840
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 20
+    - rid: 6177227258094157841
+      type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Direction: 2
+        CustomAngleDeg: 0
+        Speed: 8
+        Profile: 3
+        AccelerationTime: 0.1
+        BrakingTime: 0.1
+    - rid: 6177227258094157842
+      type: {class: SelfDestructAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 6177227258094157843
+        _legacyDuration: 1
+    - rid: 6177227258094157843
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 1

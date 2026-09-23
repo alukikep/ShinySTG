@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: test
   m_EditorClassIdentifier: 
   Clip: {fileID: 8300000, guid: b31a41bc4a430df4f9066d5112263e23, type: 3}
-  DefaultVolume: 0.3
+  DefaultVolume: 0.6
   Loop: 1
   Bus: {fileID: 0}
   StartTime: 0

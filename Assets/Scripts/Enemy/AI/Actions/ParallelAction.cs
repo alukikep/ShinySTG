@@ -55,18 +55,25 @@ namespace ShinySTG.EnemyAI
                 if (enemy == null || !enemy.gameObject.activeInHierarchy) return;
                 if (_childFinished[i] || Children[i] == null) continue;
 
-                _childElapsed[i] += dt;
+                var child = Children[i];
+                float remaining = Mathf.Max(0f, child.CurrentDuration - _childElapsed[i]);
+                float tickDuration = Mathf.Min(Mathf.Max(0f, dt), remaining);
+                _childElapsed[i] += tickDuration;
+
+                // 自然到期前补齐最后一段有效时间；先 Tick 再 Exit。
+                if (tickDuration > 0f) child.OnTick(enemy, tickDuration);
+                if (enemy == null || !enemy.gameObject.activeInHierarchy) return;
+                // OnTick 可能重入容器 OnExit，避免重复退出。
+                if (_childFinished[i]) continue;
 
                 // 该 child 自然到期 → 走 OnExit,后续帧不再 tick
                 // ★ vX 起:读 CurrentDuration(已由 OnEnter 时抽样缓存),不再是基类 float Duration 字段
-                if (_childElapsed[i] >= Children[i].CurrentDuration)
+                if (_childElapsed[i] >= child.CurrentDuration)
                 {
                     _childFinished[i] = true;
-                    Children[i].OnExit(enemy);
+                    child.OnExit(enemy);
                     continue;
                 }
-
-                Children[i].OnTick(enemy, dt);
             }
         }
 

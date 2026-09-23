@@ -19,7 +19,7 @@ MonoBehaviour:
   - rid: 6177226981840519174
   FireSounds:
   - rid: 6177226998917365764
-  Speed: 8
+  Speed: 12
   AngularSpeed: 0
   SpawnFog:
     rid: -2
@@ -40,8 +40,9 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        SearchRadius: 6
-        TurnRate: 180
+        SearchRadius: 12
+        TurnRate: 90
+        AssistDistance: 6
         LockOnDelay: 0
         MaxHomingTime: -1
     - rid: 6177226981840519174

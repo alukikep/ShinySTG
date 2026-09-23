@@ -14,17 +14,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Entries:
   - rid: 6177227253805481988
-  - rid: 6177227253805481990
-  - rid: 6177227271247495189
-  - rid: 6177227258094157844
-  - rid: 6177227271247495191
-  - rid: 6177227253805481994
   - rid: 6177227258094157824
+  - rid: 6177227253805481994
+  - rid: 6177227253805481990
+  - rid: 6177227258094157844
   - rid: 6177227271247495188
+  - rid: 6177227271247495189
   - rid: 6177227271247495193
-  - rid: 6177227272475115520
+  - rid: 6177227271247495191
+  - rid: 6177227281577541637
+  - rid: 6177227281577541641
+  - rid: 6177227281577541639
+  - rid: 6177227281577541642
+  - rid: 6177227281577541644
   - rid: 6177227276687245337
+  - rid: 6177227281577541632
+  - rid: 6177227281577541635
+  - rid: 6177227281577541646
+  - rid: 6177227281577541633
+  - rid: 6177227281577541648
+  - rid: 6177227281577541647
+  - rid: 6177227281577541653
+  - rid: 6177227281577541655
+  - rid: 6177227281577541658
+  - rid: 6177227281577541657
+  - rid: 6177227281577541659
+  - rid: 6177227281577541660
+  - rid: 6177227281577541662
+  - rid: 6177227281577541661
+  - rid: 6177227281577541663
+  - rid: 6177227281577541665
+  - rid: 6177227272475115520
   - rid: 6177227276687245346
+  - rid: 6177227281577541667
   Duration: 0
   Pool: {fileID: 0}
   InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
@@ -158,11 +180,11 @@ MonoBehaviour:
     - rid: 6177227276687245337
       type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 0
+        TriggerTime: 37.040005
         OneShot: 1
         Duration: 0
-        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
-        SpawnPosition: {x: -4, y: 12}
+        EnemyPrefab: {fileID: 548806225898117785, guid: 4dcb7995cc67ed149a6716229711b007, type: 3}
+        SpawnPosition: {x: 3, y: 12}
         InitialRotation: 0
         OverrideFlow: {fileID: 0}
     - rid: 6177227276687245346
@@ -171,3 +193,302 @@ MonoBehaviour:
         TriggerTime: 90
         OneShot: 1
         Duration: 0
+    - rid: 6177227281577541632
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 39.92
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 4dcb7995cc67ed149a6716229711b007, type: 3}
+        SpawnPosition: {x: 3, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541633
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 47.906666
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.2
+        EnemyPrefab: {fileID: 548806225898117785, guid: d6ee314e07a8bb84ebfd8bc7899c9880, type: 3}
+        SpawnPosition: {x: 5, y: 12}
+        SpawnPositionStrategy:
+          rid: 6177227281577541634
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541634
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0, y: 0}
+    - rid: 6177227281577541635
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 43.68
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.2
+        EnemyPrefab: {fileID: 548806225898117785, guid: d6ee314e07a8bb84ebfd8bc7899c9880, type: 3}
+        SpawnPosition: {x: 5, y: 12}
+        SpawnPositionStrategy:
+          rid: 6177227281577541636
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541636
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0, y: 0}
+    - rid: 6177227281577541637
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 23.84
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 874e39357888a164ca740abdf7ebc273, type: 3}
+        SpawnPosition: {x: -10, y: 6}
+        SpawnPositionStrategy:
+          rid: 6177227281577541638
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541638
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0.2, y: -0.2}
+    - rid: 6177227281577541639
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 26.973333
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 6602a55c176d3ac47975ccc87351a219, type: 3}
+        SpawnPosition: {x: 9, y: 6}
+        SpawnPositionStrategy:
+          rid: 6177227281577541640
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541640
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: -0.2, y: -0.2}
+    - rid: 6177227281577541641
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 24.213335
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: a075550532e80764aab555b48fad2cb8, type: 3}
+        SpawnPosition: {x: 4.5, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541642
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 30.066666
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 874e39357888a164ca740abdf7ebc273, type: 3}
+        SpawnPosition: {x: -10, y: 5}
+        SpawnPositionStrategy:
+          rid: 6177227281577541643
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541643
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0.2, y: -0.2}
+    - rid: 6177227281577541644
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 33.106667
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 6602a55c176d3ac47975ccc87351a219, type: 3}
+        SpawnPosition: {x: 9, y: 5}
+        SpawnPositionStrategy:
+          rid: 6177227281577541645
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541645
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: -0.2, y: -0.2}
+    - rid: 6177227281577541646
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 47.420002
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
+        SpawnPosition: {x: -4, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541647
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 51.933327
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
+        SpawnPosition: {x: -4, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541648
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 51.553333
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 4dcb7995cc67ed149a6716229711b007, type: 3}
+        SpawnPosition: {x: 3, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541653
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 55.2
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: d6a26b9250908f54d82f00dcf2f184c7, type: 3}
+        SpawnPosition: {x: -10, y: 6}
+        SpawnPositionStrategy:
+          rid: 6177227281577541654
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541654
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0.2, y: -0.2}
+    - rid: 6177227281577541655
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 58.226665
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 04ef9295a395e8943a1ee72b9b77f457, type: 3}
+        SpawnPosition: {x: 9, y: 6}
+        SpawnPositionStrategy:
+          rid: 6177227281577541656
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541656
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: -0.2, y: -0.2}
+    - rid: 6177227281577541657
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 62.05333
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 4dcb7995cc67ed149a6716229711b007, type: 3}
+        SpawnPosition: {x: 3, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541658
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 61.62
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
+        SpawnPosition: {x: -4, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541659
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 65.62666
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
+        SpawnPosition: {x: -4, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541660
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 66.00666
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 4dcb7995cc67ed149a6716229711b007, type: 3}
+        SpawnPosition: {x: 3, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541661
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 69.32666
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 33a3698b89ff23f42936889e4bc361ec, type: 3}
+        SpawnPosition: {x: -4, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541662
+      type: {class: SimpleSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 69.30666
+        OneShot: 1
+        Duration: 0
+        EnemyPrefab: {fileID: 548806225898117785, guid: 4dcb7995cc67ed149a6716229711b007, type: 3}
+        SpawnPosition: {x: 3, y: 12}
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541663
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 70.41334
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: d6a26b9250908f54d82f00dcf2f184c7, type: 3}
+        SpawnPosition: {x: -10, y: 6}
+        SpawnPositionStrategy:
+          rid: 6177227281577541664
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541664
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: 0.2, y: -0.2}
+    - rid: 6177227281577541665
+      type: {class: SustainSpawnEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 71.346664
+        OneShot: 1
+        Duration: 3
+        SpawnInterval: 0.5
+        EnemyPrefab: {fileID: 548806225898117785, guid: 04ef9295a395e8943a1ee72b9b77f457, type: 3}
+        SpawnPosition: {x: 9, y: 6}
+        SpawnPositionStrategy:
+          rid: 6177227281577541666
+        InitialRotation: 0
+        OverrideFlow: {fileID: 0}
+    - rid: 6177227281577541666
+      type: {class: FixedSpawnPositionStrategy, ns: ShinySTG.Level.SpawnEntries.PositionStrategies, asm: Assembly-CSharp}
+      data:
+        Offset: {x: -0.2, y: -0.2}
+    - rid: 6177227281577541667
+      type: {class: ExecuteCommandsEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 75
+        OneShot: 1
+        Duration: 0
+        Commands:
+        - rid: 6177227281577541668
+        - rid: 6177227281577541669
+    - rid: 6177227281577541668
+      type: {class: ClearEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data: 
+    - rid: 6177227281577541669
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1

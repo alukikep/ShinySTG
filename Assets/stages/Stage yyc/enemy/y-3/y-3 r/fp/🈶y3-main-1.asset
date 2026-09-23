@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 195aad2d24357ad4eae3908cbbc82049, type: 3}
+  m_Name: "\U0001F236y3-main-1"
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 1211289381179787716, guid: 70c65db8501309f4ca67162ab893b1d3, type: 3}
+  ModifierPrefabs:
+  - rid: 6177227276687245319
+  FireExtensions:
+  - rid: 6177227276687245340
+  FireSounds:
+  - rid: 6177227276687245344
+  Speed: 3
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 6177227276687245341
+  Damage: 1
+  Count: 2
+  DeltaSpeed: 1
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 6177227276687245319
+      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 0
+        Color: {r: 0.12276268, g: 0, b: 1, a: 1}
+        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
+        FadeStart: 0.5
+        ReferenceLifetime: 1.5
+        FlashFrequency: 5
+        FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1
+    - rid: 6177227276687245340
+      type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseAngle: 180
+        PositionOffset: {x: 0, y: 0}
+    - rid: 6177227276687245341
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 0, g: 0.05789423, b: 1, a: 1}
+        FogStartScale: 1.2
+        Easing: 0
+    - rid: 6177227276687245344
+      type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
+        VolumeMul: 1
+        Pitch: 1

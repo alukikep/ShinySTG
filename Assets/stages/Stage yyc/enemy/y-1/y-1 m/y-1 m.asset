@@ -52,7 +52,10 @@ MonoBehaviour:
       data:
         Direction: 2
         CustomAngleDeg: 0
-        Speed: 5
+        Speed: 8
+        Profile: 3
+        AccelerationTime: 0.1
+        BrakingTime: 0.1
     - rid: 6177227258094157833
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -60,14 +63,14 @@ MonoBehaviour:
           rid: 6177227258094157834
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: bf6fe0a70139bcd458938099da8b7406, type: 2}
-        FireRate: 5
+        FireRate: 10
         OneShot: 0
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
     - rid: 6177227258094157834
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 1
+        Value: 0.5
     - rid: 6177227258094157839
       type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
@@ -85,7 +88,10 @@ MonoBehaviour:
       data:
         Direction: 2
         CustomAngleDeg: 0
-        Speed: 5
+        Speed: 8
+        Profile: 3
+        AccelerationTime: 0.1
+        BrakingTime: 0.1
     - rid: 6177227258094157842
       type: {class: SelfDestructAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:

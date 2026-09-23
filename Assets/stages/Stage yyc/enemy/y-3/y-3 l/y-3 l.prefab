@@ -100,9 +100,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ad55bc30a1948a4daa984a7129163d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MaxHp: 30
+  MaxHp: 50
   ScoreValue: 100
-  _currentHp: 30
+  _currentHp: 50
   _hitSfx: {fileID: 0}
   _deathSfx: {fileID: 0}
   Hitbox: {fileID: 6027466860592158076}

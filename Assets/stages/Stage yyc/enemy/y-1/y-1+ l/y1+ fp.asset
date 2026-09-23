@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36da4fb7f3856eb4c88186a64e1cb5ae, type: 3}
+  m_Name: y1+ fp
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 1211289381179787716, guid: d8a4578b0616ce247a2e488345196b99, type: 3}
+  ModifierPrefabs:
+  - rid: 6177227281577541652
+  FireExtensions:
+  - rid: 6177227281577541651
+  FireSounds: []
+  Speed: 4
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 6177227281577541650
+  Damage: 1
+  Count: 6
+  ArcLength: 60
+  Radius: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 6177227281577541650
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 0.059748232, g: 0.22867551, b: 1, a: 1}
+        FogStartScale: 1.2
+        Easing: 0
+    - rid: 6177227281577541651
+      type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
+      data: 
+    - rid: 6177227281577541652
+      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 0
+        Color: {r: 0, g: 0.04186535, b: 1, a: 1}
+        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
+        FadeStart: 0.5
+        ReferenceLifetime: 1.5
+        FlashFrequency: 5
+        FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1

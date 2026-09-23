@@ -13,6 +13,9 @@ namespace ShinySTG.EnemyAI
         /// <summary>进入时调用(可记录初始位置 / 角度 / 速度 等)。</summary>
         public virtual void OnEnter(Transform enemy) { }
 
+        /// <summary>由 MoveAction 传入本次已抽样的时长；旧移动模块沿用原入口。</summary>
+        public virtual void OnEnter(Transform enemy, float duration) => OnEnter(enemy);
+
         /// <summary>每帧调用,实现具体位移。</summary>
         public abstract void OnTick(Transform enemy, float dt);
 

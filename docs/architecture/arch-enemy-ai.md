@@ -28,7 +28,7 @@
 - 详见 `Assets/Scripts/Enemy/AI/`。
 - 新增"行为流"(符卡 / 小怪模式):右键 → Create → STG → Behavior Flow,创建 SO 资产并配置 Actions。
 
-详见 `Assets/Scripts/Enemy/`。
+配置操作见[敌人行为配置](../../Assets/Scripts/Enemy/README.md)。
 
 ### 4.0.5 ActionDurationConfig 多态 Duration 策略(vX 起)
 
@@ -130,7 +130,7 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 
 | 类型 | SRName | 范式 | 关键字段 |
 |---|---|---|---|
-| `LinearMove` | `Move/Linear` | 固定方向匀速直线 | `Direction`(枚举:Down/Up/Left/Right/ToPlayer/Custom) + `CustomAngleDeg` + `Speed` |
+| `LinearMove` | `Move/Linear` | 固定方向直线，可选加速起步与末段刹车 | 配置见[敌人行为配置](../../Assets/Scripts/Enemy/README.md)，字段以源码为准 |
 | `AccelerateMove` | `Move/Accelerate` | 匀加速直线(`StartSpeed→MaxSpeed`) | `BaseAngle` + `StartSpeed` + `Acceleration` + `MaxSpeed` |
 | `EaseMove` | `Move/Ease` | 沿方向缓动 Duration 秒(时间维度) | `BaseAngle` + `Duration` + `PeakSpeed` + `Mode`(复用 `EaseMode`)+ `MinSpeedFactor` |
 | `SineMove` | `Move/Sine` | 匀速推进 + 垂直方向 sin 摆动 | `BaseAngle` + `Speed` + `Amplitude` + `Frequency` + `PhaseOffsetDeg` |
@@ -151,6 +151,21 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 | `AverageCurveFactor(mode)`(static helper) | `t01 ∈ [0,1]` 区间上的速度均值,用于反推 `moveDuration`,让 `t01` 在 `Constant/FastToSlow/SlowToFast` 下都按"真实耗时"归一化 |
 
 ---
+
+#### 4.1.1 直线移动的加速与刹车
+
+LinearMove 可选起步加速、末段刹车或两者组合，默认匀速兼容已有资产。
+MoveAction 将本次已抽样的 CurrentDuration 传给移动模块；其他 MoveBehaviour
+通过默认重载继续使用原来的 OnEnter，不需要修改。LinearMove 每次进入都会重置移动状态。
+自定义宿主需要传入实际时长才能安排末段刹车；仅调用无时长入口无法确定结束时机。
+
+加减速占用动作自身时长，不延长行为时间。两段过渡超过总时长时按比例缩短；
+速度曲线积分决定位移，减少帧率差异。Speed 保持巡航速度含义，启用过渡后总位移缩短。
+自然结束时完成刹车；死亡、阶段切换或父容器提前结束仍立即中断，不在退出后补位移。
+ParallelAction 在子动作自然到期前执行最后一段有效 Tick，再调用 OnExit；
+持续开火等动作也会收到这段时间，不再遗漏最后一帧。因此默认匀速的移动算法保持兼容，
+但并行容器下的累计位移或末次发射可能随末段更新补齐而变化。
+配置示例与落点调整见[敌人行为配置](../../Assets/Scripts/Enemy/README.md)。
 
 #### 4.2 内置 EnemyAction 速查表
 

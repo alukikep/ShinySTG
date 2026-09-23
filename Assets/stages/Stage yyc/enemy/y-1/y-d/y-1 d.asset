@@ -10,89 +10,95 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2cc563725aafb1d408110d33cec35c14, type: 3}
-  m_Name: y-3 l
+  m_Name: y-1 d
   m_EditorClassIdentifier: 
   Actions:
-  - rid: 6177227276687245323
-  - rid: 6177227276687245330
-  - rid: 6177227276687245332
-  - rid: 6177227276687245335
+  - rid: 6177227258094157828
+  - rid: 6177227258094157833
+  - rid: 6177227258094157839
+  - rid: 6177227258094157842
   Loop: 0
   StartDelay: 0
   references:
     version: 2
     RefIds:
-    - rid: 6177227276687245323
+    - rid: 6177227258094157828
       type: {class: InvincibilityAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227276687245324
+          rid: 6177227258094157829
         _legacyDuration: 1
         Target: 0
         Children:
-        - rid: 6177227276687245325
-    - rid: 6177227276687245324
+        - rid: 6177227258094157830
+    - rid: 6177227258094157829
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 0.8
-    - rid: 6177227276687245325
+        Value: 0.7
+    - rid: 6177227258094157830
       type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227276687245326
+          rid: 6177227258094157831
         _legacyDuration: 1
         Move:
-          rid: 6177227276687245327
-    - rid: 6177227276687245326
+          rid: 6177227258094157832
+    - rid: 6177227258094157831
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 0.8
-    - rid: 6177227276687245327
+        Value: 0.5
+    - rid: 6177227258094157832
       type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         Direction: 0
-        CustomAngleDeg: 270
-        Speed: 8
-    - rid: 6177227276687245330
+        CustomAngleDeg: 0
+        Speed: 10
+        Profile: 3
+        AccelerationTime: 0.1
+        BrakingTime: 0.1
+    - rid: 6177227258094157833
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227276687245331
+          rid: 6177227258094157834
         _legacyDuration: 1
-        Pattern: {fileID: 11400000, guid: 084d0e51aa8a2f54db5bc3dcb1c73108, type: 2}
-        FireRate: 2
+        Pattern: {fileID: 11400000, guid: 3504e79e9a5668a4498ff34c10d662dd, type: 2}
+        FireRate: 10
         OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
-    - rid: 6177227276687245331
+    - rid: 6177227258094157834
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 1
-    - rid: 6177227276687245332
+        Value: 0
+    - rid: 6177227258094157839
       type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227276687245333
+          rid: 6177227258094157840
         _legacyDuration: 1
         Move:
-          rid: 6177227276687245334
-    - rid: 6177227276687245333
+          rid: 6177227258094157841
+    - rid: 6177227258094157840
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 10
-    - rid: 6177227276687245334
+        Value: 20
+    - rid: 6177227258094157841
       type: {class: LinearMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Direction: 3
-        CustomAngleDeg: 270
-        Speed: 3
-    - rid: 6177227276687245335
+        Direction: 0
+        CustomAngleDeg: 0
+        Speed: 10
+        Profile: 3
+        AccelerationTime: 0.25
+        BrakingTime: 0.12
+    - rid: 6177227258094157842
       type: {class: SelfDestructAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227276687245336
+          rid: 6177227258094157843
         _legacyDuration: 1
-    - rid: 6177227276687245336
+    - rid: 6177227258094157843
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         Value: 1

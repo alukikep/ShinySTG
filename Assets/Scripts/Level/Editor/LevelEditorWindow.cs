@@ -181,6 +181,12 @@ namespace ShinySTG.Level.Editor
                     ToolbarDelete();
             }
 
+            using (new EditorGUI.DisabledScope(_definition.Entries == null || _definition.Entries.Length < 2))
+            {
+                if (GUILayout.Button("Sort by Time", EditorStyles.toolbarButton, GUILayout.Width(90)))
+                    ToolbarSortByTime();
+            }
+
             GUILayout.Space(8);
             DrawAudioBindingButtons();
 
@@ -414,6 +420,15 @@ namespace ShinySTG.Level.Editor
             if (_ctx?.Selected == null) return;
             if (LevelEditorCommands.Delete(_ctx))
                 LevelEditorCommands.RefreshViews(this);
+        }
+
+        void ToolbarSortByTime()
+        {
+            if (LevelEditorCommands.SortByTriggerTime(_ctx))
+            {
+                RebuildViews();
+                LevelEditorCommands.RefreshViews(this);
+            }
         }
 
         void DrawMainArea()

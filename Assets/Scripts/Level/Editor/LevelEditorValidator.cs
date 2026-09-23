@@ -54,6 +54,10 @@ namespace ShinySTG.Level.Editor
 
                 switch (entry)
                 {
+                    case ExecuteCommandsEntry commands when commands.Commands == null
+                        || Array.TrueForAll(commands.Commands, command => command == null):
+                        result.Add(new LevelEditorIssue(LevelEditorIssueSeverity.Warning, entry, "执行指令条目未配置有效指令。"));
+                        break;
                     case CompleteLevelEntry:
                         hasCompletion = true;
                         break;
