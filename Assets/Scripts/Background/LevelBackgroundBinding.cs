@@ -30,13 +30,17 @@ namespace ShinySTG.Background
             _level.OnBackgroundCueRequested += PlayCue;
             _level.OnBackgroundLoopRequested += PlayLoop;
             _level.OnBackgroundSwitchRequested += SwitchBackground;
+            _level.OnBackgroundImageRequested += SetImage;
             if (_level.IsCompleted) StopBackground();
-            else if (_level.IsRunning) _boundBackground.ResetBackground();
+            else if (_level.IsRunning) OnLevelStart(_level.Runtime.Definition);
         }
 
         void OnLevelStart(LevelDefinition definition)
         {
-            if (_boundBackground != null) _boundBackground.ResetBackground();
+            if (_boundBackground == null) return;
+            _boundBackground.ResetBackground();
+            if (definition != null && definition.InitialBackground != null)
+                ApplyInitialBackground(definition.InitialBackground);
         }
 
         void OnLevelComplete(LevelDefinition definition) => StopBackground();
@@ -56,7 +60,9 @@ namespace ShinySTG.Background
         public void ApplyInitialBackground(BackgroundDefinition definition)
         {
             if (!Application.isPlaying || !isActiveAndEnabled || _boundBackground == null || definition == null) return;
-            _boundBackground.ApplyDefinitionImmediate(definition);
+            var handle = _boundBackground.ApplyDefinitionImmediate(definition);
+            if (handle.Status == BackgroundPlaybackStatus.Failed)
+                Debug.LogWarning($"[Background] 初始背景 '{definition.name}' 应用失败：{handle.Failure}", this);
         }
 
         public BackgroundPlaybackHandle PlayForRuntime(LevelRuntime runtime, BackgroundCue cue)
@@ -91,28 +97,50 @@ namespace ShinySTG.Background
         {
             if (_boundBackground == null) return;
             _boundBackground.CancelPlayback();
+            _boundBackground.CancelImagePlayback();
             _boundBackground.Pause();
         }
 
-        void SwitchBackground(BackgroundDefinition definition, float fadeOut, float fadeIn)
+        void SetImage(BackgroundImageLayer layer, BackgroundImageDefinition image, float fadeOut, float fadeIn)
+        {
+            if (_boundBackground == null)
+            {
+                Debug.LogWarning("[Background] 背景已销毁，跳过 2D 贴图请求。", this);
+                return;
+            }
+            var handle = _boundBackground.SetImage(layer, image, fadeOut, fadeIn);
+            if (handle.Status == BackgroundPlaybackStatus.Failed)
+                Debug.LogWarning($"[Background] 2D 背景失败：{handle.Failure}", this);
+        }
+
+        public BackgroundPlaybackHandle SetImageForRuntime(LevelRuntime runtime, BackgroundImageLayer layer,
+            BackgroundImageDefinition image, float fadeOut, float fadeIn)
+        {
+            if (!Application.isPlaying || !isActiveAndEnabled || _level == null || !_level.IsRunning
+                || runtime == null || runtime != _level.Runtime || _boundBackground == null)
+                throw new System.InvalidOperationException("[Background] 2D 背景动作需要启用的绑定及当前真实关卡 Runtime。");
+            return _boundBackground.SetImage(layer, image, fadeOut, fadeIn);
+        }
+
+        void SwitchBackground(BackgroundDefinition definition, float fadeOut, float fadeIn, BackgroundTransitionStyle transitionStyle)
         {
             if (_boundBackground == null)
             {
                 Debug.LogWarning("[Background] 背景已销毁，跳过换景。", this);
                 return;
             }
-            var handle = _boundBackground.SwitchBackground(definition, fadeOut, fadeIn);
+            var handle = _boundBackground.SwitchBackground(definition, fadeOut, fadeIn, transitionStyle);
             if (handle.Status == BackgroundPlaybackStatus.Failed)
                 Debug.LogWarning($"[Background] 关卡换景失败：{handle.Failure}", this);
         }
 
         public BackgroundPlaybackHandle SwitchForRuntime(LevelRuntime runtime, BackgroundDefinition definition,
-            float fadeOut, float fadeIn)
+            float fadeOut, float fadeIn, BackgroundTransitionStyle transitionStyle = BackgroundTransitionStyle.BlackFade)
         {
             if (!Application.isPlaying || !isActiveAndEnabled || _level == null || !_level.IsRunning
                 || runtime == null || runtime != _level.Runtime || _boundBackground == null)
                 throw new System.InvalidOperationException("[Background] 换景动作需要启用的绑定及当前真实关卡 Runtime。");
-            return _boundBackground.SwitchBackground(definition, fadeOut, fadeIn);
+            return _boundBackground.SwitchBackground(definition, fadeOut, fadeIn, transitionStyle);
         }
 
         void OnDisable()
@@ -124,6 +152,7 @@ namespace ShinySTG.Background
                 _level.OnBackgroundCueRequested -= PlayCue;
                 _level.OnBackgroundLoopRequested -= PlayLoop;
                 _level.OnBackgroundSwitchRequested -= SwitchBackground;
+                _level.OnBackgroundImageRequested -= SetImage;
             }
             StopBackground();
             _level = null;

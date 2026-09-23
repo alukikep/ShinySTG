@@ -32,7 +32,7 @@ namespace ShinySTG.Level
         public BulletPool Pool;
 
         [Header("Background")]
-        [Tooltip("关卡加载时立即应用的初始背景。为空时沿用场景当前背景。")]
+        [Tooltip("关卡开始或重开时立即应用的初始背景。为空时恢复场景默认背景。")]
         public BackgroundDefinition InitialBackground;
 
         [Header("Audio")]

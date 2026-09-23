@@ -15,23 +15,27 @@ namespace ShinySTG.GameActions
         public float FadeOut = 1f;
         [Min(0f), Tooltip("背景淡入秒数。")]
         public float FadeIn = 1f;
+        [Tooltip("换景遮罩样式。White Flash 会立即白屏，再渐显到新背景。")]
+        public BackgroundTransitionStyle TransitionStyle = BackgroundTransitionStyle.BlackFade;
 
         public override GameActionRuntime CreateRuntime(GameActionContext context) =>
-            new Runtime(Background, FadeOut, FadeIn, context.LevelRuntime);
+            new Runtime(Background, FadeOut, FadeIn, TransitionStyle, context.LevelRuntime);
 
         sealed class Runtime : GameActionRuntime
         {
             readonly BackgroundDefinition _background;
             readonly float _fadeOut, _fadeIn;
+            readonly BackgroundTransitionStyle _transitionStyle;
             readonly LevelRuntime _runtime;
             BackgroundPlaybackHandle _handle;
             bool _preview;
 
-            public Runtime(BackgroundDefinition background, float fadeOut, float fadeIn, LevelRuntime runtime)
+            public Runtime(BackgroundDefinition background, float fadeOut, float fadeIn, BackgroundTransitionStyle transitionStyle, LevelRuntime runtime)
             {
                 _background = background;
                 _fadeOut = fadeOut;
                 _fadeIn = fadeIn;
+                _transitionStyle = transitionStyle;
                 _runtime = runtime;
             }
 
@@ -43,7 +47,7 @@ namespace ShinySTG.GameActions
                     throw new InvalidOperationException("[Background] 换景动作缺少真实关卡上下文，不能从预览或旧 Runtime 播放。");
                 var binding = level.GetComponent<LevelBackgroundBinding>();
                 if (binding == null) throw new InvalidOperationException("[Background] 缺少 LevelBackgroundBinding。");
-                _handle = binding.SwitchForRuntime(_runtime, _background, _fadeOut, _fadeIn);
+                _handle = binding.SwitchForRuntime(_runtime, _background, _fadeOut, _fadeIn, _transitionStyle);
             }
 
             public override bool IsComplete

@@ -36,6 +36,19 @@ namespace ShinySTG.Level
         /// <summary>关卡时间点请求背景演出，由可选的背景绑定接收。</summary>
         public event Action<ShinySTG.Background.BackgroundCue> OnBackgroundCueRequested;
         public event Action<ShinySTG.Background.BackgroundLoopCue> OnBackgroundLoopRequested;
+        public event Action<ShinySTG.Background.BackgroundImageLayer, ShinySTG.Background.BackgroundImageDefinition, float, float> OnBackgroundImageRequested;
+
+        public void RequestBackgroundImage(LevelRuntime runtime, ShinySTG.Background.BackgroundImageLayer layer,
+            ShinySTG.Background.BackgroundImageDefinition image, float fadeOut, float fadeIn)
+        {
+            if (!Application.isPlaying || !_running || runtime == null || runtime != _runtime) return;
+            if (OnBackgroundImageRequested == null)
+            {
+                Debug.LogWarning("[Level] 2D 背景条目未找到启用的 LevelBackgroundBinding。", this);
+                return;
+            }
+            OnBackgroundImageRequested.Invoke(layer, image, fadeOut, fadeIn);
+        }
 
         public void RequestBackgroundLoop(LevelRuntime runtime, ShinySTG.Background.BackgroundLoopCue cue)
         {
@@ -47,10 +60,10 @@ namespace ShinySTG.Level
             }
             OnBackgroundLoopRequested.Invoke(cue);
         }
-        public event Action<ShinySTG.Background.BackgroundDefinition, float, float> OnBackgroundSwitchRequested;
+        public event Action<ShinySTG.Background.BackgroundDefinition, float, float, ShinySTG.Background.BackgroundTransitionStyle> OnBackgroundSwitchRequested;
 
         public void RequestBackgroundSwitch(LevelRuntime runtime, ShinySTG.Background.BackgroundDefinition definition,
-            float fadeOut, float fadeIn)
+            float fadeOut, float fadeIn, ShinySTG.Background.BackgroundTransitionStyle transitionStyle = ShinySTG.Background.BackgroundTransitionStyle.BlackFade)
         {
             if (!Application.isPlaying || !_running || runtime == null || runtime != _runtime) return;
             if (OnBackgroundSwitchRequested == null)
@@ -58,7 +71,7 @@ namespace ShinySTG.Level
                 Debug.LogWarning("[Level] 换景条目未找到启用的 LevelBackgroundBinding。", this);
                 return;
             }
-            OnBackgroundSwitchRequested.Invoke(definition, fadeOut, fadeIn);
+            OnBackgroundSwitchRequested.Invoke(definition, fadeOut, fadeIn, transitionStyle);
         }
 
         public void RequestBackgroundCue(LevelRuntime runtime, ShinySTG.Background.BackgroundCue cue)

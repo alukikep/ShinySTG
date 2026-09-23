@@ -71,7 +71,7 @@ GameFlowController 在结束事件完成后等待结算、清场及必要的玩�
 
 ## 背景接入
 
-PlayBackgroundCueEntry 通过 LevelController.RequestBackgroundCue 发出一次性请求。Controller 校验真实 Runtime，避免预览操作真实背景；LevelBackgroundBinding 订阅请求和生命周期事件，将其转发到显式绑定的背景控制器。关卡开始或重开时重置背景，结束时取消演出并暂停。背景自身计时不依赖关卡 Elapsed，Encounter 阻塞时间轴不会冻结已启动的过渡。详见 [背景架构](./arch-background.md)。
+PlayBackgroundCueEntry 通过 LevelController.RequestBackgroundCue 发出一次性请求。Controller 校验真实 Runtime，避免预览操作真实背景；LevelBackgroundBinding 订阅请求和生命周期事件，将其转发到显式绑定的背景控制器。关卡开始或重开时先重置，再同步应用 InitialBackground（包含上下层 Sprite）；空配置恢复场景默认背景。SetBackgroundImageEntry 沿用真实 Runtime 校验与绑定转发，独立控制指定图片层。结束时取消镜头与图片淡化并暂停。背景自身计时不依赖关卡 Elapsed，Encounter 阻塞时间轴不会冻结已启动的过渡。详见 [背景架构](./arch-background.md)。
 
 ## 对话接入
 

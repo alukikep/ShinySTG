@@ -7,6 +7,10 @@ namespace ShinySTG.Background
     {
         [Tooltip("完整循环布景 Prefab，根节点须有 LoopingBackgroundStrip；不要包含相机或控制器。")]
         public GameObject ContentPrefab;
+        [Tooltip("3D 布景下方的天空/远景贴图；留空清除此层。")]
+        public BackgroundImageDefinition LowerImage;
+        [Tooltip("3D 布景上方的贴图；留空清除此层。不会遮住战斗相机。")]
+        public BackgroundImageDefinition UpperImage;
         [Tooltip("初始镜头局部位置。")]
         public Vector3 CameraPosition = new Vector3(0f, 8f, -10f);
         [Tooltip("初始镜头局部欧拉角。")]

@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI;
+
 
 namespace ShinySTG.Background
 {
@@ -10,13 +10,15 @@ namespace ShinySTG.Background
         GameObject _spawnedContent;
         Color _initialClearColor;
         CameraClearFlags _initialClearFlags;
-        Canvas _fadeCanvas;
-        Image _fadeImage;
+
+
         bool _switching;
         bool _swapped;
         float _switchElapsed;
         float _fadeOut;
         float _fadeIn;
+        BackgroundTransitionStyle _transitionStyle;
+        Color _transitionColor;
         GameObject _nextPrefab;
         Vector3 _nextPosition;
         Quaternion _nextRotation;
@@ -26,7 +28,12 @@ namespace ShinySTG.Background
         bool _nextOverrideClearColor;
 
 
-        public BackgroundPlaybackHandle SwitchBackground(BackgroundDefinition definition, float fadeOut = 1f, float fadeIn = 1f)
+        public BackgroundPlaybackHandle SwitchBackground(BackgroundDefinition definition, float fadeOut = 1f, float fadeIn = 1f,
+            BackgroundTransitionStyle style = BackgroundTransitionStyle.BlackFade)
+            => BeginBackgroundSwitch(definition, fadeOut, fadeIn, style, false);
+
+        BackgroundPlaybackHandle BeginBackgroundSwitch(BackgroundDefinition definition, float fadeOut, float fadeIn,
+            BackgroundTransitionStyle style, bool immediate)
         {
             if (!Application.isPlaying || !isActiveAndEnabled || !HasValidBindings() || definition == null
                 || !Finite(fadeOut) || !Finite(fadeIn) || fadeOut < 0f || fadeIn < 0f
@@ -36,6 +43,9 @@ namespace ShinySTG.Background
                 || (definition.OverrideClearColor && !Finite((Vector4)definition.ClearColor)))
                 return FailedPlayback("换景配置或背景引用无效。");
             var prefab = definition.ContentPrefab;
+            if (definition.LowerImage != null && !definition.LowerImage.IsValid
+                || definition.UpperImage != null && !definition.UpperImage.IsValid)
+                return FailedPlayback("初始 2D 背景贴图配置无效。");
             int layer = LayerMask.NameToLayer("Background3D");
             if (prefab == null || prefab.scene.IsValid() || !prefab.activeSelf
                 || prefab.GetComponent<LoopingBackgroundStrip>() == null
@@ -53,10 +63,13 @@ namespace ShinySTG.Background
             if (!prefab.GetComponent<LoopingBackgroundStrip>().IsLayoutValid)
                 return FailedPlayback("换景布景布局无效，需要至少两个路段和有效长度。");
             CaptureInitialState();
-            EnsureFade();
+            if (!EnsureImageRenderer())
+                return FailedPlayback("背景贴图 Shader 不可用。");
             CancelPlayback();
             CurrentPlayback = new BackgroundPlaybackHandle();
             _nextPrefab = prefab;
+            _nextLowerImage = BackgroundImagePlayback.Snapshot.Capture(definition.LowerImage);
+            _nextUpperImage = BackgroundImagePlayback.Snapshot.Capture(definition.UpperImage);
             _nextPosition = definition.CameraPosition;
             _nextRotation = Quaternion.Euler(definition.CameraEulerAngles);
             _nextFov = definition.FieldOfView;
@@ -65,16 +78,39 @@ namespace ShinySTG.Background
             _nextOverrideClearColor = definition.OverrideClearColor;
             _fadeOut = fadeOut;
             _fadeIn = fadeIn;
+            _transitionStyle = style;
+            _transitionColor = style == BackgroundTransitionStyle.WhiteFlash ? Color.white : Color.black;
             _switchElapsed = 0f;
             _swapped = false;
+            if (immediate)
+            {
+                try
+                {
+                    SwapContent();
+                    CurrentPlayback.Complete();
+                }
+                catch (System.Exception exception)
+                {
+                    CurrentPlayback.Fail(exception.Message);
+                    Debug.LogException(exception, this);
+                }
+                return CurrentPlayback;
+            }
             _switching = true;
             return CurrentPlayback;
         }
 
         void TickSwitch()
         {
-            if (!IsTransitioning) { _switching = false; SetFade(0f); return; }
-            if (!HasValidBindings() || _initialStrip == null || _fadeImage == null || (!_swapped && _nextPrefab == null))
+            if (!IsTransitioning)
+            {
+                _switching = false;
+                SetFade(0f);
+                return;
+            }
+            if (!HasValidBindings() || _initialStrip == null
+                || _imageMaterial == null
+                || (!_swapped && _nextPrefab == null))
             {
                 CurrentPlayback.Fail("换景引用失效。");
                 _switching = false;
@@ -85,7 +121,24 @@ namespace ShinySTG.Background
             _switchElapsed += Time.deltaTime;
             if (!_swapped)
             {
-                SetFade(_fadeOut <= 0f ? 1f : Mathf.Clamp01(_switchElapsed / _fadeOut));
+                SetFade(_transitionStyle == BackgroundTransitionStyle.WhiteFlash
+                    ? 1f
+                    : _fadeOut <= 0f ? 1f : Mathf.Clamp01(_switchElapsed / _fadeOut));
+                if (_transitionStyle == BackgroundTransitionStyle.WhiteFlash)
+                {
+                    try { SwapContent(); }
+                    catch (System.Exception exception)
+                    {
+                        CurrentPlayback.Fail(exception.Message);
+                        _switching = false;
+                        SetFade(0f);
+                        Debug.LogException(exception, this);
+                        return;
+                    }
+                    _swapped = true;
+                    _switchElapsed = 0f;
+                    return;
+                }
                 if (_switchElapsed < _fadeOut) return;
                 try { SwapContent(); }
                 catch (System.Exception exception)
@@ -108,6 +161,9 @@ namespace ShinySTG.Background
 
         void SwapContent()
         {
+            if (_nextLowerImage != null && _nextLowerImage.Texture == null
+                || _nextUpperImage != null && _nextUpperImage.Texture == null)
+                throw new System.InvalidOperationException("待切换的 2D 背景贴图已失效。");
             var content = Instantiate(_nextPrefab, _initialStrip.transform.parent, false);
             var next = content.GetComponent<LoopingBackgroundStrip>();
             if (!next.isActiveAndEnabled)
@@ -125,11 +181,16 @@ namespace ShinySTG.Background
             _cameraRig.localPosition = _nextPosition;
             _cameraRig.localRotation = _nextRotation;
             _backgroundCamera.fieldOfView = _nextFov;
+            RestoreImageClearFlags();
             if (_nextOverrideClearColor)
             {
                 _backgroundCamera.clearFlags = CameraClearFlags.SolidColor;
                 _backgroundCamera.backgroundColor = _nextColor;
             }
+
+            _lowerImage.Set(_nextLowerImage, 0f, 0f);
+            _upperImage.Set(_nextUpperImage, 0f, 0f);
+            _nextLowerImage = _nextUpperImage = null;
 
         }
 
@@ -154,38 +215,7 @@ namespace ShinySTG.Background
             }
         }
 
-        void EnsureFade()
-        {
-            if (_fadeCanvas != null) return;
-            var go = new GameObject("BackgroundTransitionOverlay", typeof(RectTransform), typeof(Canvas));
-            go.layer = LayerMask.NameToLayer("Background3D");
-            go.transform.SetParent(_backgroundCamera.transform, false);
-            _fadeCanvas = go.GetComponent<Canvas>();
-            _fadeCanvas.renderMode = RenderMode.ScreenSpaceCamera;
-            _fadeCanvas.worldCamera = _backgroundCamera;
-            _fadeCanvas.overrideSorting = true;
-            _fadeCanvas.sortingOrder = short.MaxValue;
-            var image = new GameObject("Fade", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            image.layer = go.layer;
-            image.transform.SetParent(go.transform, false);
-            _fadeImage = image.GetComponent<Image>();
-            _fadeImage.raycastTarget = false;
-            var rect = (RectTransform)image.transform;
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = rect.offsetMax = Vector2.zero;
-            SetFade(0f);
-        }
-
-        void SetFade(float alpha)
-        {
-            if (_fadeImage == null) return;
-            _fadeCanvas.planeDistance = _backgroundCamera != null ? _backgroundCamera.nearClipPlane + 0.01f : 0.31f;
-            _fadeImage.color = new Color(0f, 0f, 0f, alpha);
-            _fadeCanvas.enabled = alpha > 0f;
-            // 完成/取消后移出整个 Canvas 渲染层级，避免残留 Graphic 参与绘制。
-            _fadeCanvas.gameObject.SetActive(alpha > 0f);
-        }
+        void SetFade(float alpha) => _fadeAlpha = Mathf.Clamp01(alpha);
 
         [ContextMenu("Log Background Visual State (Play Mode)")]
         void LogBackgroundVisualState()
@@ -195,7 +225,7 @@ namespace ShinySTG.Background
             report.AppendLine($"Playback={CurrentPlayback?.Status}, Switching={_switching}, Paused={IsPaused}");
             report.AppendLine($"Camera world={_backgroundCamera.transform.position}, rotation={_backgroundCamera.transform.eulerAngles}, FOV={_backgroundCamera.fieldOfView}");
             report.AppendLine($"Content={_strip.name}, world={_strip.transform.position}, scale={_strip.transform.lossyScale}");
-            report.AppendLine($"Overlay active={(_fadeCanvas != null && _fadeCanvas.gameObject.activeInHierarchy)}, alpha={(_fadeImage != null ? _fadeImage.color.a : 0f)}");
+            report.AppendLine($"Overlay alpha={_fadeAlpha}");
             report.AppendLine($"Camera clear={_backgroundCamera.backgroundColor}, global fog={RenderSettings.fog}, global fog color={RenderSettings.fogColor}");
             int count = 0;
             foreach (var renderer in _strip.GetComponentsInChildren<MeshRenderer>())

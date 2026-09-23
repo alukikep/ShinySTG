@@ -13,6 +13,8 @@ namespace ShinySTG.Level.SpawnEntries
         public float FadeOut = 1f;
         [Min(0f), Tooltip("背景淡入秒数。")]
         public float FadeIn = 1f;
+        [Tooltip("换景遮罩样式。White Flash 会立即白屏，再渐显到新背景。")]
+        public BackgroundTransitionStyle TransitionStyle = BackgroundTransitionStyle.BlackFade;
 
         public override bool ShouldTrigger(bool alreadyFired) => !alreadyFired;
 
@@ -21,7 +23,7 @@ namespace ShinySTG.Level.SpawnEntries
             if (!Application.isPlaying) return;
             var level = LevelController.Instance;
             if (level == null || runtime == null || level.Runtime != runtime) return;
-            level.RequestBackgroundSwitch(runtime, Background, FadeOut, FadeIn);
+            level.RequestBackgroundSwitch(runtime, Background, FadeOut, FadeIn, TransitionStyle);
         }
     }
 }

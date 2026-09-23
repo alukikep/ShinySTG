@@ -56,11 +56,9 @@ namespace ShinySTG.Background
             return true;
         }
 
-        public void ApplyDefinitionImmediate(BackgroundDefinition definition)
-        {
-            if (!Application.isPlaying || definition == null) return;
-            SwitchBackground(definition, 0f, 0f);
-        }
+        /// <summary>同步应用布景和镜头，不受暂停或时间缩放影响，也不播放换景遮罩。</summary>
+        public BackgroundPlaybackHandle ApplyDefinitionImmediate(BackgroundDefinition definition)
+            => BeginBackgroundSwitch(definition, 0f, 0f, BackgroundTransitionStyle.BlackFade, true);
 
         public BackgroundPlaybackHandle Play(BackgroundCue cue)
         {
@@ -111,6 +109,7 @@ namespace ShinySTG.Background
 
         void Update()
         {
+            TickImages();
             if (_switching) { TickSwitch(); return; }
             if (!IsTransitioning) return;
             if (!HasValidBindings())
@@ -166,6 +165,7 @@ namespace ShinySTG.Background
         {
             if (!Application.isPlaying) return;
             CancelPlayback();
+            ResetImages();
             RestoreInitialContent();
             if (!HasValidBindings() || !CaptureInitialState())
             {
@@ -181,12 +181,24 @@ namespace ShinySTG.Background
             _elapsed = 0f;
         }
 
-        void OnDisable() => CancelPlayback();
+        void OnEnable()
+        {
+            if (Application.isPlaying && (_lowerImage.Image != null || _upperImage.Image != null))
+                EnsureImageRenderer();
+        }
+
+        void OnDisable()
+        {
+            CancelPlayback();
+            CancelImagePlayback();
+            ReleaseImageRenderer();
+        }
         void OnDestroy()
         {
             CancelPlayback();
+            ResetImages();
+            ReleaseImageRenderer();
             RestoreInitialContent();
-            if (_fadeCanvas != null) Destroy(_fadeCanvas.gameObject);
         }
 
         bool HasValidBindings()

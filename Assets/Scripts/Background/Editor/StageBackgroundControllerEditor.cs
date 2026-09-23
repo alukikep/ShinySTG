@@ -12,6 +12,7 @@ namespace ShinySTG.Background.Editor
         BackgroundDefinition _previewBackground;
         float _fadeOut = 1f;
         float _fadeIn = 1f;
+        BackgroundTransitionStyle _transitionStyle = BackgroundTransitionStyle.BlackFade;
 
         public override bool RequiresConstantRepaint() => Application.isPlaying;
 
@@ -32,9 +33,10 @@ namespace ShinySTG.Background.Editor
             _previewBackground = (BackgroundDefinition)EditorGUILayout.ObjectField("Next Background", _previewBackground, typeof(BackgroundDefinition), false);
             _fadeOut = EditorGUILayout.FloatField("Fade Out Seconds", _fadeOut);
             _fadeIn = EditorGUILayout.FloatField("Fade In Seconds", _fadeIn);
+            _transitionStyle = (BackgroundTransitionStyle)EditorGUILayout.EnumPopup("Transition Style", _transitionStyle);
             using (new EditorGUI.DisabledScope(!Application.isPlaying || !controller.isActiveAndEnabled || _previewBackground == null))
                 if (GUILayout.Button("Switch Background"))
-                    _lastAttempt = controller.SwitchBackground(_previewBackground, _fadeOut, _fadeIn);
+                    _lastAttempt = controller.SwitchBackground(_previewBackground, _fadeOut, _fadeIn, _transitionStyle);
             using (new EditorGUI.DisabledScope(!Application.isPlaying))
             {
                 if (GUILayout.Button(controller.IsPaused ? "Resume Background" : "Pause Background"))

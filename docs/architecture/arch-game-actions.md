@@ -82,3 +82,7 @@ PlayerDeathController 直接执行 SR 指令数组，不通过 GameActionRunner 
 - [level](./arch-level.md)：Encounter 是动作宿主，关卡阻塞时仍推进动作。
 - [enemy-ai](./arch-enemy-ai.md)：通过行为流适配和全局指令共享现有能力。
 - [操作说明](../../Assets/Scripts/GameActions/README.md)：Inspector 配置、最小例子和公共调用入口。
+
+## 背景 Sprite 动作
+
+SetBackgroundImageAction 通过当前关卡绑定控制 Lower 或 Upper 层，沿用真实 LevelRuntime 校验和预览隔离，按实际淡化句柄等待。每层独立于 3D 镜头播放；同层接管会取消旧动作，旧句柄释放不会影响新请求。正常完成后图片继续显示，Image 留空执行隐藏，符卡退出与击破收尾应显式配置隐藏动作。取消仅保留当前画面，不自动回滚到进入前的图片；完整换景和关卡生命周期负责统一重置。配置与渲染边界见 [背景架构](./arch-background.md)。

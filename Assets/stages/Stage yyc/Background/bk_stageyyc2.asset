@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42a383fdd7564da4aaa236f2a0e0a024, type: 3}
+  m_Name: bk_stageyyc2
+  m_EditorClassIdentifier: 
+  ContentPrefab: {fileID: 3275371859117195254, guid: f645c6144e8c0bf42893e5d0d28ef6a8, type: 3}
+  LowerImage: {fileID: 11400000, guid: bd7e3fca943f68a428b8756abd985c0f, type: 2}
+  UpperImage: {fileID: 0}
+  CameraPosition: {x: 0, y: 0, z: -10}
+  CameraEulerAngles: {x: -30, y: 0, z: 0}
+  FieldOfView: 50
+  ScrollSpeed: 8
+  OverrideClearColor: 0
+  ClearColor: {r: 0.06, g: 0.08, b: 0.12, a: 1}

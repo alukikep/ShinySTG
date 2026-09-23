@@ -185,7 +185,7 @@ BackgroundDefinition 的“覆盖背景底色”默认关闭：换景保留当�
 
 配置资产被修改时保留字段快照；运行时不替换材质或修改共享 Prefab。换入布景的 LoopingBackgroundStrip 会自行收集 UV 播放状态；换景前确保其材质、层和循环布局已在 Prefab 内配置。换景 Prefab 不应包含 `StageBackgroundController`、背景相机或过渡 Canvas。工具会拒绝层级、组件和布局不符合要求的配置。
 
-验收：玩家/弹幕/UI 在淡出、全黑、淡入全程可见；切换后新道路循环、UV 滚动、雾效和 Cue 可用；暂停/恢复保持进度；取消不留下遮罩；完整重置回到初始布景；重复切换不增长场景对象；关卡重开恢复初始背景。请在 Play 后观察 Hierarchy 的运行时实例，退出 Play 后确认 Prefab 和场景无意外持久化。当前仅支持单背景相机和单遮罩，不支持两套背景交叉溶解、透明云层；关卡与 Boss 自动换景配置见下文。
+验收：玩家/弹幕/UI 在淡出、全黑、淡入全程可见；切换后新道路循环、UV 滚动、雾效和 Cue 可用；暂停/恢复保持进度；取消不留下遮罩；完整重置回到初始布景；重复切换不增长场景对象；关卡重开恢复初始背景。请在 Play 后观察 Hierarchy 的运行时实例，退出 Play 后确认 Prefab 和场景无意外持久化。当前仅支持单背景相机和单遮罩，不支持两套 3D 布景交叉溶解；透明天空或云图可使用下文的 2D Sprite 层；关卡与 Boss 自动换景配置见下文。
 
 源码：[BackgroundDefinition.cs](./BackgroundDefinition.cs)、[StageBackgroundController.Transition.cs](./StageBackgroundController.Transition.cs)。
 
@@ -197,6 +197,30 @@ BackgroundDefinition 的“覆盖背景底色”默认关闭：换景保留当�
 工具修改当前 Prefab Stage 的内容并标记 dirty，不直接覆盖 Project 资产。Auto Save 开启时由 Unity 自动保存；建议关闭 Auto Save 后测试生成、一次 Undo、Redo，再保存并重新打开确认路段数量、布局和嵌套 Prefab 连接。路段源 Prefab 不会被修改。工具禁止修改其它场景残留目标，并拒绝当前背景自身或依赖当前背景的路段，避免循环 Prefab 引用。
 
 ## 关卡与 Boss 自动换景
+
+### 2D Sprite 天空与符卡背景
+
+在 Project 右键 `Create > STG > Background > Image` 创建贴图配置，指定 Sprite、Tint 和适配方式。Cover 默认等比铺满并居中裁切，Stretch 拉伸填满背景相机视口。源图片导入类型设为 Sprite (2D and UI)，可选择 Single 或 Multiple 的单张切图。需要 UV 滚动平铺时启用配置中的 Repeat，仅在当前 Sprite 范围内循环；关闭时固定边缘。Sprite Atlas 请关闭 Tight Packing 和 Allow Rotation；不支持的打包模式会被拒绝。系统不修改共享纹理或材质。
+
+导入图片后点击 Apply；Multiple 模式先在 Sprite Editor 切片并 Apply，再从 Project 展开图片，将其中的 Sprite 拖入配置。这里选择的是 Sprite 子资源，不是整张 Texture。画面比例按 Sprite 自身矩形计算，图集相邻图片不会参与滚动；透明区域会露出下方内容。Repeat 是本配置的采样规则，不需要修改源纹理的 Wrap Mode。
+
+从旧 Texture 配置升级时，需要在 Sprite 字段重新选择资源；Texture2D 引用不能自动转换成某一张 Sprite。Image 配置存在但 Sprite 留空属于无效配置；要隐藏一层，应将 BackgroundDefinition 或动作中的整个 Image 引用留空。
+
+在 BackgroundDefinition 的 Lower Image 配置天空，在 Upper Image 配置覆盖 3D 的贴图；留空表示清除此层。依次绘制底色、Lower、3D 布景、Upper、换景黑幕/白闪，战斗相机仍在其后绘制。贴图固定在背景相机视口，不随镜头旋转、移动或 FOV 变化；下层可见期间暂用纯色清屏，避免 Skybox 覆盖天空图。无需给场景或循环布景 Prefab 新增物体。
+
+关卡条目选择 `背景/Set Background Image`，Boss 动作选择 `Game Action/Set Background Image`。Layer 选择 Lower 或 Upper；Image 留空隐藏该层。Fade Out 是旧图淡出时间，Fade In 是新图淡入时间；两者为零时同步完成，替换先淡出再淡入，不是交叉淡化。条目 Duration 保持零；动作可以通过宿主 WaitForCompletion 等待真实淡化完成。
+
+符卡阶段进入时显示 Upper 图，阶段退出及击破收尾按需要添加 Image 留空的动作。正常完成后图片保持显示；中断动作保留当前画面，故仍需显式收尾。上下层和 3D 镜头分别持有播放句柄，同层新请求接管旧请求，旧动作取消不会影响新图。暂停冻结 UV 和淡化；取消仅冻结淡化，贴图 UV 仍随背景时间滚动。
+
+完整换景在遮罩下替换两层配置；关卡重开恢复配置并重置 UV，结束取消淡化并暂停。直接 Reset Entire Background 清空两层并恢复场景默认 3D。未配置图片的旧资产保持原样。当前仍需有效 3D 布景及背景相机，不支持无布景的纯 2D 模式。
+
+Shader 位于 Resources，通过明确资源路径加载，供构建保留。验收请检查宽高比、透明 PNG、RenderTexture/局部视口、天空与透明 3D 物体的先后关系、镜头运动、黑幕/白闪覆盖，以及符卡中断、换关和重开后的清理。
+
+源码：[贴图配置](./BackgroundImageDefinition.cs)、[贴图渲染](./StageBackgroundController.Images.cs)、[关卡条目](../Level/SpawnEntries/SetBackgroundImageEntry.cs)、[符卡动作](../GameActions/SetBackgroundImageAction.cs)。
+
+### 初始背景与完整换景
+
+在 LevelDefinition 的 InitialBackground 指定开局背景。关卡开始、换关、重开及运行中重新启用绑定时，LevelBackgroundBinding 先清理旧背景状态，再同步应用本关配置；留空恢复场景默认背景。初始化不播放遮罩，不依赖暂停状态或 Time.timeScale，失败时在 Console 报告原因。控制器的 Reset Entire Background 仍恢复场景默认布景；重开关卡则重新应用本关配置。
 
 保持当前 LevelBackgroundBinding 配置。关卡 Entries 添加 `背景/Switch Background`，指定 BackgroundDefinition、TriggerTime、FadeOut、FadeIn；Duration 保持 0。条目始终只触发一次，不等待、不阻塞刷怪；相同时间按条目数组顺序执行，后发起的换景/Cue 接管前者。
 

@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 195aad2d24357ad4eae3908cbbc82049, type: 3}
+  m_Name: y-i fp m
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 6116438007695648348, guid: 2ad9a1c1c14e586459fa52ff0b7763d7, type: 3}
+  ModifierPrefabs:
+  - rid: 6177227258094157835
+  FireExtensions:
+  - rid: 6177227258094157838
+  - rid: 6177227271247495194
+  FireSounds:
+  - rid: 6177227258094157837
+  Speed: 6
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 6177227258094157836
+  Damage: 1
+  Count: 1
+  DeltaSpeed: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 6177227258094157835
+      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 0
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 0
+        Color: {r: 0, g: 0.10881472, b: 1, a: 1}
+        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
+        FadeStart: 0.5
+        ReferenceLifetime: 1.5
+        FlashFrequency: 5
+        FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1
+    - rid: 6177227258094157836
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 0, g: 0.09549999, b: 1, a: 1}
+        FogStartScale: 1.1
+        Easing: 0
+    - rid: 6177227258094157837
+      type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
+        VolumeMul: 1
+        Pitch: 1
+    - rid: 6177227258094157838
+      type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
+      data: 
+    - rid: 6177227271247495194
+      type: {class: OffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        OffsetAngle: 180

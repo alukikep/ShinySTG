@@ -12,7 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 42a383fdd7564da4aaa236f2a0e0a024, type: 3}
   m_Name: bk_stageyyc1
   m_EditorClassIdentifier: 
-  ContentPrefab: {fileID: 969647279803376634, guid: 8cab3860fa6b26d4bbb7eca3065e1f4a, type: 3}
+  ContentPrefab: {fileID: 6855273440579598009, guid: 3c27ff15955bb754981c750a3ea1a6f8, type: 3}
+  LowerImage: {fileID: 11400000, guid: bd7e3fca943f68a428b8756abd985c0f, type: 2}
+  UpperImage: {fileID: 0}
   CameraPosition: {x: 0, y: 8, z: -10}
   CameraEulerAngles: {x: 30, y: 0, z: 0}
   FieldOfView: 50

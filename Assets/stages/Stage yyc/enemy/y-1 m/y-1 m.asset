@@ -59,7 +59,7 @@ MonoBehaviour:
         DurationConfig:
           rid: 6177227258094157834
         _legacyDuration: 1
-        Pattern: {fileID: 11400000, guid: 3504e79e9a5668a4498ff34c10d662dd, type: 2}
+        Pattern: {fileID: 11400000, guid: bf6fe0a70139bcd458938099da8b7406, type: 2}
         FireRate: 5
         OneShot: 0
         AimOffsetDeg: 0
