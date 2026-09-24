@@ -86,7 +86,8 @@ namespace ShinySTG.Presentation.SpellDeclaration.Editor
             var encounter = Selection.activeObject as BossEncounterDefinition;
             var sample = AssetDatabase.LoadAssetAtPath<SpellDeclarationDefinition>(SamplePath);
             if (encounter == null || sample == null) return;
-            var phase = encounter.Phases != null && encounter.Phases.Length > 0 ? encounter.Phases[0] : null;
+            var firstBar = encounter.Bars == null ? null : System.Array.Find(encounter.Bars, bar => bar != null && bar.Id == encounter.StartBarId);
+            var phase = firstBar?.States != null && firstBar.States.Length > 0 ? firstBar.States[0] : null;
             if (phase == null)
             {
                 Debug.LogWarning("[Spell Declaration] 请先创建首阶段。", encounter);

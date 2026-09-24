@@ -33,7 +33,7 @@ namespace ShinySTG.EnemyAI.Boss.Editor
                 if (bar != null && bar.Id == id) { count++; found = bar; }
             if (count == 0) return "引用的血管已删除或 ID 已改变。";
             if (count > 1) return "血管 ID 重复，请在 Encounter 整理 ID 后确认引用。";
-            if (!(found.MaxHp > 0f) || float.IsInfinity(found.MaxHp)) return "血管上限必须是有限正数。";
+            if (!(found.EffectiveMaxHp > 0f) || float.IsInfinity(found.EffectiveMaxHp)) return "血管上限必须是有限正数。";
             return null;
         }
 
@@ -46,10 +46,10 @@ namespace ShinySTG.EnemyAI.Boss.Editor
             return "未指定/失效血管";
         }
 
-        public static void BarPopup(SerializedProperty property, BossHealth.HealthBar[] bars, string label)
+        public static void BarPopup(SerializedProperty property, BossHealth.HealthBar[] bars, string label, string emptyLabel = null)
         {
             var ids = new List<string> { "" };
-            var labels = new List<string> { "请选择血管" };
+            var labels = new List<string> { emptyLabel ?? "请选择血管" };
             if (bars != null)
                 for (int i = 0; i < bars.Length; i++)
                 {
@@ -68,7 +68,7 @@ namespace ShinySTG.EnemyAI.Boss.Editor
             EditorGUI.BeginChangeCheck();
             int next = EditorGUILayout.Popup(label, selected, labels.ToArray());
             if (EditorGUI.EndChangeCheck()) property.stringValue = ids[next];
-            string error = BarError(bars, property.stringValue);
+            string error = emptyLabel != null && string.IsNullOrEmpty(property.stringValue) ? null : BarError(bars, property.stringValue);
             if (error != null) EditorGUILayout.HelpBox(error, MessageType.Error);
         }
 

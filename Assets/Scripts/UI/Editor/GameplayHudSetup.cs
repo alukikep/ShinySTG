@@ -102,7 +102,124 @@ namespace ShinySTG.UI.Editor
             viewSo.FindProperty("_barCount").objectReferenceValue = text;
             viewSo.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(view);
+            AddTimer(view);
+            AddSegments(view);
             Selection.activeGameObject = bossRoot;
+        }
+
+        [MenuItem("STG/UI/Add Boss HUD Timer")]
+        static void AddSelectedTimer()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            var selected = Selection.activeGameObject;
+            var view = selected != null ? selected.GetComponentInChildren<BossHudView>(true) : null;
+            if (view == null && selected != null) view = selected.GetComponentInParent<BossHudView>();
+            if (view == null || !view.gameObject.scene.IsValid())
+            {
+                Debug.LogWarning("[HUD] 请先选中场景中的 BossHud 或其父节点。");
+                return;
+            }
+            Undo.IncrementCurrentGroup();
+            int group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Add Boss HUD Timer");
+            try
+            {
+                AddTimer(view);
+                EditorSceneManager.MarkSceneDirty(view.gameObject.scene);
+            }
+            catch (System.Exception exception)
+            {
+                Undo.RevertAllDownToGroup(group);
+                Debug.LogException(exception);
+            }
+            finally { Undo.CollapseUndoOperations(group); }
+        }
+
+        internal static void AddTimer(BossHudView view)
+        {
+            var serialized = new SerializedObject(view);
+            if (serialized.FindProperty("_timer").objectReferenceValue != null) return;
+            var fill = serialized.FindProperty("_fill").objectReferenceValue as Image;
+            var bar = fill != null ? fill.transform.parent as RectTransform : null;
+            if (bar == null) throw new System.InvalidOperationException("请先绑定血条填充和背景 RectTransform。");
+            // Anchor to the actual bar, so existing manually positioned HUD roots also work.
+            var go = new GameObject("Timer", typeof(RectTransform), typeof(TextMeshProUGUI));
+            Undo.RegisterCreatedObjectUndo(go, "Add Boss HUD Timer");
+            go.transform.SetParent(bar, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0f, .5f);
+            rect.anchoredPosition = new Vector2(12f, 0f);
+            rect.sizeDelta = new Vector2(48f, 0f);
+            var text = go.GetComponent<TextMeshProUGUI>();
+            var count = serialized.FindProperty("_barCount").objectReferenceValue as TMP_Text;
+            text.font = count != null ? count.font : TMP_Settings.defaultFontAsset;
+            text.fontSize = count != null ? count.fontSize : 18f;
+            text.color = count != null ? count.color : Color.white;
+            text.alignment = TextAlignmentOptions.Midline;
+            text.raycastTarget = false;
+            text.text = "99";
+            // Keep both labels on the right without overlapping. This is an explicit editor operation.
+            if (count != null)
+            {
+                var countRect = count.rectTransform;
+                Undo.SetTransformParent(countRect, bar, "Position Boss HUD Count");
+                Undo.RecordObject(countRect, "Position Boss HUD Count");
+                countRect.anchorMin = new Vector2(1f, 0f);
+                countRect.anchorMax = Vector2.one;
+                countRect.pivot = new Vector2(0f, .5f);
+                countRect.anchoredPosition = new Vector2(72f, 0f);
+                countRect.sizeDelta = new Vector2(Mathf.Max(40f, countRect.sizeDelta.x), 0f);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(countRect);
+            }
+            serialized.FindProperty("_timer").objectReferenceValue = text;
+            serialized.ApplyModifiedProperties();
+            PrefabUtility.RecordPrefabInstancePropertyModifications(view);
+            EditorUtility.SetDirty(view);
+        }
+
+        [MenuItem("STG/UI/Add Boss HUD Segments")]
+        static void AddSelectedSegments()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            var selected = Selection.activeGameObject;
+            var view = selected != null ? selected.GetComponentInChildren<BossHudView>(true) : null;
+            if (view == null && selected != null) view = selected.GetComponentInParent<BossHudView>();
+            if (view == null || !view.gameObject.scene.IsValid()) return;
+            Undo.IncrementCurrentGroup();
+            int group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Add Boss HUD Segments");
+            try
+            {
+                AddSegments(view);
+                EditorSceneManager.MarkSceneDirty(view.gameObject.scene);
+            }
+            catch (System.Exception exception)
+            {
+                Undo.RevertAllDownToGroup(group);
+                Debug.LogException(exception);
+            }
+            finally { Undo.CollapseUndoOperations(group); }
+        }
+
+        internal static void AddSegments(BossHudView view)
+        {
+            var serialized = new SerializedObject(view);
+            if (serialized.FindProperty("_segmentRoot").objectReferenceValue != null) return;
+            var fill = serialized.FindProperty("_fill").objectReferenceValue as Image;
+            if (fill == null) throw new System.InvalidOperationException("请先绑定原血条填充 Image。");
+            var root = new GameObject("Segments", typeof(RectTransform));
+            Undo.RegisterCreatedObjectUndo(root, "Add Boss HUD Segments");
+            root.transform.SetParent(fill.transform, false);
+            var rect = (RectTransform)root.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            serialized.FindProperty("_segmentRoot").objectReferenceValue = rect;
+            serialized.ApplyModifiedProperties();
+            PrefabUtility.RecordPrefabInstancePropertyModifications(view);
+            EditorUtility.SetDirty(view);
         }
 
         static GameObject CreateImage(string name, Transform parent, Color color, bool stretch)

@@ -1,0 +1,193 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c09c7ede91304b87a122d01ada3f0487, type: 3}
+  m_Name: Marisa
+  m_EditorClassIdentifier: 
+  BossPrefab: {fileID: 7202559043894379566, guid: 9631e381b04502241afa2727505b9ba7, type: 3}
+  DefeatOutroDelay: 1
+  EncounterStartSfx: {fileID: 0}
+  DefeatSfx: {fileID: 0}
+  Bars:
+  - Id: nospell1
+    Name: nospell1
+    MaxHp: 400
+    Segments:
+    - Id: bb0e37d005644440b4d2f44659727e30
+      Name: nospell1
+      Kind: 0
+      MaxHp: 400
+      DamageTakenMultiplier: 1
+      Color: {r: 1, g: 1, b: 1, a: 1}
+      HasTimeLimit: 1
+      TimeLimit: 60
+      States:
+      - rid: 6177227301945081861
+    - Id: 5f9a9fa19013402182f757574d9cf0a7
+      Name: "\u975E\u7B26"
+      Kind: 0
+      MaxHp: 100
+      DamageTakenMultiplier: 0.4
+      Color: {r: 1, g: 0, b: 0, a: 1}
+      HasTimeLimit: 0
+      TimeLimit: 60
+      States:
+      - rid: 6177227301945081863
+    TriggerOnEmpty: 1
+    DiscardOverflow: 0
+    NextBarId: 
+    HasTimeLimit: 1
+    TimeLimit: 60
+    States:
+    - rid: 6177227299071197203
+    - rid: 6177227299071197204
+  StartBarId: nospell1
+  Signals: []
+  Phases:
+  - rid: 6177227299071197185
+  Loop: 0
+  StartActions:
+    WaitForCompletion: 1
+    Actions: []
+  DefeatActions:
+    WaitForCompletion: 1
+    Actions: []
+  CompleteActions:
+    WaitForCompletion: 1
+    Actions: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 6177227299071197185
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        AdvanceMode: 0
+        AdvanceAfterSeconds: 10
+        AdvanceAtPercent: 50
+        DisplayName: 
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions: []
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 0}
+        ResetOnEnter: 1
+    - rid: 6177227299071197203
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        AdvanceMode: 1
+        AdvanceAfterSeconds: 10
+        AdvanceAtPercent: 50
+        DisplayName: 
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions: []
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227299071197204
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        AdvanceMode: 0
+        AdvanceAfterSeconds: 10
+        AdvanceAtPercent: 50
+        DisplayName: 
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 0
+        ConditionMatch: 0
+        ExitConditions: []
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227301945081861
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        AdvanceMode: 1
+        AdvanceAfterSeconds: 10
+        AdvanceAtPercent: 50
+        DisplayName: 
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 1
+        ConditionMatch: 0
+        ExitConditions: []
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
+        ResetOnEnter: 1
+    - rid: 6177227301945081863
+      type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
+      data:
+        AdvanceMode: 0
+        AdvanceAfterSeconds: 10
+        AdvanceAtPercent: 50
+        DisplayName: 
+        EnterSfx: {fileID: 0}
+        ExitSfx: {fileID: 0}
+        EnterActions:
+          WaitForCompletion: 1
+          Actions: []
+        ExitActions:
+          WaitForCompletion: 1
+          Actions: []
+        EnterCommands: []
+        ExitCommands: []
+        ExitTriggers: []
+        ExitMode: 0
+        ConditionMatch: 0
+        ExitConditions: []
+        ProtectBarTransition: 0
+        ProtectedBarId: 
+        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
+        ResetOnEnter: 1

@@ -88,7 +88,8 @@ Death Sfx 仍仅在生命归零播放，避免把相同音效同时配置在两�
 
 指令示例：Death Commands 添加 Command/Clear Projectiles，选择清除敌弹并包含激光；
 需要死亡掉落时再添加 Command/Spawn Drops 并指定 DropProfile。
-这会生成道具，不会自动扣除玩家 Power。玩家死亡不受该指令的 Boss 阶段退出开关限制。
+需要死亡扣火力时添加 Command/Remove Player Power，并在 Power 中填写扣除值（1.0 为一整级，
+0.01 为一个 Power 单位）。这些指令会在实际扣命后的下一帧执行；玩家死亡不受该指令的 Boss 阶段退出开关限制。
 指令使用执行时玩家位置，死亡等待期间不要让其他脚本移动玩家。
 
 生命结算与表现的职责、事件时序见 [玩家架构](../../../docs/architecture/arch-player.md)。

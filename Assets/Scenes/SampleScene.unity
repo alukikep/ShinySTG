@@ -1882,8 +1882,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnlockThresholds: 01000000020000000300000004000000
-  PositionForm:
-    rid: 6177226897835687936
+  PowerLayouts:
+  - NormalPositions: []
+    FocusPositions: []
+  - NormalPositions:
+    - {x: -0.6, y: 1.2}
+    FocusPositions:
+    - {x: -0.4, y: 0.5}
+  - NormalPositions:
+    - {x: -0.6, y: 1.2}
+    - {x: 0.6, y: 1.2}
+    FocusPositions:
+    - {x: -0.5, y: 0.5}
+    - {x: 0.5, y: 0.5}
+  - NormalPositions:
+    - {x: -0.6, y: 1.2}
+    - {x: 0.6, y: 1.2}
+    - {x: 0, y: -0.6}
+    FocusPositions:
+    - {x: -0.5, y: 0.5}
+    - {x: 0.5, y: 0.5}
+    - {x: 0, y: -0.3}
+  - NormalPositions:
+    - {x: -0.6, y: 1.2}
+    - {x: 0.6, y: 1.2}
+    - {x: -0.6, y: -1.2}
+    - {x: 0.6, y: -1.2}
+    FocusPositions:
+    - {x: -0.4, y: 0.5}
+    - {x: 0.4, y: 0.5}
+    - {x: -0.4, y: -0.5}
+    - {x: 0.4, y: -0.5}
   OptionPrefab: {fileID: 4158770122188674009, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
   OptionFirePatterns:
   - {fileID: 11400000, guid: a92597a98c150e74ebcddd845982f417, type: 2}
@@ -1892,16 +1921,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a92597a98c150e74ebcddd845982f417, type: 2}
   OptionFireRate: 6
   FollowLerp: 0.25
-  references:
-    version: 2
-    RefIds:
-    - rid: 6177226897835687936
-      type: {class: TouhouSymmetricForm, ns: ShinySTG.Player, asm: Assembly-CSharp}
-      data:
-        NormalSide: 0.6
-        NormalBack: 1.2
-        FocusSide: 0.4
-        FocusBack: 0.5
 --- !u!114 &547702075
 MonoBehaviour:
   m_ObjectHideFlags: 0

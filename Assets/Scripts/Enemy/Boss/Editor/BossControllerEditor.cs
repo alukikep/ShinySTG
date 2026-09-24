@@ -23,17 +23,19 @@ namespace ShinySTG.EnemyAI.Boss.Editor
             if (boss.Phases == null || boss.CurrentPhaseIndex < 0 || boss.CurrentPhaseIndex >= boss.Phases.Length) return;
             var phase = boss.Phases[boss.CurrentPhaseIndex];
             if (phase == null) return;
-            EditorGUILayout.LabelField("退出条件", boss.IsTransitioning ? "等待过渡（不检测）" : phase.ShouldExit(boss) ? "满足" : "未满足");
-            if (phase.ExitMode != PhaseExitMode.Conditions || phase.ExitConditions == null) return;
-            foreach (var condition in phase.ExitConditions)
+            if (health != null && health.UsesBarStates && !health.IsDead)
             {
-                if (condition == null) { EditorGUILayout.LabelField("空条件"); continue; }
-                string value = "不可用";
-                if (condition.Kind == PhaseExitConditionKind.PhaseTimeAtLeast) value = $"{boss.PhaseElapsedSeconds:0.00}s";
-                else if (condition.Kind == PhaseExitConditionKind.TotalHpPercentAtMost && health != null) value = $"{health.TotalHpPercent:0.##}%";
-                else if (condition.Kind == PhaseExitConditionKind.Signal) value = boss.GetSignal(condition.SignalTrigger?.SignalIndex ?? -1)?.CurrentValue.ToString("0.##") ?? value;
-                else if (health != null && health.TryGetBarPercent(condition.BarId, out float percent)) value = $"{percent:0.##}%";
-                EditorGUILayout.LabelField(condition.Kind.ToString(), $"{value} · {(condition.IsSatisfied(boss) ? "满足" : "未满足")}");
+                var bar = health.Bars[health.CurrentBarIndex];
+                EditorGUILayout.LabelField("当前血管", bar.Name);
+                EditorGUILayout.LabelField("当前倒计时", boss.TryGetBarRemainingSeconds(out float seconds) ? $"{seconds:0.00}s" : "无时限");
+                EditorGUILayout.LabelField("剩余血量", $"{health.CurrentBarPercent:0.##}%");
+                var states = health.UsesSegments ? health.CurrentSegment.States : bar.States;
+                if (health.UsesSegments)
+                    EditorGUILayout.LabelField("当前分段", $"{health.CurrentSegment.Name} · {health.CurrentSegmentPercent:0.##}% · {boss.SegmentElapsedSeconds:0.00}s");
+                bool last = states[states.Length - 1] == phase;
+                string scope = health.UsesSegments ? "本段" : "本管";
+                EditorGUILayout.LabelField("下一状态", last ? $"保持到{scope}结束" : phase.AdvanceMode == BossPhase.StateAdvanceMode.Time
+                    ? $"状态时间达到 {phase.AdvanceAfterSeconds}s" : $"{scope}血量 ≤ {phase.AdvanceAtPercent}%");
             }
         }
 

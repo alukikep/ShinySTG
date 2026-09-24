@@ -40,14 +40,14 @@ namespace ShinySTG.Level.Encounter
                 Dispose();
                 return;
             }
-            if (!_definition.TryValidate(out var error))
+            if (!_definition.TryValidateForRuntime(out var error))
             {
                 Debug.LogError($"[Boss Encounter] {error}", definition);
                 Dispose();
                 return;
             }
             _boss.BindEncounter(this, definition);
-            _health.Initialize(_definition.Bars);
+            _health.Initialize(_definition.GetOrderedBars(), true);
             _controller.Initialize(_definition);
             _context = new GameActionContext(bossObject.transform, _controller, levelRuntime: _levelRuntime);
             _boss.RetainForDefeatActions = true;

@@ -17,3 +17,4 @@ MonoBehaviour:
   Tint: {r: 1, g: 1, b: 1, a: 1}
   Size: 0.8
   ScoreValue: 100
+  PickupSfx: {fileID: 11400000, guid: 8f62d64a0e7c9604cafdb33233e7b31a, type: 2}

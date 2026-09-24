@@ -14,6 +14,14 @@ namespace ShinySTG.EnemyAI.Boss
     [Serializable]
     public abstract class BossPhase
     {
+        public enum StateAdvanceMode { Time, HealthPercent }
+        [Tooltip("管内下一状态的触发方式；最后一个状态保持到本管结束。") ]
+        public StateAdvanceMode AdvanceMode;
+        [Min(0.01f), Tooltip("从本状态正式开始计时，达到此秒数进入下一状态。") ]
+        public float AdvanceAfterSeconds = 10f;
+        [Range(0f, 100f), Tooltip("本管剩余血量不高于此百分比时进入下一状态。") ]
+        public float AdvanceAtPercent = 50f;
+
         [Tooltip("阶段名称，用于配置辨认。")]
         public string DisplayName;
         public SfxCue EnterSfx;

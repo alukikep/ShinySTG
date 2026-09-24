@@ -144,7 +144,7 @@ MonoBehaviour:
   _grazeSfx: {fileID: 11400000, guid: 86d9a8bf46acc6f4dac803ee44fb5f39, type: 2}
   _powerUpSfx: {fileID: 0}
   InitialLives: 3
-  InitialPower: 2
+  InitialPower: 3
   MaxPower: 4
   SpawnInvincibleDuration: 3
   ReviveInvincibleDuration: 3
@@ -162,8 +162,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnlockThresholds: 01000000020000000300000004000000
-  PositionForm:
-    rid: 6177226897835687936
+  PowerLayouts:
+  - NormalPositions: []
+    FocusPositions: []
+  - NormalPositions:
+    - {x: 0, y: 1.2}
+    FocusPositions:
+    - {x: 0, y: 0.6}
+  - NormalPositions:
+    - {x: 1.2, y: 1.2}
+    - {x: -1.2, y: 1.2}
+    FocusPositions:
+    - {x: 0.6, y: 0.6}
+    - {x: -0.6, y: 0.6}
+  - NormalPositions:
+    - {x: 1.2, y: 1.2}
+    - {x: -1.2, y: 1.2}
+    - {x: 0, y: -1.6}
+    FocusPositions:
+    - {x: 0.6, y: 0.6}
+    - {x: -0.6, y: 0.6}
+    - {x: 0, y: -0.8}
+  - NormalPositions:
+    - {x: 1.2, y: 1.2}
+    - {x: -1.2, y: 1.2}
+    - {x: -1.2, y: -1.6}
+    - {x: 1.2, y: -1.6}
+    FocusPositions:
+    - {x: 0.6, y: 0.6}
+    - {x: -0.6, y: 0.6}
+    - {x: -0.6, y: -0.8}
+    - {x: 0.6, y: -0.8}
   OptionPrefab: {fileID: 4158770122188674009, guid: 3aba01a2d10774d4499e38577246fbe7, type: 3}
   OptionFirePatterns:
   - {fileID: 11400000, guid: a92597a98c150e74ebcddd845982f417, type: 2}
@@ -172,16 +201,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a92597a98c150e74ebcddd845982f417, type: 2}
   OptionFireRate: 6
   FollowLerp: 0.25
-  references:
-    version: 2
-    RefIds:
-    - rid: 6177226897835687936
-      type: {class: TouhouSymmetricForm, ns: ShinySTG.Player, asm: Assembly-CSharp}
-      data:
-        NormalSide: 0.6
-        NormalBack: 1.2
-        FocusSide: 0.4
-        FocusBack: 0.5
 --- !u!114 &6489865405517200825
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -252,6 +271,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _deathCommands:
   - rid: 6177227192554225664
+  - rid: 6177227299071197202
   _deathEffectPrefab: {fileID: 8445010616754556486, guid: 234b2213d1cc4eb3bff14b488f1b5627, type: 3}
   _respawnDelay: 0.3
   _respawnPoint: {fileID: 0}
@@ -277,6 +297,10 @@ MonoBehaviour:
           Item: {fileID: 0}
           ItemScatterRadius: 0.15
           ItemSpeed: 2
+    - rid: 6177227299071197202
+      type: {class: RemovePlayerPowerCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        Power: 1
 --- !u!114 &831294475090668861
 MonoBehaviour:
   m_ObjectHideFlags: 0

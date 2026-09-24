@@ -57,6 +57,39 @@ namespace ShinySTG.EnemyAI.Boss
         [NonSerialized] public BossPhase[] Phases;
         [NonSerialized] public bool Loop;
         public bool IsStopped => _stopped;
+        public float BarElapsedSeconds { get; private set; }
+        public float SegmentElapsedSeconds { get; private set; }
+        public enum SegmentEndReason { Defeated, TimedOut, Cancelled }
+        public SegmentEndReason? LastSegmentEndReason { get; private set; }
+        public int LastEndedBarIndex { get; private set; } = -1;
+        public int LastEndedSegmentIndex { get; private set; } = -1;
+        bool _segmentEnded;
+        int[][] _segmentFirstState;
+        /// <summary>读取当前管剩余秒数；无有效时限或已停止时返回 false。</summary>
+        public bool TryGetBarRemainingSeconds(out float seconds)
+        {
+            seconds = 0f;
+            if (!_initialized || !_barStates || _stopped || Health == null || Health.IsDead || Health.Bars == null) return false;
+            int index = Health.CurrentBarIndex;
+            if (index < 0 || index >= Health.Bars.Length || Health.Bars[index] == null) return false;
+            if (Health.UsesSegments)
+            {
+                var segment = Health.CurrentSegment;
+                if (segment == null || !segment.HasTimeLimit) return false;
+                seconds = Mathf.Max(0f, segment.TimeLimit - SegmentElapsedSeconds);
+                return true;
+            }
+            if (!Health.Bars[index].HasTimeLimit) return false;
+            float limit = Health.Bars[index].TimeLimit;
+            if (!(limit > 0f) || float.IsInfinity(limit)) return false;
+            seconds = Mathf.Max(0f, limit - BarElapsedSeconds);
+            return true;
+        }
+
+        public bool LastBarTimedOut { get; private set; }
+        int[] _barFirstState;
+        int _barLastState;
+        bool _barStates;
         bool _initialized;
         bool _begun;
 
@@ -65,8 +98,28 @@ namespace ShinySTG.EnemyAI.Boss
             if (_initialized) throw new InvalidOperationException("BossController 已初始化。每场遭遇应创建新 Boss。");
             Health = GetComponent<BossHealth>();
             Signals = runtimeCopy.Signals;
-            Phases = runtimeCopy.Phases;
-            Loop = runtimeCopy.Loop;
+            _barStates = true;
+            var bars = Health.Bars;
+            var states = new System.Collections.Generic.List<BossPhase>();
+            _barFirstState = new int[bars.Length];
+            _segmentFirstState = new int[bars.Length][];
+            for (int i = 0; i < bars.Length; i++)
+            {
+                _barFirstState[i] = states.Count;
+                if (bars[i].HasSegments)
+                {
+                    _segmentFirstState[i] = new int[bars[i].Segments.Length];
+                    for (int j = 0; j < bars[i].Segments.Length; j++)
+                    {
+                        _segmentFirstState[i][j] = states.Count;
+                        states.AddRange(bars[i].Segments[j].States);
+                    }
+                }
+                else states.AddRange(bars[i].States);
+            }
+            Phases = states.ToArray();
+            SetCurrentStateRange();
+            Loop = false;
             _initialized = true;
         }
 
@@ -87,6 +140,7 @@ namespace ShinySTG.EnemyAI.Boss
             // (Update 在 Bar 切管的同一帧已经跑过了,下一帧 CurrentBarPercent 已经跳到新 Bar 的满血值。)
             if (Health != null) Health.OnBarDepleted += OnBarDepletedHandler;
             if (Health != null) Health.BarEmptied += HandleBarEmptied;
+            if (Health != null) Health.OnSegmentDepleted += HandleSegmentDepleted;
             if (Health != null) Health.OnDeath += HandleHealthDeath;
             if (_protectionRequested && !_stopped) AcquireProtection();
         }
@@ -95,6 +149,7 @@ namespace ShinySTG.EnemyAI.Boss
         {
             if (Health != null) Health.OnBarDepleted -= OnBarDepletedHandler;
             if (Health != null) Health.BarEmptied -= HandleBarEmptied;
+            if (Health != null) Health.OnSegmentDepleted -= HandleSegmentDepleted;
             if (Health != null) Health.OnDeath -= HandleHealthDeath;
             ReleaseProtection(false);
         }
@@ -102,8 +157,20 @@ namespace ShinySTG.EnemyAI.Boss
         // 总控仍负责死亡收尾；这里仅同步清理本组件持有的保护。
         void HandleHealthDeath() => ReleaseProtection();
 
+        void HandleSegmentDepleted(int barIndex, int segmentIndex)
+        {
+            if (!_barStates || _stopped) return;
+            _protectionRequested = true;
+            AcquireProtection();
+        }
+
         void HandleBarEmptied(int index)
         {
+            if (_barStates)
+            {
+                if (!_stopped) { _protectionRequested = true; AcquireProtection(); }
+                return;
+            }
             if (_stopped || _current == null || !_current.ProtectBarTransition || Health == null) return;
             if (Health.Bars == null || index < 0 || index >= Health.Bars.Length) return;
             if (Health.Bars[index]?.Id != _current.ProtectedBarId) return;
@@ -129,7 +196,7 @@ namespace ShinySTG.EnemyAI.Boss
         // __BOSSDEBUG__ #10:Bar 切管立刻检查是否切阶段(治本修复击穿问题)
         void OnBarDepletedHandler(int barIdx)
         {
-            if (_stopped || _current == null) return;
+            if (_barStates || _stopped || _current == null) return;
             // 新条件读取结算后的持久状态；只有旧模式保留瞬时零血兼容路径。
             if (_current.ExitMode != PhaseExitMode.LegacyTriggers) return;
             Debug.Log($"[__BOSSDEBUG__] OnBarDepletedHandler idx={barIdx} phase={_phaseIdx} curHp%={(Health != null ? Health.CurrentBarPercent.ToString("F1") : "?")}", this);
@@ -141,20 +208,33 @@ namespace ShinySTG.EnemyAI.Boss
         {
             if (!_initialized || _stopped || _begun) return;
             _begun = true;
+            if (_barStates) { _protectionRequested = true; AcquireProtection(); }
             if (Signals != null)
                 foreach (var signal in Signals) signal?.OnAttach(this);
             if (Phases != null && Phases.Length > 0) RequestPhase(0);
         }
 
-        void Update()
+        void Update() => Tick(Time.deltaTime);
+
+        public void Tick(float dt)
         {
             if (ShinySTG.Level.BattleRestriction.IsActive) return;
-            if (ShinySTG.Level.BattleRestriction.IsActive) return;
+            if (dt < 0f || float.IsNaN(dt) || float.IsInfinity(dt)) return;
             // 场景 Boss 的 Start 顺序不固定；未绑定遭遇前不能按零血量停止。
             if (!_begun && _current == null && _pendingPhase < 0) return;
             // 已 stopped → 不再跑 phase / signal tick,直到 GameObject 被 Boss 总控销毁。
             if (_stopped) return;
             if (Health != null && Health.IsDead) { Stop(); return; }
+            if (_barStates && Health.IsCurrentSegmentEmpty)
+            {
+                EndSegment(false);
+                return;
+            }
+            if (_barStates && Health.IsCurrentBarEmpty)
+            {
+                EndBar(false);
+                return;
+            }
             if (_barTransitionRequested)
             {
                 _barTransitionRequested = false;
@@ -164,37 +244,46 @@ namespace ShinySTG.EnemyAI.Boss
             if (_stopped) return;
             if (_pendingPhase >= 0) { AdvanceTransition(); return; }
 
+            if (_barStates && _current != null)
+            {
+                BarElapsedSeconds += dt;
+                if (Health.UsesSegments)
+                {
+                    SegmentElapsedSeconds += dt;
+                    if (Health.CurrentSegment.HasTimeLimit && SegmentElapsedSeconds >= Health.CurrentSegment.TimeLimit)
+                    {
+                        EndSegment(true);
+                        return;
+                    }
+                }
+                else if (Health.Bars[Health.CurrentBarIndex].HasTimeLimit &&
+                    BarElapsedSeconds >= Health.Bars[Health.CurrentBarIndex].TimeLimit)
+                {
+                    EndBar(true);
+                    return;
+                }
+            }
+
             // 1. tick 所有 signals(累加内部计数等)
             if (Signals != null)
                 for (int i = 0; i < Signals.Length; i++)
-                    if (Signals[i] != null) Signals[i].Tick(this, Time.deltaTime);
+                    if (Signals[i] != null) Signals[i].Tick(this, dt);
 
             // 2. tick 当前 phase
             if (_current == null) return;
 
-            PhaseElapsedSeconds += Time.deltaTime;
-            _current.OnTick(transform, Time.deltaTime);
+            PhaseElapsedSeconds += dt;
+            _current.OnTick(transform, dt);
             if (_stopped || _current == null) return;
 
             // 3. 判定是否该切走
-            bool shouldExit = _current.ShouldExit(this);
-
-            // __BOSSDEBUG__ #1:每帧打印 signal 当前值 + 是否触发切阶段
-            if (Signals != null && Signals.Length > 0)
-            {
-                var sb = new System.Text.StringBuilder();
-                sb.Append($"[__BOSSDEBUG__] t={Time.time:F2} phase={_phaseIdx} curHp%=");
-                if (Health != null) sb.Append(Health.CurrentBarPercent.ToString("F1"));
-                sb.Append(" signals=[");
-                for (int i = 0; i < Signals.Length; i++)
-                {
-                    var s = Signals[i];
-                    if (s == null) { sb.Append("null,"); continue; }
-                    sb.Append($"{s.GetType().Name}={s.CurrentValue:F2},");
-                }
-                sb.Append($"] shouldExit={shouldExit}");
-                Debug.Log(sb.ToString(), this);
-            }
+            if (_barStates && Health.IsCurrentSegmentEmpty) { EndSegment(false); return; }
+            if (_barStates && Health.IsCurrentBarEmpty) { EndBar(false); return; }
+            bool shouldExit = _barStates
+                ? _phaseIdx < _barLastState && (_current.AdvanceMode == BossPhase.StateAdvanceMode.Time
+                    ? PhaseElapsedSeconds >= _current.AdvanceAfterSeconds
+                    : (Health.UsesSegments ? Health.CurrentSegmentPercent : Health.CurrentBarPercent) <= _current.AdvanceAtPercent)
+                : _current.ShouldExit(this);
 
             if (shouldExit) NextPhase();
         }
@@ -210,6 +299,8 @@ namespace ShinySTG.EnemyAI.Boss
         public void Stop()
         {
             if (_stopped) return;
+            if (_begun && Health != null && Health.UsesSegments && !_segmentEnded)
+                RecordSegmentEnd(SegmentEndReason.Cancelled);
             _stopped = true;
             _barTransitionRequested = false;
             ReleaseProtection();
@@ -257,12 +348,75 @@ namespace ShinySTG.EnemyAI.Boss
             finally { ReleaseProtection(); }
         }
 
+        void EndBar(bool timedOut)
+        {
+            LastBarTimedOut = timedOut;
+            _protectionRequested = true;
+            AcquireProtection();
+            // Final bar uses the existing death/encounter outro path exactly once.
+            if (Health.CurrentBarIndex + 1 >= Health.Bars.Length)
+            {
+                Health.CompleteCurrentBar();
+                if (!_stopped) Stop();
+                return;
+            }
+            ExitCurrentPhase(CommandInvocation.PhaseCompleted);
+            if (_stopped) return;
+            BarElapsedSeconds = 0f;
+            SegmentElapsedSeconds = 0f;
+            Health.CompleteCurrentBar();
+            if (_stopped) return;
+            _segmentEnded = false;
+            int first = SetCurrentStateRange();
+            RequestPhase(first);
+        }
+
+        int SetCurrentStateRange()
+        {
+            int barIndex = Health.CurrentBarIndex;
+            var bar = Health.Bars[barIndex];
+            int first = bar.HasSegments ? _segmentFirstState[barIndex][Health.CurrentSegmentIndex] : _barFirstState[barIndex];
+            int count = bar.HasSegments ? Health.CurrentSegment.States.Length : bar.States.Length;
+            _barLastState = first + count - 1;
+            return first;
+        }
+
+        void RecordSegmentEnd(SegmentEndReason reason)
+        {
+            LastSegmentEndReason = reason;
+            LastEndedBarIndex = Health.CurrentBarIndex;
+            LastEndedSegmentIndex = Health.CurrentSegmentIndex;
+            _segmentEnded = true;
+        }
+
+        void EndSegment(bool timedOut)
+        {
+            RecordSegmentEnd(timedOut ? SegmentEndReason.TimedOut : SegmentEndReason.Defeated);
+            _protectionRequested = true;
+            AcquireProtection();
+            if (timedOut) Health.EmptyCurrentSegment();
+            if (_stopped) return;
+            if (Health.CurrentSegmentIndex + 1 >= Health.Bars[Health.CurrentBarIndex].Segments.Length)
+            {
+                EndBar(timedOut);
+                return;
+            }
+            ExitCurrentPhase(CommandInvocation.PhaseCompleted);
+            if (_stopped) return;
+            SegmentElapsedSeconds = 0f;
+            Health.AdvanceToNextSegment();
+            _segmentEnded = false;
+            if (_stopped) return;
+            RequestPhase(SetCurrentStateRange());
+        }
+
         void NextPhase()
         {
             if (_stopped || (Health != null && Health.IsDead)) return;
             // __BOSSDEBUG__ #3:阶段切走(进 NextPhase 说明 ShouldExit 已为 true)
             Debug.Log($"[__BOSSDEBUG__] NextPhase from idx={_phaseIdx}", this);
 
+            if (_barStates) { _protectionRequested = true; AcquireProtection(); }
             ExitCurrentPhase(CommandInvocation.PhaseCompleted);
 
             int next = _phaseIdx + 1;

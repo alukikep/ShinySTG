@@ -24,6 +24,18 @@ namespace ShinySTG.UI.Editor
         static BossHealth.HealthBar Bar(float hp, bool trigger = true) =>
             new BossHealth.HealthBar { MaxHp = hp, CurrentHp = hp, TriggerOnEmpty = trigger };
 
+        [TestCase(120f, 99)]
+        [TestCase(99f, 99)]
+        [TestCase(98.2f, 99)]
+        [TestCase(12.3f, 13)]
+        [TestCase(.2f, 1)]
+        [TestCase(0f, 0)]
+        [TestCase(-1f, 0)]
+        public void TimerCapsAndRoundsUpWithoutChangingGameTime(float seconds, int expected)
+        {
+            Assert.That(BossHudView.GetDisplayedSeconds(seconds), Is.EqualTo(expected));
+        }
+
         [Test]
         public void OverflowNotifiesOnceWithFinalStateEvenWhenBarEventsAreDisabled()
         {

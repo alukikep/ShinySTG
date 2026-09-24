@@ -274,6 +274,9 @@ namespace ShinySTG.Player
         /// <summary>百分之一 Power 为一个单位；小 P +1，大 P +100。</summary>
         public void AddPowerUnits(int delta) => SetPowerUnits((long)PowerUnits + delta);
 
+        /// <summary>扣除火力值，最少降到 0；传入单位为百分之一 Power。</summary>
+        public void RemovePowerUnits(int amount) => SetPowerUnits((long)PowerUnits - Math.Max(0, amount));
+
         void SetPowerUnits(long value)
         {
             int next = (int)Math.Max(0L, Math.Min(value, (long)Mathf.Max(0, MaxPower) * 100));

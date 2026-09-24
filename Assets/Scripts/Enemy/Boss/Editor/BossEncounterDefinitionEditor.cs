@@ -8,160 +8,226 @@ namespace ShinySTG.EnemyAI.Boss.Editor
     [CustomEditor(typeof(BossEncounterDefinition))]
     public sealed class BossEncounterDefinitionEditor : UnityEditor.Editor
     {
-        static readonly HashSet<string> ManagedFields = new()
+        static readonly HashSet<string> HiddenStateFields = new()
         {
-            "ExitMode", "ExitTriggers", "ConditionMatch", "ExitConditions", "ProtectBarTransition", "ProtectedBarId"
+            "ExitMode", "ExitTriggers", "ConditionMatch", "ExitConditions", "ProtectBarTransition", "ProtectedBarId",
+            "AdvanceMode", "AdvanceAfterSeconds", "AdvanceAtPercent"
         };
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
             var boss = (BossEncounterDefinition)target;
-            var health = boss.Bars;
             using (new EditorGUI.DisabledScope(Application.isPlaying))
             {
-                EditorGUI.BeginChangeCheck();
-                DrawPropertiesExcluding(serializedObject, "m_Script", "Phases");
-                if (EditorGUI.EndChangeCheck()) BossInspectorFields.RepairIds(serializedObject);
+                DrawPropertiesExcluding(serializedObject, "m_Script", "Phases", "Loop", "Bars", "StartBarId");
                 if (GUILayout.Button("整理血管 ID（补齐空值、修复重复）"))
+                {
                     BossInspectorFields.RepairIds(serializedObject);
-                serializedObject.ApplyModifiedProperties();
-                serializedObject.Update();
-                health = boss.Bars;
-                if (health != null)
-                    foreach (var bar in health)
-                    {
-                        if (bar == null) continue;
-                        var error = BossInspectorFields.BarError(health, bar.Id);
-                        if (error != null) EditorGUILayout.HelpBox(error, MessageType.Warning);
-                    }
-                EditorGUILayout.HelpBox("进入：入场动作 → 进入指令 → 行为。退出：行为退出 → 退出指令 → 退场动作。死亡执行退出指令和整场击破动作。", MessageType.Info);
-                var phases = serializedObject.FindProperty("Phases");
-                EditorGUILayout.LabelField("阶段", EditorStyles.boldLabel);
-                for (int i = 0; i < phases.arraySize; i++)
-                {
-                    var phase = phases.GetArrayElementAtIndex(i);
-                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                    EditorGUILayout.BeginHorizontal();
-                    phase.isExpanded = EditorGUILayout.Foldout(phase.isExpanded, $"阶段 {i + 1} · {phase.FindPropertyRelative("DisplayName")?.stringValue}", true);
-                    bool up = GUILayout.Button("↑", GUILayout.Width(26)) && i > 0;
-                    bool down = GUILayout.Button("↓", GUILayout.Width(26)) && i + 1 < phases.arraySize;
-                    bool delete = GUILayout.Button("删除", GUILayout.Width(44));
-                    EditorGUILayout.EndHorizontal();
-                    if (up || down || delete)
-                    {
-                        EditorGUILayout.EndVertical();
-                        if (delete) phases.DeleteArrayElementAtIndex(i);
-                        else phases.MoveArrayElement(i, up ? i - 1 : i + 1);
-                        break;
-                    }
-                    if (phase.managedReferenceValue == null)
-                    {
-                        if (GUILayout.Button("创建 Shooter 阶段")) phase.managedReferenceValue = NewPhase();
-                    }
-                    else if (phase.isExpanded) DrawPhase(phase, boss, health);
-                    EditorGUILayout.EndVertical();
-                    continue;
+                    serializedObject.ApplyModifiedProperties();
+                    serializedObject.Update();
                 }
-                if (GUILayout.Button("添加 Shooter 阶段"))
+                BossInspectorFields.BarPopup(serializedObject.FindProperty("StartBarId"), boss.Bars, "开始血管");
+                EditorGUILayout.HelpBox("每管打空必定换管；启用时限后，超时也会换管。NextBar 为空时结束战斗。管内状态顺序执行，最后状态保持到本管结束；过渡等待不计时且不能受伤。", MessageType.Info);
+                var bars = serializedObject.FindProperty("Bars");
+                for (int i = 0; i < bars.arraySize; i++)
                 {
-                    int index = phases.arraySize++;
-                    phases.GetArrayElementAtIndex(index).managedReferenceValue = NewPhase();
+                    var bar = bars.GetArrayElementAtIndex(i);
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    bar.isExpanded = EditorGUILayout.Foldout(bar.isExpanded, $"血管 {i + 1} · {bar.FindPropertyRelative("Name").stringValue}", true);
+                    bool remove = false;
+                    if (bar.isExpanded)
+                    {
+                        BossInspectorFields.Field(bar, "Id", "稳定 ID");
+                        BossInspectorFields.Field(bar, "Name", "名称");
+                        var segments = bar.FindPropertyRelative("Segments");
+                        if (segments.arraySize == 0)
+                        {
+                            EditorGUILayout.LabelField("模式", "整管血量（兼容配置）");
+                            BossInspectorFields.Field(bar, "MaxHp", "血量上限");
+                            BossInspectorFields.Field(bar, "HasTimeLimit", "启用时限");
+                            if (bar.FindPropertyRelative("HasTimeLimit").boolValue)
+                                BossInspectorFields.Field(bar, "TimeLimit", "时限（秒）");
+                            DrawStates(bar.FindPropertyRelative("States"));
+                            if (GUILayout.Button("将本管转为单个分段（保留原配置，可撤销）")) ConvertToSegment(bar);
+                        }
+                        else DrawSegments(segments);
+                        EditorGUILayout.LabelField("打空换管", "始终启用");
+                        BossInspectorFields.BarPopup(bar.FindPropertyRelative("NextBarId"), boss.Bars, "下一血管", "无（结束战斗）");
+                        remove = GUILayout.Button("删除血管");
+                    }
+                    EditorGUILayout.EndVertical();
+                    if (remove) { bars.DeleteArrayElementAtIndex(i); break; }
+                }
+                if (GUILayout.Button("添加血管"))
+                {
+                    int index = bars.arraySize++;
+                    var bar = bars.GetArrayElementAtIndex(index);
+                    bar.FindPropertyRelative("Id").stringValue = System.Guid.NewGuid().ToString("N");
+                    bar.FindPropertyRelative("Name").stringValue = "Bar";
+                    bar.FindPropertyRelative("MaxHp").floatValue = 1000f;
+                    bar.FindPropertyRelative("HasTimeLimit").boolValue = true;
+                    bar.FindPropertyRelative("TimeLimit").floatValue = 60f;
+                    bar.FindPropertyRelative("TriggerOnEmpty").boolValue = true;
+                    bar.FindPropertyRelative("DiscardOverflow").boolValue = true;
+                    bar.FindPropertyRelative("NextBarId").stringValue = "";
+                    bar.FindPropertyRelative("Segments").arraySize = 0;
+                    var states = bar.FindPropertyRelative("States");
+                    states.arraySize = 1;
+                    states.GetArrayElementAtIndex(0).managedReferenceValue = new ShooterPhase();
+                    bar.isExpanded = true;
+                }
+                // Keep old serialized data inspectable instead of silently assigning states to the wrong bar.
+                var legacy = serializedObject.FindProperty("Phases");
+                if (legacy.arraySize > 0)
+                {
+                    EditorGUILayout.HelpBox("检测到旧的全局阶段数据。它不再驱动战斗，请将各阶段重新配置到所属血管；旧数据暂留供对照。", MessageType.Warning);
+                    using (new EditorGUI.DisabledScope(true)) EditorGUILayout.PropertyField(legacy, new GUIContent("旧阶段（只读）"), true);
                 }
             }
             serializedObject.ApplyModifiedProperties();
-            if (!boss.TryValidate(out var validationError)) EditorGUILayout.HelpBox(validationError, MessageType.Error);
-            if (boss.BossPrefab != null && boss.BossPrefab.GetComponent<Boss>() == null)
-                EditorGUILayout.HelpBox("Prefab 缺少 Boss 组件。", MessageType.Error);
+            if (!boss.TryValidate(out var error)) EditorGUILayout.HelpBox(error, MessageType.Error);
+            else if (boss.GetOrderedBars().Length != boss.Bars.Length)
+                EditorGUILayout.HelpBox("存在从开始血管不可达的血管；本场不会执行，也不计入 HUD 管数。", MessageType.Warning);
         }
 
-        static ShooterPhase NewPhase() => new ShooterPhase { ExitMode = PhaseExitMode.Conditions };
-
-        static void DrawPhase(SerializedProperty phase, BossEncounterDefinition boss, BossHealth.HealthBar[] health)
+        internal static void ConvertToSegment(SerializedProperty bar)
         {
-            // Draw derived phase fields and existing command drawers without replacing their editors.
-            var child = phase.Copy();
-            var end = phase.GetEndProperty();
-            if (child.NextVisible(true))
-                do
-                {
-                    if (SerializedProperty.EqualContents(child, end)) break;
-                    if (!ManagedFields.Contains(child.name)) EditorGUILayout.PropertyField(child, true);
-                } while (child.NextVisible(false));
-
-            BossInspectorFields.Field(phase, "ExitMode", "退出条件模式");
-            bool modern = phase.FindPropertyRelative("ExitMode").enumValueIndex == (int)PhaseExitMode.Conditions;
-            if (!modern) BossInspectorFields.Field(phase, "ExitTriggers", "旧信号条件（任意满足）");
-            else
+            var segments = bar.FindPropertyRelative("Segments");
+            if (segments.arraySize > 0) return;
+            AddSegment(segments, false);
+            var segment = segments.GetArrayElementAtIndex(0);
+            foreach (string field in new[] { "Name", "MaxHp", "HasTimeLimit", "TimeLimit" })
             {
-                BossInspectorFields.Field(phase, "ConditionMatch", "条件组合");
-                var conditions = phase.FindPropertyRelative("ExitConditions");
-                var summaries = new List<string>();
-                for (int i = 0; i < conditions.arraySize; i++)
+                var source = bar.FindPropertyRelative(field);
+                var destination = segment.FindPropertyRelative(field);
+                if (source.propertyType == SerializedPropertyType.String) destination.stringValue = source.stringValue;
+                else if (source.propertyType == SerializedPropertyType.Boolean) destination.boolValue = source.boolValue;
+                else destination.floatValue = source.floatValue;
+            }
+            var sourceStates = bar.FindPropertyRelative("States");
+            var states = segment.FindPropertyRelative("States");
+            states.arraySize = sourceStates.arraySize;
+            for (int i = 0; i < states.arraySize; i++)
+            {
+                var source = sourceStates.GetArrayElementAtIndex(i).managedReferenceValue;
+                states.GetArrayElementAtIndex(i).managedReferenceValue = source == null ? null :
+                    JsonUtility.FromJson(JsonUtility.ToJson(source), source.GetType());
+            }
+        }
+
+        internal static void AddSegment(SerializedProperty segments, bool spell)
+        {
+            int index = segments.arraySize++;
+            var segment = segments.GetArrayElementAtIndex(index);
+            segment.FindPropertyRelative("Id").stringValue = System.Guid.NewGuid().ToString("N");
+            segment.FindPropertyRelative("Name").stringValue = spell ? "符卡" : "非符";
+            segment.FindPropertyRelative("Kind").enumValueIndex = spell ? 1 : 0;
+            segment.FindPropertyRelative("MaxHp").floatValue = 1000f;
+            segment.FindPropertyRelative("DamageTakenMultiplier").floatValue = 1f;
+            segment.FindPropertyRelative("Color").colorValue = spell ? new Color(1f, 0.25f, 0.3f) : Color.white;
+            segment.FindPropertyRelative("HasTimeLimit").boolValue = spell;
+            segment.FindPropertyRelative("TimeLimit").floatValue = 60f;
+            var states = segment.FindPropertyRelative("States");
+            states.arraySize = 1;
+            states.GetArrayElementAtIndex(0).managedReferenceValue = new ShooterPhase();
+            segment.isExpanded = true;
+        }
+
+        static void DrawSegments(SerializedProperty segments)
+        {
+            double total = 0;
+            for (int i = 0; i < segments.arraySize; i++) total += segments.GetArrayElementAtIndex(i).FindPropertyRelative("MaxHp").floatValue;
+            EditorGUILayout.LabelField("模式", $"分段血量 · 合计 {total:0.##}");
+            EditorGUILayout.HelpBox("按列表顺序消耗；每段独立计时、减伤。原整管设置保留但不生效。删除最后一段将恢复原整管配置。", MessageType.Info);
+            for (int i = 0; i < segments.arraySize; i++)
+            {
+                var segment = segments.GetArrayElementAtIndex(i);
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                EditorGUILayout.BeginHorizontal();
+                double ratio = total > 0 ? segment.FindPropertyRelative("MaxHp").floatValue / total * 100 : 0;
+                segment.isExpanded = EditorGUILayout.Foldout(segment.isExpanded,
+                    $"分段 {i + 1} · {segment.FindPropertyRelative("Name").stringValue} · {ratio:0.#}%", true);
+                bool up = GUILayout.Button("↑", GUILayout.Width(26)) && i > 0;
+                bool down = GUILayout.Button("↓", GUILayout.Width(26)) && i + 1 < segments.arraySize;
+                bool remove = GUILayout.Button("删除", GUILayout.Width(44));
+                EditorGUILayout.EndHorizontal();
+                if (up || down || remove)
                 {
-                    var condition = conditions.GetArrayElementAtIndex(i);
-                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                    summaries.Add(DrawCondition(condition, boss, health));
-                    bool remove = GUILayout.Button("删除条件");
+                    if (remove) segments.DeleteArrayElementAtIndex(i);
+                    else segments.MoveArrayElement(i, up ? i - 1 : i + 1);
                     EditorGUILayout.EndVertical();
-                    if (remove) { conditions.DeleteArrayElementAtIndex(i); break; }
+                    break;
                 }
-                if (GUILayout.Button("添加条件"))
+                if (segment.isExpanded)
                 {
-                    int index = conditions.arraySize++;
-                    var item = conditions.GetArrayElementAtIndex(index);
-                    item.FindPropertyRelative("Kind").enumValueIndex = 0;
-                    item.FindPropertyRelative("BarId").stringValue = "";
-                    item.FindPropertyRelative("Threshold").floatValue = 50f;
+                    BossInspectorFields.Field(segment, "Id", "稳定 ID");
+                    BossInspectorFields.Field(segment, "Name", "名称");
+                    var kind = segment.FindPropertyRelative("Kind");
+                    kind.enumValueIndex = EditorGUILayout.Popup("类型", kind.enumValueIndex, new[] { "非符", "符卡" });
+                    BossInspectorFields.Field(segment, "MaxHp", "分段血量");
+                    BossInspectorFields.Field(segment, "DamageTakenMultiplier", "承伤倍率");
+                    BossInspectorFields.Field(segment, "Color", "血条颜色");
+                    BossInspectorFields.Field(segment, "HasTimeLimit", "启用分段时限");
+                    if (segment.FindPropertyRelative("HasTimeLimit").boolValue) BossInspectorFields.Field(segment, "TimeLimit", "时限（秒）");
+                    DrawStates(segment.FindPropertyRelative("States"), true);
                 }
-                string join = phase.FindPropertyRelative("ConditionMatch").enumValueIndex == 0 ? " 或 " : " 且 ";
-                EditorGUILayout.HelpBox(summaries.Count == 0 ? "无退出条件：保持本阶段，直到 Boss 死亡或被停止。" : string.Join(join, summaries), MessageType.Info);
+                EditorGUILayout.EndVertical();
             }
-            BossInspectorFields.Field(phase, "ProtectBarTransition", "保护阶段交接");
-            if (phase.FindPropertyRelative("ProtectBarTransition").boolValue)
-            {
-                BossInspectorFields.BarPopup(phase.FindPropertyRelative("ProtectedBarId"), health, "触发保护的血管");
-                EditorGUILayout.HelpBox("血管耗尽后会阻止继续扣血。请确保退出条件仍能满足；All 条件若还要求另一管受伤，保护将无法自动结束。", MessageType.Warning);
-            }
+            if (GUILayout.Button("添加非符分段")) AddSegment(segments, false);
+            if (GUILayout.Button("添加符卡分段")) AddSegment(segments, true);
         }
 
-        static string DrawCondition(SerializedProperty condition, BossEncounterDefinition boss, BossHealth.HealthBar[] health)
+        static void DrawStates(SerializedProperty states, bool segmented = false)
         {
-            BossInspectorFields.Field(condition, "Kind", "条件类型");
-            var kind = (PhaseExitConditionKind)condition.FindPropertyRelative("Kind").enumValueIndex;
-            string bar = "";
-            if (kind == PhaseExitConditionKind.BarDepleted || kind == PhaseExitConditionKind.BarPercentAtMost)
+            for (int i = 0; i < states.arraySize; i++)
             {
-                var id = condition.FindPropertyRelative("BarId");
-                BossInspectorFields.BarPopup(id, health, "目标血管");
-                bar = BossInspectorFields.BarName(health, id.stringValue);
+                var state = states.GetArrayElementAtIndex(i);
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                EditorGUILayout.BeginHorizontal();
+                state.isExpanded = EditorGUILayout.Foldout(state.isExpanded, $"状态 {i + 1} · {state.FindPropertyRelative("DisplayName")?.stringValue}", true);
+                bool up = GUILayout.Button("↑", GUILayout.Width(26)) && i > 0;
+                bool down = GUILayout.Button("↓", GUILayout.Width(26)) && i + 1 < states.arraySize;
+                bool remove = GUILayout.Button("删除", GUILayout.Width(44));
+                EditorGUILayout.EndHorizontal();
+                if (up || down || remove)
+                {
+                    if (remove) states.DeleteArrayElementAtIndex(i);
+                    else states.MoveArrayElement(i, up ? i - 1 : i + 1);
+                    EditorGUILayout.EndVertical();
+                    break;
+                }
+                if (state.managedReferenceValue == null)
+                {
+                    if (GUILayout.Button("创建 Shooter 状态")) state.managedReferenceValue = new ShooterPhase();
+                }
+                else if (state.isExpanded)
+                {
+                    var child = state.Copy();
+                    var end = state.GetEndProperty();
+                    if (child.NextVisible(true))
+                        do
+                        {
+                            if (SerializedProperty.EqualContents(child, end)) break;
+                            if (!HiddenStateFields.Contains(child.name)) EditorGUILayout.PropertyField(child, true);
+                        } while (child.NextVisible(false));
+                    if (i + 1 == states.arraySize) EditorGUILayout.LabelField("结束方式", segmented ? "保持到本段打空或超时" : "保持到本管打空或超时");
+                    else
+                    {
+                        var mode = state.FindPropertyRelative("AdvanceMode");
+                        mode.enumValueIndex = EditorGUILayout.Popup("下一状态条件", mode.enumValueIndex, new[] { "本状态持续时间", segmented ? "本段剩余血量百分比" : "本管剩余血量百分比" });
+                        BossInspectorFields.Field(state, mode.enumValueIndex == 0 ? "AdvanceAfterSeconds" : "AdvanceAtPercent",
+                            mode.enumValueIndex == 0 ? "持续秒数" : "剩余不超过（%）");
+                    }
+                }
+                EditorGUILayout.EndVertical();
             }
-            float threshold = condition.FindPropertyRelative("Threshold").floatValue;
-            if (kind != PhaseExitConditionKind.BarDepleted && kind != PhaseExitConditionKind.Signal)
+            if (GUILayout.Button(segmented ? "添加本段状态" : "添加本管状态"))
             {
-                BossInspectorFields.Field(condition, "Threshold", kind == PhaseExitConditionKind.PhaseTimeAtLeast ? "至少持续（秒）" : "剩余不超过（%）");
-                threshold = condition.FindPropertyRelative("Threshold").floatValue;
-                if (float.IsNaN(threshold) || float.IsInfinity(threshold) || threshold < 0f ||
-                    (kind != PhaseExitConditionKind.PhaseTimeAtLeast && threshold > 100f))
-                    EditorGUILayout.HelpBox("阈值无效：秒数需为有限非负数，百分比需在 0～100。", MessageType.Error);
+                int index = states.arraySize++;
+                states.GetArrayElementAtIndex(index).managedReferenceValue = new ShooterPhase();
+                states.GetArrayElementAtIndex(index).isExpanded = true;
             }
-            if (kind == PhaseExitConditionKind.Signal)
-            {
-                BossInspectorFields.Field(condition, "SignalTrigger", "高级信号");
-                int index = condition.FindPropertyRelative("SignalTrigger").FindPropertyRelative("SignalIndex").intValue;
-                if (boss.GetSignal(index) == null) EditorGUILayout.HelpBox("信号索引无效或信号为空。", MessageType.Error);
-                return $"高级信号 [{index}]";
-            }
-            return kind switch
-            {
-                PhaseExitConditionKind.BarDepleted => $"{bar}耗尽",
-                PhaseExitConditionKind.BarPercentAtMost => $"{bar} ≤ {threshold:0.##}%",
-                PhaseExitConditionKind.TotalHpPercentAtMost => $"总血量 ≤ {threshold:0.##}%",
-                PhaseExitConditionKind.PhaseTimeAtLeast => $"持续 ≥ {threshold:0.##} 秒",
-                _ => "未知条件"
-            };
         }
-
-        public override bool RequiresConstantRepaint() => Application.isPlaying;
     }
 }

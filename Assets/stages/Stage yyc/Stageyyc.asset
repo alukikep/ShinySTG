@@ -47,6 +47,7 @@ MonoBehaviour:
   - rid: 6177227272475115520
   - rid: 6177227281577541667
   - rid: 6177227276687245346
+  - rid: 6177227301945081856
   Duration: 0
   Pool: {fileID: 0}
   InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
@@ -502,3 +503,13 @@ MonoBehaviour:
     - rid: 6177227296648986625
       type: {class: KillEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
       data: 
+    - rid: 6177227301945081856
+      type: {class: BossEncounterEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
+      data:
+        TriggerTime: 5
+        OneShot: 1
+        Duration: 0
+        Encounter: {fileID: 11400000, guid: 9678404dc21d5c14f9eb0c956f790fc6, type: 2}
+        SpawnPosition: {x: 0, y: 0}
+        InitialRotation: 0
+        BlockTimeline: 1

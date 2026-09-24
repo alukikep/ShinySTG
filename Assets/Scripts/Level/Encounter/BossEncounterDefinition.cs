@@ -22,8 +22,10 @@ namespace ShinySTG.Level.Encounter
         [Tooltip("Boss 被击败时播放的音效。")]
         public SfxCue DefeatSfx;
 
-        [Tooltip("血管配置。阶段通过稳定 ID 引用，独立于阶段数量。")]
+        [Tooltip("血管及其内部状态；实际顺序由开始血管和 NextBar 决定。")]
         public BossHealth.HealthBar[] Bars = { new BossHealth.HealthBar { Id = "bar-1" } };
+        [Tooltip("必须选择开始血管。")]
+        public string StartBarId = "bar-1";
         [SerializeReference, SR, Tooltip("阶段条件可引用的信号；每场遭遇创建独立实例。")]
         public BossSignal[] Signals;
         [SerializeReference, SR, Tooltip("完整阶段列表，行为、条件和演出随阶段一起排序。")]
@@ -34,18 +36,65 @@ namespace ShinySTG.Level.Encounter
         public bool TryValidate(out string error)
         {
             error = null;
-            if (Bars == null || Bars.Length == 0) error = "至少配置一管血。";
-            else
+            if (Bars == null || Bars.Length == 0) { error = "至少配置一管血。"; return false; }
+            var map = new System.Collections.Generic.Dictionary<string, BossHealth.HealthBar>(StringComparer.Ordinal);
+            foreach (var bar in Bars)
             {
-                var ids = new System.Collections.Generic.HashSet<string>();
-                foreach (var bar in Bars)
-                    if (bar == null || string.IsNullOrWhiteSpace(bar.Id) || !ids.Add(bar.Id) ||
-                        !(bar.MaxHp > 0f) || float.IsInfinity(bar.MaxHp))
-                    { error = "血管需要唯一非空 ID 和有限正数血量。"; break; }
+                if (bar == null || string.IsNullOrWhiteSpace(bar.Id) || map.ContainsKey(bar.Id) ||
+                    !(bar.EffectiveMaxHp > 0f) || float.IsInfinity(bar.EffectiveMaxHp))
+                { error = "血管需要唯一非空 ID 和有限正数血量。"; return false; }
+                map.Add(bar.Id, bar);
+                if (bar.HasSegments)
+                {
+                    if (!BossHealthSegment.ValidateSegments(bar.Segments, out error)) return false;
+                    continue;
+                }
+                if (bar.HasTimeLimit && (!(bar.TimeLimit > 0f) || float.IsInfinity(bar.TimeLimit)))
+                { error = $"血管 {bar.Name} 必须设置有限正数时限。"; return false; }
+                if (bar.States == null || bar.States.Length == 0 || Array.Exists(bar.States, state => state == null))
+                { error = $"血管 {bar.Name} 至少需要一个非空状态。"; return false; }
+                for (int i = 0; i + 1 < bar.States.Length; i++)
+                {
+                    var state = bar.States[i];
+                    bool valid = state.AdvanceMode == BossPhase.StateAdvanceMode.Time
+                        ? state.AdvanceAfterSeconds > 0f && !float.IsInfinity(state.AdvanceAfterSeconds)
+                        : state.AdvanceMode == BossPhase.StateAdvanceMode.HealthPercent && state.AdvanceAtPercent >= 0f && state.AdvanceAtPercent <= 100f;
+                    if (!valid) { error = $"血管 {bar.Name} 的状态 {i + 1} 切换条件无效。"; return false; }
+                }
             }
-            if (error == null && (Phases == null || Phases.Length == 0 || Array.Exists(Phases, phase => phase == null)))
-                error = "至少配置一个阶段，且阶段不能留空。";
-            return error == null;
+            if (string.IsNullOrWhiteSpace(StartBarId) || !map.ContainsKey(StartBarId))
+            { error = "请选择有效的开始血管。"; return false; }
+            foreach (var bar in Bars)
+            {
+                var visited = new System.Collections.Generic.HashSet<string>();
+                var current = bar;
+                while (current != null)
+                {
+                    if (!visited.Add(current.Id)) { error = "血管 NextBar 不允许形成循环。"; return false; }
+                    if (string.IsNullOrEmpty(current.NextBarId)) break;
+                    if (!map.TryGetValue(current.NextBarId, out current))
+                    { error = "下一血管引用不存在。"; return false; }
+                }
+            }
+            return true;
+        }
+
+        /// <summary>运行入口与编辑器使用相同的配置校验。</summary>
+        public bool TryValidateForRuntime(out string error) => TryValidate(out error);
+
+        // Called only after validation; array order is now an implementation detail of the selected path.
+        public BossHealth.HealthBar[] GetOrderedBars()
+        {
+            if (!TryValidate(out var error)) throw new InvalidOperationException(error);
+            var result = new System.Collections.Generic.List<BossHealth.HealthBar>();
+            string id = StartBarId;
+            while (!string.IsNullOrEmpty(id))
+            {
+                var bar = Array.Find(Bars, item => item.Id == id);
+                result.Add(bar);
+                id = bar.NextBarId;
+            }
+            return result.ToArray();
         }
 
         public BossSignal GetSignal(int index) =>

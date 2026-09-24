@@ -15,14 +15,14 @@ SpellDeclarationDefinition 配置，在对应阶段的播放动作中引用它�
    多场景同时加载时也应只启用一个服务。菜单不会重复创建当前场景已有的服务，场景创建支持 Undo。
 2. 使用 `Create > STG > Spell Declaration` 创建配置，填写符卡名称、立绘和非循环短音效。需要艺术化标题时，将完整 PNG 指定到 `Title Image`；配置后优先显示图片，文字名称可留作兼容或回退。
    可先复制 [示例配置](../../../SO/Presentation/SpellDeclarationSample.asset)。示例只有英文横幅，立绘与音效留空。
-3. 在 BossEncounter 的 `Phases` 中找到目标阶段，给 `EnterActions` 添加
+3. 在 BossEncounter 的目标血管 `States` 中找到目标状态，给 `EnterActions` 添加
    `Game Action/Play Spell Declaration`，在 Declaration 中引用该符卡配置，保持外层 `WaitForCompletion` 开启。
    其他符卡阶段引用各自的配置；播放完成后视图清理本次内容，下次播放读取新的配置。
 4. 需要演出期间无敌时，用 `Invincibility Scope` 包裹宣言动作并勾选 `ProtectOwner`；玩家保护按需开启。
    消弹通过现有 `Execute Commands` 配置。无敌作用域完成、失败或取消后释放自己的锁。
 
 也可以选中 Encounter 资产，执行 `Assets > STG > Add Sample Spell Declaration to First Phase`。
-这会给索引 0 的空进入动作添加 Boss 无敌作用域和示例宣言，支持 Undo，标记资产 dirty 后由用户保存。
+这会给开始血管首状态的空进入动作添加 Boss 无敌作用域和示例宣言，支持 Undo，标记资产 dirty 后由用户保存。
     已有进入动作时不会覆盖。使用前需完成 Encounter 的 Boss prefab 和阶段配置。
 
 ## 关卡时间轴标题
