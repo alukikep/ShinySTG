@@ -209,6 +209,8 @@ ParallelAction 在子动作自然到期前执行最后一段有效 Tick，再调
 清场指令排除 Boss，保留已发射弹幕，也不阻止后续刷怪。配置入口见
 [清除普通敌人](../../Assets/Scripts/GameActions/README.md#清除普通敌人)。
 
+KillEnemiesCommand 排除 Boss，通过 Enemy 请求 EnemyHealth 强制死亡，绕过无敌和伤害限制。血量先归零，再发送一次死亡通知，由 Enemy 生成特效和掉落、ScoreManager 结算击杀分；重复指令不重复结算。死亡时立即禁用对象并退出活跃登记，帧末销毁。
+
 ## 死亡掉落
 
 Enemy 总控在 HP 清零的单次死亡路径中保存位置，停止行为流后提交死亡 DropProfile，
@@ -219,7 +221,7 @@ SelfDestructAction、离场销毁和 OnDisable 不触发死亡掉落。
 ## 死亡表现
 
 普通敌人由 Enemy 在单次击杀路径生成可选死亡特效，特效独立于敌人销毁，
-不延后掉落或战斗结算。出界、自毁和清场不播放死亡特效。
+不延后掉落或战斗结算。出界和行为自毁默认不播放死亡特效；ClearEnemiesCommand 可显式启用敌人自身的死亡特效，仍不触发死亡事件或奖励。
 EffectPool 按场景与 prefab 复用表现对象，场景卸载时一同清理。
 配置和附带音效的归属见 [战斗特效](../../Assets/Scripts/Effects/README.md)。
 Boss 的战败保留流程不受该普通敌人死亡入口影响。

@@ -51,6 +51,28 @@ namespace ShinySTG.Items
             Instance.SpawnInternal(profile, position);
         }
 
+        public static bool SpawnSingle(ItemDefinition definition, Vector2 position, Vector2 velocity)
+        {
+            if (definition == null || Instance == null || !Instance.isActiveAndEnabled) return false;
+            Instance.SpawnSingleInternal(definition, position, velocity);
+            return true;
+        }
+
+        void SpawnSingleInternal(ItemDefinition definition, Vector2 position, Vector2 velocity)
+        {
+            ItemPickup item = null;
+            while (_pool.Count > 0 && item == null) item = _pool.Pop();
+            if (item == null)
+            {
+                var go = new GameObject("Item Pickup");
+                go.SetActive(false);
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, gameObject.scene);
+                item = go.AddComponent<ItemPickup>();
+            }
+            item.Initialize(definition, position, velocity, _fallback);
+            _active.Add(item);
+        }
+
         void SpawnInternal(DropProfile profile, Vector2 position)
         {
             float min = Mathf.Max(0f, Mathf.Min(profile.SpeedRange.x, profile.SpeedRange.y));

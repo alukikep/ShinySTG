@@ -38,6 +38,7 @@ namespace ShinySTG.EnemyAI
 
         [Tooltip("运行时当前血量(Inspector 只读)。")]
         [SerializeField] float _currentHp;
+        bool _deathNotified;
 
         public float CurrentHp => _currentHp;
         public float HpPercent  => MaxHp > 0 ? Mathf.Clamp01(_currentHp / MaxHp) * 100f : 0f;
@@ -93,11 +94,24 @@ namespace ShinySTG.EnemyAI
             OnDamaged?.Invoke(dmg);
 
             if (_currentHp <= 0f)
-            {
-                if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: Position);
-                OnDeath?.Invoke();
-                OnAnyDeath?.Invoke(this);
-            }
+                NotifyDeath();
+        }
+
+        /// <summary>指令强制死亡，绕过伤害限制且不发送受击事件。</summary>
+        public void Kill()
+        {
+            if (IsDead || _deathNotified || !isActiveAndEnabled) return;
+            _currentHp = 0f;
+            NotifyDeath();
+        }
+
+        void NotifyDeath()
+        {
+            if (_deathNotified) return;
+            _deathNotified = true;
+            if (_deathSfx != null) ShinySTG.Audio.AudioMix.PlaySfx(_deathSfx, position: Position);
+            OnDeath?.Invoke();
+            OnAnyDeath?.Invoke(this);
         }
 
         public void AddInvincibility(string sourceKey)

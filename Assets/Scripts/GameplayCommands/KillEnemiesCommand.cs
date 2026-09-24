@@ -6,23 +6,19 @@ using ShinySTG.EnemyAI.Boss;
 
 namespace ShinySTG.GameplayCommands
 {
-    /// <summary>让当前所有普通敌人无奖励自毁，保留 Boss 和已发射的弹幕。</summary>
-    [Serializable, SRName("Command/Clear Enemies")]
-    public sealed class ClearEnemiesCommand : GlobalCommand
+    /// <summary>让当前所有普通敌人走完整死亡路径，保留 Boss。</summary>
+    [Serializable, SRName("Command/Kill Enemies")]
+    public sealed class KillEnemiesCommand : GlobalCommand
     {
-        [UnityEngine.Tooltip("清除时播放敌人自身配置的死亡特效；不生成死亡掉落。")]
-        public bool PlayDeathEffect;
-
         public override void Execute(GlobalCommandContext context)
         {
-            // 自毁会立即移除 Alive 登记，使用快照避免漏掉相邻敌人。
             var snapshot = new List<EnemyHealth>(EnemyHealth.Alive);
             foreach (var health in snapshot)
             {
                 if (health == null || health.GetComponentInParent<BossHealth>() != null)
                     continue;
                 var enemy = health.GetComponent<Enemy>();
-                if (enemy != null) enemy.SelfDestruct(PlayDeathEffect);
+                if (enemy != null) enemy.KillWithRewards();
             }
         }
     }

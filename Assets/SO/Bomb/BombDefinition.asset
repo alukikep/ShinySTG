@@ -55,6 +55,16 @@ MonoBehaviour:
         ClearPlayerProjectiles: 0
         ClearNeutralProjectiles: 0
         IncludeLasers: 1
+        Presentation:
+          Mode: 1
+          MaxEffectCount: 128
+          EffectGridSize: 1
+          EffectPrefab: {fileID: 8445010616754556486, guid: 234b2213d1cc4eb3bff14b488f1b5627, type: 3}
+          MaxItemCount: 128
+          ItemsPerBullet: 0.5
+          Item: {fileID: 11400000, guid: 810d6af8eab084b4eb82486a35f40608, type: 2}
+          ItemScatterRadius: 0.15
+          ItemSpeed: 5
     - rid: 6177227232335888394
       type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
       data:

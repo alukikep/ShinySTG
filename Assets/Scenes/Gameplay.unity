@@ -2395,9 +2395,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Gravity: 8
-  FallSpeed: 1.5
+  FallSpeed: 4
   HorizontalDrag: 3
-  AttractionSpeed: 10
+  AttractionSpeed: 30
   Lifetime: 30
   DespawnBelowY: -22
   EnableAutoCollect: 1

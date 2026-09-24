@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class BulletPool : MonoBehaviour
 {
@@ -168,6 +169,13 @@ public class BulletPool : MonoBehaviour
         // 若 key 也为 null，则直接丢弃该子弹实例（极端兜底，不让池逻辑崩溃）。
     }
 
+    public void Return(Bullet bullet, BulletClearPresentation presentation)
+    {
+        if (bullet == null || !_active.Contains(bullet)) return;
+        ApplyPresentation(new List<Bullet> { bullet }, presentation);
+        Return(bullet);
+    }
+
     /// <summary>
     /// 批量回收符合阵营条件的活跃子弹。先复制集合再回收，避免遍历 HashSet 时修改集合。
     /// filter 为空时回收全部活跃子弹。
@@ -189,6 +197,48 @@ public class BulletPool : MonoBehaviour
             returned++;
         }
         return returned;
+    }
+
+    public int ReturnAll(System.Predicate<ShinySTG.Hitbox.CollisionTeam> filter, BulletClearPresentation presentation)
+    {
+        if (_active.Count == 0) return 0;
+        var snapshot = new List<Bullet>(_active);
+        var selected = new List<Bullet>(snapshot.Count);
+        for (int i = 0; i < snapshot.Count; i++)
+        {
+            var bullet = snapshot[i];
+            if (bullet == null) continue;
+            var team = bullet.Hitbox != null ? bullet.Hitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
+            if (filter == null || filter(team)) selected.Add(bullet);
+        }
+        ApplyPresentation(selected, presentation);
+        for (int i = 0; i < selected.Count; i++) Return(selected[i]);
+        return selected.Count;
+    }
+
+    static void ApplyPresentation(List<Bullet> bullets, BulletClearPresentation p)
+    {
+        if (p == null || p.Mode == BulletClearPresentationMode.Silent || bullets.Count == 0) return;
+        if (p.Mode == BulletClearPresentationMode.ConvertToItems)
+        {
+            int count = Mathf.Min(256, Mathf.Min(Mathf.Max(0, p.MaxItemCount), Mathf.FloorToInt(bullets.Count * Mathf.Max(0f, p.ItemsPerBullet))));
+            if (p.Item == null || count <= 0) return;
+            int stride = Mathf.Max(1, bullets.Count / count);
+            for (int i = 0, made = 0; i < bullets.Count && made < count; i += stride, made++)
+                ShinySTG.Items.ItemDropService.SpawnSingle(p.Item, (Vector2)bullets[i].Position + UnityEngine.Random.insideUnitCircle * p.ItemScatterRadius,
+                    UnityEngine.Random.insideUnitCircle.normalized * p.ItemSpeed);
+            return;
+        }
+        if (p.EffectPrefab == null) return;
+        int max = Mathf.Min(128, Mathf.Max(1, p.MaxEffectCount));
+        float cell = Mathf.Max(0.1f, p.EffectGridSize);
+        var cells = new HashSet<Vector2Int>();
+        for (int i = 0; i < bullets.Count && cells.Count < max; i++)
+        {
+            var pos = bullets[i].Position;
+            var key = new Vector2Int(Mathf.FloorToInt(pos.x / cell), Mathf.FloorToInt(pos.y / cell));
+            if (cells.Add(key)) ShinySTG.Effects.EffectPool.Play(p.EffectPrefab, pos, bullets[i].gameObject.scene, null);
+        }
     }
 
     /// 提供给 Enemy / Player 调用:发射一组 bullets(通过 FirePattern)。

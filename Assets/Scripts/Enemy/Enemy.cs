@@ -34,7 +34,7 @@ namespace ShinySTG.EnemyAI
         float _entryGraceSeconds = 5f;
         [SerializeField, Tooltip("被击杀时的掉落；离场自毁不触发。留空不掉落。")]
         ShinySTG.Items.DropProfile _deathDrops;
-        [SerializeField, Tooltip("击杀时独立播放的特效 prefab；留空不播放，离场自毁不触发。")]
+        [SerializeField, Tooltip("击杀或启用死亡特效的清除指令使用的独立特效；留空不播放。")]
         GameObject _deathEffectPrefab;
 
         void Awake()
@@ -76,10 +76,14 @@ namespace ShinySTG.EnemyAI
         }
 
         /// <summary>无奖励离场；立即撤下碰撞和活跃登记，帧末销毁，不受无敌影响。</summary>
-        public void SelfDestruct()
+        public void SelfDestruct() => SelfDestruct(false);
+
+        public void SelfDestruct(bool playDeathEffect)
         {
             if (_dead) return;
             _dead = true;
+            if (playDeathEffect)
+                ShinySTG.Effects.EffectPool.Play(_deathEffectPrefab, transform.position, gameObject.scene);
             gameObject.SetActive(false);
             if (Shooter != null) Shooter.Stop();
             Destroy(gameObject);
@@ -90,12 +94,22 @@ namespace ShinySTG.EnemyAI
             if (Health != null) Health.OnDeath -= HandleDeath;
         }
 
+        /// <summary>强制击杀，不受无敌影响；复用 Health 的死亡通知与奖励结算。</summary>
+        public void KillWithRewards()
+        {
+            if (_dead || !isActiveAndEnabled || Health == null) return;
+            Health.Kill();
+        }
+
         void HandleDeath()
         {
             if (_dead) return;
             _dead = true;
             Vector2 dropPosition = transform.position;
             Vector3 deathPosition = transform.position;
+
+            // 立即撤下碰撞和活跃登记，避免帧末销毁前再次成为清场目标。
+            gameObject.SetActive(false);
 
             // 停掉行为流(强制退出当前 action,避免 BehaviorFlowRuntime 状态悬挂)
             if (Shooter != null) Shooter.Stop();

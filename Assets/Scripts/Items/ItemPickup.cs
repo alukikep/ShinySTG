@@ -75,6 +75,9 @@ namespace ShinySTG.Items
             if (_collected || _definition == null || SpawnFrame >= Time.frameCount || !CanCollect(player)) return false;
             if ((_definition.Kind == ItemKind.Score || _definition.Kind == ItemKind.Bomb) && player.Resources == null) return false;
             _collected = true; // 在奖励事件之前锁定，防止回调重入。
+            // 奖励回调可能触发场景清理，提前保存声音和位置，不让声音依赖池对象。
+            var pickupSfx = _definition.PickupSfx;
+            Vector2 pickupPosition = transform.position;
             switch (_definition.Kind)
             {
                 case ItemKind.SmallPower: player.Health.AddPowerUnits(1); break;
@@ -85,6 +88,7 @@ namespace ShinySTG.Items
             }
             if (_definition.ScoreValue > 0 && player.Resources != null)
                 player.Resources.AddScore(_definition.ScoreValue);
+            ShinySTG.Audio.AudioMix.PlaySfx(pickupSfx, position: pickupPosition);
             return true;
         }
 

@@ -11,10 +11,11 @@ namespace ShinySTG.GameplayCommands
         public bool ClearPlayerProjectiles;
         public bool ClearNeutralProjectiles;
         public bool IncludeLasers = true;
+        public BulletClearPresentation Presentation = new BulletClearPresentation();
 
         public override void Execute(GlobalCommandContext context)
         {
-            BulletPool.Instance?.ReturnAll(ShouldClear);
+            BulletPool.Instance?.ReturnAll(ShouldClear, Presentation);
             if (IncludeLasers)
                 ShinySTG.Laser.LaserPool.Instance?.ReturnAll(ShouldClear);
         }

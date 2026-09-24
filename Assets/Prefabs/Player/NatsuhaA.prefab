@@ -107,7 +107,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5df98ac791a1a3146b6bb1d311cccb35, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Speed: 6
+  Speed: 10
   FocusSpeedMultiplier: 0.5
 --- !u!114 &2335830708659495081
 MonoBehaviour:
@@ -267,6 +267,16 @@ MonoBehaviour:
         ClearPlayerProjectiles: 0
         ClearNeutralProjectiles: 0
         IncludeLasers: 1
+        Presentation:
+          Mode: 0
+          MaxEffectCount: 24
+          EffectGridSize: 1
+          EffectPrefab: {fileID: 0}
+          MaxItemCount: 32
+          ItemsPerBullet: 0.05
+          Item: {fileID: 0}
+          ItemScatterRadius: 0.15
+          ItemSpeed: 2
 --- !u!114 &831294475090668861
 MonoBehaviour:
   m_ObjectHideFlags: 0

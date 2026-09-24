@@ -19,6 +19,10 @@
 
 字段留空表示不播放。
 
+道具拾取音效在各个 ItemDefinition SO 的 **Pickup Sfx** 配置，使用关闭 Loop 的 SfxCue。
+P、1UP、Bomb 可分别引用不同 Cue；密集收取的限流和与火力升级音效的区别见
+[道具拾取音效](../Items/README.md#拾取音效)。
+
 ### 关卡自动切歌
 
 为关卡创建 `LevelAudioBinding`，填写 `Playlist`、`BossMusic`、`DefeatMusic`，再挂到

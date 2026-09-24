@@ -66,6 +66,10 @@ Detach 解除 trigger 订阅；若窗口仍激活则先退出窗口，随后调�
 
 回池通过 ResetForPool 执行上述清理，并恢复缩放、材质属性块、雾化、擦弹及运动状态。
 销毁路径也通过 ClearModifiers 兜底。全屏消弹使用 ReturnAll；不要直接禁用子弹对象代替回收。
+`BulletPool.ReturnAll(filter, BulletClearPresentation)` 可在批量回收时附加表现：
+`Silent` 直接回池，`BurstEffect` 按世界网格聚合特效，`ConvertToItems` 按子弹数量比例生成有限道具。
+表现配置有最大特效数（运行时硬上限 128）和最大道具数（运行时硬上限 256），超出部分只回收不追加表现；
+缺少特效、道具或场景服务时自动退化为静默回收。旧的 `Return` / `ReturnAll(filter)` 入口始终为静默模式。
 重复 Return 不会重复入池。
 
 ## 时间窗口

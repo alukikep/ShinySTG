@@ -37,6 +37,13 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 
 要在切阶段时消弹，在 ExitActions.Actions 添加 Execute Commands，
 在 Commands 下拉选择 Command/Clear Projectiles。不要在 BossPhase.ExitCommands 再配置同一次消弹。
+展开该指令的 Presentation 可选择：
+
+- `Silent`：直接回收，适合普通清场和炸弹。
+- `BurstEffect`：指定特效 prefab；按网格合并位置并受最大特效数限制，避免每颗子弹创建特效。
+- `ConvertToItems`：指定 ItemDefinition，按 `ItemsPerBullet` 计算并受最大道具数限制；生成后由 ItemDropService 负责下落、吸附和拾取。
+
+表现配置只作用于 Bullet，`IncludeLasers` 清除的激光仍按标准静默路径回收。特效或道具服务缺失时自动退化为静默回收。
 若要演出与战斗同时运行，关闭对应外层 WaitForCompletion；动作可能在下一次阶段退出或遭遇结束时被取消。
 
 扩展契约见 [通用游戏动作架构](../../../docs/architecture/arch-game-actions.md)。
@@ -48,6 +55,13 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 该指令不受敌人无敌状态影响，不触发死亡掉落，不阻止后续刷怪；若需清除已有弹幕，
 再添加 **Command/Clear Projectiles**。取消演出不会恢复已清除的敌人。
 
+勾选 **Play Death Effect** 可播放各敌人自身的 **Death Effect Prefab**，仍不掉落、不计击杀分；
+默认关闭，已有清除指令保持静默。特效上的 Play Sfx 随特效播放，不触发 Health 的死亡音效。
+
+需要完整死亡结算时选择 **Command/Kill Enemies**：强制击杀当前全部普通敌人，绕过无敌和
+伤害限制，播放自身死亡特效并按 **Death Drops** 配置生成道具，同时发送死亡事件、结算击杀分。
+此指令同样保留 Boss 和已发射弹幕，不阻止后续刷怪。未配置特效或掉落时跳过对应部分。
+
 普通敌人还可在 Enemy 组件启用 **Self Destruct Out Of Bounds**，使用场景 BoundsService 的
 **Culling Area** 判断出界。**Entry Grace Seconds** 为边界外出生的敌人提供入场时间；
 进入范围后再次出界即自毁，始终未进入则在宽限耗尽后自毁。此路径同样不掉落道具，
@@ -55,6 +69,7 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 
 验证时同时放置普通敌人与 Boss，执行指令，确认普通敌人消失、Boss 保留且没有死亡掉落；
 另检查边界内出生后离场、边界外入场及入场超时三种情况。
+再验证启用清除特效仍无奖励，Kill Enemies 则有特效和奖励；重复指令或同帧受击不能重复结算。
 
 ## 撒道具
 

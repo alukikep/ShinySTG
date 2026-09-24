@@ -17,7 +17,8 @@
 ## 敌人死亡
 
 在普通敌人 prefab 的 Enemy 组件上，将一次性特效 prefab 拖到 Death Effect Prefab。
-留空不播放。只有击杀触发，出界、行为自毁与清场不会播放。
+留空不播放。正常击杀和 Kill Enemies 指令触发；Clear Enemies 勾选 Play Death Effect 时也可播放，
+但不产生掉落或击杀分。出界和行为自毁默认不播放。
 死亡特效使用世界位置独立播放，敌人仍立即走原有销毁流程。
 
 粒子 prefab 可直接使用，池会自动补上 PooledEffect。建议关闭 Loop；

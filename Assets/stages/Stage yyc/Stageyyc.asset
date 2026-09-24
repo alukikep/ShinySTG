@@ -45,8 +45,8 @@ MonoBehaviour:
   - rid: 6177227281577541663
   - rid: 6177227281577541665
   - rid: 6177227272475115520
-  - rid: 6177227276687245346
   - rid: 6177227281577541667
+  - rid: 6177227276687245346
   Duration: 0
   Pool: {fileID: 0}
   InitialBackground: {fileID: 11400000, guid: 866283c16674b4847b6d82a2942cc5ec, type: 2}
@@ -480,11 +480,8 @@ MonoBehaviour:
         OneShot: 1
         Duration: 0
         Commands:
-        - rid: 6177227281577541668
+        - rid: 6177227296648986625
         - rid: 6177227281577541669
-    - rid: 6177227281577541668
-      type: {class: ClearEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
-      data: 
     - rid: 6177227281577541669
       type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
       data:
@@ -492,3 +489,16 @@ MonoBehaviour:
         ClearPlayerProjectiles: 0
         ClearNeutralProjectiles: 0
         IncludeLasers: 1
+        Presentation:
+          Mode: 1
+          MaxEffectCount: 128
+          EffectGridSize: 1
+          EffectPrefab: {fileID: 8445010616754556486, guid: 234b2213d1cc4eb3bff14b488f1b5627, type: 3}
+          MaxItemCount: 32
+          ItemsPerBullet: 0.05
+          Item: {fileID: 0}
+          ItemScatterRadius: 0.15
+          ItemSpeed: 2
+    - rid: 6177227296648986625
+      type: {class: KillEnemiesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data: 

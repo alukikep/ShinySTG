@@ -17,5 +17,7 @@ namespace ShinySTG.Items
         public float Size = 0.3f;
         [Min(0), Tooltip("拾取该道具获得的分数；0 表示不计分。")]
         public int ScoreValue = 100;
+        [Tooltip("成功拾取时播放的一次性音效；留空不播放，请使用非循环 SfxCue。")]
+        public ShinySTG.Audio.SfxCue PickupSfx;
     }
 }

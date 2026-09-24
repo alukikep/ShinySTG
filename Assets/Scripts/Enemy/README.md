@@ -3,6 +3,13 @@
 行为流和移动模块的职责见[敌人 AI 架构](../../../docs/architecture/arch-enemy-ai.md)，
 Boss 的配置入口见 [Boss README](Boss/README.md)。
 
+## 清除与强制死亡
+
+在 `Action/Execute Global Commands` 中使用 `Command/Clear Enemies` 可无奖励清除普通敌人，
+勾选 `Play Death Effect` 可播放各敌人自身的死亡特效。需要同时触发掉落和击杀计分时，
+使用 `Command/Kill Enemies`。两者都作用于当前全部普通敌人，保留 Boss。
+配置步骤与验收见[清除普通敌人](../GameActions/README.md#清除普通敌人)。
+
 ## 直线移动：加速起步与急刹
 
 在 Behavior Flow 资产中添加或展开 `Action/Move`，将 `Move` 设为 `Move/Linear`。

@@ -6,7 +6,8 @@
 `PlayerHealth.OnGraze`，并将分数写入 `PlayerResources`。玩家 `ScoreManager` 上的 `Graze Score`
 配置每次有效擦弹的分值，默认是 10；擦弹仍沿用现有碰撞冷却。普通敌人的 `EnemyHealth.ScoreValue`
 默认是 100，Boss 的 `BossHealth.ScoreValue` 默认是 10000。只有血量归零触发的死亡才计击杀分，
-敌人自毁、出界和关卡清场不计分。
+Kill Enemies 强制死亡同样计分；敌人自毁、出界和无奖励清场不计分，
+Clear Enemies 开启死亡特效也不计分。指令配置见[清除普通敌人](../GameActions/README.md#清除普通敌人)。
 
 ## Bomb 与动作序列
 
