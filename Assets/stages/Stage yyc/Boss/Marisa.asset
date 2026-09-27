@@ -56,7 +56,8 @@ MonoBehaviour:
   Loop: 0
   StartActions:
     WaitForCompletion: 1
-    Actions: []
+    Actions:
+    - rid: 6177227306105569280
   DefeatActions:
     WaitForCompletion: 1
     Actions: []
@@ -191,3 +192,22 @@ MonoBehaviour:
         ProtectedBarId: 
         Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
         ResetOnEnter: 1
+    - rid: 6177227306105569280
+      type: {class: InvincibilityScopeAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        ProtectPlayer: 1
+        ProtectOwner: 1
+        Sequence:
+          WaitForCompletion: 1
+          Actions:
+          - rid: 6177227306105569286
+          - rid: 6177227306105569287
+    - rid: 6177227306105569286
+      type: {class: RunBehaviorFlowAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Flow: {fileID: 11400000, guid: 4c8cd5c4ba8c3a540a7808725f974ac4, type: 2}
+    - rid: 6177227306105569287
+      type: {class: PlayDialogueAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Dialogue: {fileID: 0}
+        LockPlayerControls: 1

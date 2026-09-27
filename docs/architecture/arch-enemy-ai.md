@@ -139,6 +139,7 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 | `BezierMove` | `Move/Bezier` | 二次贝塞尔曲线(绝对锚定) | `StartMode` + `ControlPoint1/2` + `IsRelative/IsAbsolute` + `Duration` |
 | `HomingMove` | `Move/Homing` | 朝玩家持续转向 + 匀速前进 | `Speed` + `TurnRate` + `LockOnDelay` + `MaxHomingTime` |
 | `RandomWalkInRegionMove` | `Move/Random Walk In Region` | 矩形区域内随机直线 + 停顿循环 | `RegionCenter` + `RegionSize` + `MaxStepDistance` + `DirectionCenterDeg` + `DirectionSpreadDeg` + `IntervalMin/Max` + `Mode`(Constant/FastToSlow/SlowToFast) + `PeakSpeed` + `ArrivedThreshold` + `RandomSeedOffset` |
+| `MoveToPositionMove` | `Move/Move To Position` | 在动作时长内从当前位置移动到指定世界坐标，可选起步加速与末段刹车 | `TargetPosition` + `Profile` + `AccelerationTime` + `BrakingTime` |
 
 **§4.1 辅助枚举 / Helper**(挂在 `RandomWalkInRegionMove` 上,作为"区域型移动"的参考实现):
 
