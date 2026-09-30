@@ -18,6 +18,7 @@ public class Bullet : MonoBehaviour
     [HideInInspector] public float Speed;
     [HideInInspector] public float AngularSpeed; // 弧度/秒，0 = 不自转
     [HideInInspector] public float SteerAngle;   // 弧度，当前飞行方向
+    [HideInInspector] public float VisualRotation; // 度，叠加在飞行朝向上的视觉自转
     [HideInInspector] public float Lifetime;     // 累计存活时间
     [HideInInspector] public bool  HasGrazed;    // 本弹是否已对玩家触发过擦弹(防一颗弹多次擦;Init 时重置)
 
@@ -124,9 +125,11 @@ public class Bullet : MonoBehaviour
         FogCfg = null;
         FogElapsed = FogDuration = Lifetime = 0f;
         Speed = AngularSpeed = SteerAngle = Damage = 0f;
+        VisualRotation = 0f;
         OwnerTransform = null;
         _hasModifierTurn = false;
         _modifierTurn = 0f;
+        _visualAngularSpeed = 0f;
         _overrideMovement = false;
         HasGrazed = false;
         ReturnRequested = false;
@@ -176,6 +179,7 @@ public class Bullet : MonoBehaviour
     readonly List<BulletModifier> _modifiers = new();
     bool _hasModifierTurn;
     float _modifierTurn;
+    float _visualAngularSpeed;
     bool _overrideMovement;
     Vector2 _movementPosition;
     float _movementAngle;
@@ -197,11 +201,19 @@ public class Bullet : MonoBehaviour
 
     public void ClearModifierTurnRate() => AngularSpeed = 0f;
 
+    public void SetVisualSpin(float degreesPerSecond) => _visualAngularSpeed = degreesPerSecond;
+    public void ClearVisualSpin() => _visualAngularSpeed = 0f;
+
     internal void ApplyTurn(float deltaTime)
     {
         SteerAngle += _hasModifierTurn ? _modifierTurn : AngularSpeed * deltaTime;
         _hasModifierTurn = false;
         _modifierTurn = 0f;
+    }
+
+    internal void ApplyVisualSpin(float deltaTime)
+    {
+        VisualRotation = Mathf.Repeat(VisualRotation + _visualAngularSpeed * deltaTime, 360f);
     }
 
     public void AddModifier(BulletModifier m) { if (m != null) _modifiers.Add(m); }
@@ -417,7 +429,9 @@ public class Bullet : MonoBehaviour
 
         // 4. 用方向同步旋转（让贴图朝向飞行方向）
         //    与 Init() 同源:贴图尖头朝 +Y,所以需要 -90° 的视觉补偿偏移。
-        transform.rotation = Quaternion.Euler(0, 0, SteerAngle * Mathf.Rad2Deg - 90f);
+        ApplyVisualSpin(dt);
+        transform.rotation = Quaternion.Euler(0, 0,
+            SteerAngle * Mathf.Rad2Deg - 90f + VisualRotation);
 
         // 5. 越界反弹 / 越界回收 —— 优先读 BoundsService.Instance.CullingArea;无则兜底硬编码 ±10/±20(历史行为)。
         //    反弹 modifier(如 BounceBulletModifier)若挂在 _modifiers 上,会在此机会把子弹方向翻转 + 位置 Clamp 回区内;

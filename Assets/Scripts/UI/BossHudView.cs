@@ -63,6 +63,8 @@ namespace ShinySTG.UI
 
         [SerializeField, Tooltip("血条右侧倒计时，显示 00～99 秒。")]
         TMP_Text _timer;
+        [SerializeField, Tooltip("板底 Boss 跟踪文字标记。")]
+        TMP_Text _enemyMarker;
         int _displayedSeconds = -1;
         bool _timerVisible;
 
@@ -107,7 +109,19 @@ namespace ShinySTG.UI
             ConfigureSegments(null, null);
             if (_fill != null) _fill.fillAmount = 0f;
             if (_barCount != null) _barCount.SetText("0");
+            SetEnemyMarker(0f, false);
             _group.alpha = 0f;
+        }
+
+        public void SetEnemyMarker(float normalizedX, bool visible)
+        {
+            if (_enemyMarker == null) return;
+            float y = _enemyMarker.rectTransform.anchoredPosition.y;
+            var rect = _enemyMarker.rectTransform;
+            rect.anchorMin = new Vector2(Mathf.Clamp01(normalizedX), 0f);
+            rect.anchorMax = new Vector2(Mathf.Clamp01(normalizedX), 0f);
+            rect.anchoredPosition = new Vector2(0f, y);
+            _enemyMarker.enabled = visible;
         }
 
         void EnsureGroup()

@@ -25,7 +25,7 @@ MonoBehaviour:
       Name: nospell1
       Kind: 0
       MaxHp: 400
-      DamageTakenMultiplier: 1
+      DamageTakenMultiplier: 0.4
       Color: {r: 1, g: 1, b: 1, a: 1}
       HasTimeLimit: 1
       TimeLimit: 60
@@ -35,7 +35,7 @@ MonoBehaviour:
       Name: "\u975E\u7B26"
       Kind: 0
       MaxHp: 100
-      DamageTakenMultiplier: 0.4
+      DamageTakenMultiplier: 0.1
       Color: {r: 1, g: 0, b: 0, a: 1}
       HasTimeLimit: 0
       TimeLimit: 60
@@ -165,7 +165,7 @@ MonoBehaviour:
         ExitConditions: []
         ProtectBarTransition: 0
         ProtectedBarId: 
-        Flow: {fileID: 11400000, guid: d95c50ff73a271c4799bafbc173a88c5, type: 2}
+        Flow: {fileID: 11400000, guid: 9981afeb303eeee449f5ce9de1c5f48f, type: 2}
         ResetOnEnter: 1
     - rid: 6177227301945081863
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}

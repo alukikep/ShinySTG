@@ -55,7 +55,7 @@ public class BulletFoundationTests
     {
         WithAimPlayer((bullet, player) =>
         {
-            var modifier = new AimAtPlayerModifier { Delay = 1f };
+            var modifier = new AimAtPlayerModifier { StartTrigger = new DelayStartTrigger { Delay = 1f } };
             player.transform.position = Vector3.left;
             modifier.Modify(bullet, 0.5f);
             Assert.That(bullet.SteerAngle, Is.Zero);
@@ -321,8 +321,8 @@ public class BulletFoundationTests
     {
         var go = new GameObject("Window test");
         var b = go.AddComponent<Bullet>();
-        var accelerate = new AccelerateModifier { Delay = 0.035f, Duration = 0.217f, Acceleration = 10f };
-        var turn = new SteerTowardModifier { Delay = 0.035f, Duration = 0.217f, TurnRate = 90f };
+        var accelerate = new AccelerateModifier { StartTrigger = new DelayStartTrigger { Delay = 0.035f }, Duration = 0.217f, Acceleration = 10f };
+        var turn = new SteerTowardModifier { StartTrigger = new DelayStartTrigger { Delay = 0.035f }, Duration = 0.217f, TurnRate = 90f };
         try
         {
             var apply = typeof(Bullet).GetMethod("ApplyTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);

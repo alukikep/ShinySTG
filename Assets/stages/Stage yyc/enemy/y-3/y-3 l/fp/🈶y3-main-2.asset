@@ -35,7 +35,6 @@ MonoBehaviour:
     - rid: 6177227276687245319
       type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
       data:
-        Delay: 0
         StartTrigger:
           rid: -2
         Duration: 0
@@ -64,9 +63,8 @@ MonoBehaviour:
     - rid: 6177227276687245342
       type: {class: AimAtPlayerModifier, ns: , asm: Assembly-CSharp}
       data:
-        Delay: 0.3
         StartTrigger:
-          rid: -2
+          rid: 6177227434910810120
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 1
@@ -76,3 +74,7 @@ MonoBehaviour:
         Cue: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
         VolumeMul: 1
         Pitch: 1
+    - rid: 6177227434910810120
+      type: {class: DelayStartTrigger, ns: , asm: Assembly-CSharp}
+      data:
+        Delay: 1

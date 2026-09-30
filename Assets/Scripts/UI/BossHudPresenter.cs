@@ -48,6 +48,7 @@ namespace ShinySTG.UI
                 Bind(_boss.isActiveAndEnabled && IsAvailable(_boss.Health) ? _boss.Health : null);
                 if (_health != null) RefreshIfChanged();
                 RefreshTimer();
+                RefreshMarker();
                 return;
             }
             if (IsAvailable(_health))
@@ -58,6 +59,7 @@ namespace ShinySTG.UI
                     // 事件是主路径；轮询作为 prefab/碰撞替换或事件时序异常时的兜底。
                     RefreshIfChanged();
                     RefreshTimer();
+                    RefreshMarker();
                     return;
                 }
             }
@@ -136,6 +138,20 @@ namespace ShinySTG.UI
             float seconds = 0f;
             bool available = _controller != null && _controller.TryGetBarRemainingSeconds(out seconds);
             _view.SetTimer(seconds, available);
+        }
+
+        void RefreshMarker()
+        {
+            if (!IsAvailable(_health)) { _view.SetEnemyMarker(0f, false); return; }
+            var camera = Camera.main;
+            if (camera == null || !camera.isActiveAndEnabled || Screen.width <= 0)
+            {
+                _view.SetEnemyMarker(.5f, true);
+                return;
+            }
+            float screenX = camera.WorldToScreenPoint(_health.Position).x;
+            float x = Mathf.Clamp01(screenX / Screen.width);
+            _view.SetEnemyMarker(x, true);
         }
 
         void RefreshIfChanged()

@@ -1,6 +1,6 @@
 # HUD 配置与编辑
 
-当前显示分数、备用残机（不含本体）、Bomb、Power、Graze，以及 Boss 当前管血量、后续血管数量和可选时限倒计时。
+当前显示分数、备用残机（不含本体）、Bomb、Power、Graze，以及 Boss 当前管血量、后续血管数量、可选时限倒计时和板底 `Enemy` 跟踪标记。
 架构职责与扩展契约见 [HUD 架构](../../../docs/architecture/arch-hud.md)。
 
 ## 编辑布局
@@ -78,6 +78,11 @@ Play 模式另检查 UI 中途启用、目标替换、关卡重开及实际布�
 **STG > UI > Add Boss HUD Timer** 补建并绑定。重复执行不重复创建；支持 Undo、场景保存和 prefab override。
 工具将倒计时放在血条背景右侧，并把管数移到其右侧；可随后用 RectTransform 调整布局。
 手工创建时将 TMP 文本拖到 BossHudView 的 Timer 字段即可；运行时不重排 UI。
+
+## Boss 板底 Enemy 标记
+
+新建 HUD 会自动创建板底 `Enemy` 文字标记。它沿可玩区域的水平范围跟随当前 Boss 的世界 X 坐标；Boss 超出左右边界时标记停在对应边缘。
+已有场景选中 BossHud 或其父节点，执行 **STG/UI/Add Boss HUD Enemy Marker** 补建。标记由 `BossHudPresenter` 驱动，Boss 不可用或死亡时隐藏；文字、字体和位置可直接在 UI 节点上调整，后续可替换为图标。
 
 ## Boss 多色分段血条
 

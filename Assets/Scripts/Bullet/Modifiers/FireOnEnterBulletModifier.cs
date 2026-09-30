@@ -3,7 +3,7 @@ using SerializeReferenceEditor;
 using UnityEngine;
 
 /// <summary>
-/// OneShot 版:子弹出生 <see cref="BulletModifier.Delay"/> 秒后,触发一次 <see cref="FirePatternBulletModifier.Pattern"/>,
+/// OneShot 版:子弹出生或显式 StartTrigger 激活后,触发一次 <see cref="FirePatternBulletModifier.Pattern"/>,
 /// 然后本 modifier 立刻结束。
 ///
 /// 默认值:<see cref="BulletModifier.OneShot"/> = true(进入窗口瞬间调一次 OnWindowEnter)。

@@ -33,7 +33,10 @@ modifier 执行期间若子弹被回收或同一实例已重新生成，旧一�
 `OrbitBulletModifier` 是位置型运动 modifier，配置入口为 `Modifier/Orbit`。`Mode=FixedPosition`
 时围绕 `FixedCenter` 做圆周运动；`Mode=FiringEnemy` 时围绕发射者 Transform 做圆周运动。
 两种模式都只需设置 `AngularSpeed`（度/秒，正值逆时针），半径在 modifier 首次生效时按
-子弹当前位置到圆心的距离自动计算。发射者引用沿 FirePattern → BulletPool → Bullet 传递，
+子弹当前位置到圆心的距离自动计算。`RadiusBehavior=Initial` 保持该兼容行为；也可选择
+`Constant` 使用指定半径，或选择 `Linear` / `Curve` 在 `RadiusDuration` 内从初始半径变化到
+`TargetRadius`。半径每帧重算但最终位置仍由 Orbit modifier 统一提交，避免多个位置 modifier
+之间产生隐式覆盖。发射者引用沿 FirePattern → BulletPool → Bullet 传递，
 并在回池时清理。若发射者已销毁，`FiringEnemy` 模式会直接请求回收子弹，不会退回固定坐标。
 
 内置 Steer 与 Homing 通过 `SetModifierTurn` 提交按有效时长计算的本帧转角，
@@ -166,6 +169,21 @@ OnSignal 在收到信号瞬间检查距离，通过后锁存资格，随后移�
 新增行为在 Modifiers 中继承 BulletModifier，沿用 Serializable、SRName 与 SerializeReference 约定。
 Modify 是非虚方法，不应隐藏它；持续行为实现 ModifyCore，一次性行为实现 OnWindowEnter。
 新增启动条件放在 Triggers，新增分裂信息传递和采样策略放在 Extras。
+
+`LoopBulletModifier` 是可嵌套的单子节点容器，配置入口为 `Modifier/Loop`。它在每个周期结束时
+对 Child 执行 `Detach`、`ResetWindow` 并重新挂载启动触发器，因此 Child 的 Delay、Duration、
+OneShot 及 Orbit 的半径曲线状态都会按轮次重新开始。`MaxCycles=0` 表示无限循环；正数限制轮数。
+容器每帧把时间切片交给 Child，避免一个大帧跨过周期边界时丢失剩余时间。建议一个 Loop 内只放
+一个负责位置的 modifier（例如 Orbit），避免同一帧多个位置写入互相覆盖。
+
+更推荐使用 `Modifier/Sequence` 或 `Modifier/Parallel` 容器，并在容器上勾选 `Loop`。
+Sequence 按顺序执行 Children，Parallel 同帧执行所有 Children；循环只重置容器内的子实例，
+不会重置容器自身的 Delay/Duration。它们都对嵌套子 Modifier 做 Clone，避免不同子弹共享运行状态。
+
+容器内的 Entry 采用 `BulletModifierEntry { Modifier, Duration }`。Entry.Duration 是唯一的阶段时长；
+子 Modifier 的 Delay、Duration、OneShot 不参与 Sequence/Parallel 调度。需要停顿时使用
+`Modifier/Wait`，其停顿时长直接填写在 Entry.Duration 中。这样默认时间模型接近 BehaviorFlow：
+容器负责时间轴，Modifier 只负责行为，Wait 明确表达中途暂停。
 
 扩展时同时检查 Clone 深拷、OnResetWindow、窗口退出及 OnDetach，避免把配置与运行状态共享。
 新增视觉属性必须能随子弹回池恢复；需要订阅或持有资源的行为必须覆盖从未激活就被回收的路径。

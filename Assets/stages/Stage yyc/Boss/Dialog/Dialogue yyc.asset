@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b1e2308e0d8e72c46bd95cd6f468655f, type: 3}
-  m_Name: Dialogue
+  m_Name: Dialogue yyc
   m_EditorClassIdentifier: 
   Lines:
   - Character: {fileID: 11400000, guid: 37cd105fb8ef1134ebde0b52feb394ed, type: 2}
-    Side: 0
-    Text: "\u4F60\u597D"
-    ExpressionId: 
+    Side: 1
+    Text: "\u53EA\u662F\u6D4B\u8BD5\u4E00\u4E0B"
+    ExpressionId: 1
   - Character: {fileID: 11400000, guid: 37cd105fb8ef1134ebde0b52feb394ed, type: 2}
-    Side: 0
-    Text: "\u4F60\u597D\uFF01"
+    Side: 1
+    Text: "OK\uFF0C\u6D4B\u8BD5\u5B8C\u6210"
     ExpressionId: 1

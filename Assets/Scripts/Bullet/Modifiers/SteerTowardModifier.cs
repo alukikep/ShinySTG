@@ -3,27 +3,55 @@ using SerializeReferenceEditor;
 using UnityEngine;
 
 /// <summary>
-/// 示例：按固定角速度转向(螺旋 / 弧线 / 蛇形 等)。
-///
-/// 行为:从子弹生成那一刻起,以 TurnRate (度/秒) 的角速度持续旋转。
-/// 不依赖任何 Target,行为简单可预测 —— 设多少转多少,正数=逆时针,负数=顺时针。
-///
-/// 实现细节:modifier 每帧把 b.AngularSpeed 覆写为 TurnRate (度 → 弧度)。
-/// Bullet.Update 第 2 步会做 SteerAngle += AngularSpeed * dt,所以效果等价于"持续旋转"。
+/// 按固定值或随机范围抽样的角速度转向。每次窗口首次执行时抽样，窗口内保持不变。
+/// 通过 SetModifierTurn 提交有效时间内的转角；正数逆时针，负数顺时针。
 /// </summary>
 [Serializable, SRName("Modifier/Steer")]
-public class SteerTowardModifier : BulletModifier
+public class SteerTowardModifier : BulletModifier, ISerializationCallbackReceiver
 {
-    [Tooltip("角速度(度/秒)。正数=逆时针,负数=顺时针。0=不转。\n" +
-             "90 = 1 秒转 90°(常见螺旋弹);360 = 1 秒转一圈。")]
-    public float TurnRate = 90f;
+    // 保留旧资产和代码调用的固定角速度；Rate 为空时兼容使用此值。
+    [HideInInspector] public float TurnRate = 90f;
+
+    [SerializeReference, SR]
+    [Tooltip("角速度来源：固定值或每颗子弹独立抽样的随机范围。")]
+    public SteerRateStrategy Rate;
+
+    public void OnBeforeSerialize() => MigrateLegacyRate();
+    public void OnAfterDeserialize() => MigrateLegacyRate();
+
+    void MigrateLegacyRate()
+    {
+        if (Rate == null) Rate = new FixedSteerRateStrategy { Value = TurnRate };
+    }
+
+    [NonSerialized] float _sampledRate;
+    [NonSerialized] bool _hasSample;
+
+    protected override void OnResetWindow()
+    {
+        _sampledRate = 0f;
+        _hasSample = false;
+    }
 
     protected override void OnWindowExitCleanup(Bullet bullet) => bullet.ClearModifierTurnRate();
 
     public override void ModifyCore(Bullet b, float dt)
     {
-        // 直接把 AngularSpeed 设为 TurnRate(弧度)。
-        // Bullet.Update 第 2 步会自动把它累加到 SteerAngle,无需在这里直接改 SteerAngle。
-        b.SetModifierTurn(TurnRate * Mathf.Deg2Rad, dt);
+        if (!_hasSample)
+        {
+            _sampledRate = Rate != null ? Rate.Sample() : TurnRate;
+            _hasSample = true;
+        }
+        // 使用窗口裁剪后的 dt，避免末帧多转或被退出清理吞掉。
+        b.SetModifierTurn(_sampledRate * Mathf.Deg2Rad, dt);
+    }
+
+    public override BulletModifier Clone()
+    {
+        var copy = (SteerTowardModifier)MemberwiseClone();
+        copy.StartTrigger = StartTrigger?.Clone();
+        copy.Rate = Rate?.Clone();
+        copy.ResetWindow();
+        return copy;
     }
 }

@@ -11,8 +11,7 @@ using UnityEngine;
 /// 运行时:每颗子弹会 Clone() 一份独立实例(默认 MemberwiseClone),
 /// modifier 状态不会跨子弹污染 —— 安全地持有 _timer / _lockOnDelay 等 per-instance 字段。
 ///
-/// 时间窗口(自 vX 起):所有 modifier 自动支持"Delay 后才生效 / Duration 秒后结束"。
-///   - 默认 Delay=0 + Duration=0(=永久) + AutoSkipOutsideWindow=true → 行为与历史 100% 等价。
+/// 默认出生即生效；需要信号启动时显式配置 StartTrigger。
 ///   - 见 ARCHITECTURE.md §2.6 与字段 Tooltip。
 ///
 /// 字段约定:
@@ -29,18 +28,12 @@ public abstract class BulletModifier
     // ============================================================
 
     [Header("Timing")]
-    [Tooltip("从子弹生成开始,延迟多少秒后 modifier 才开始生效。\n" +
-             "0 = 出生即生效(默认,与历史行为一致)。\n" +
-             "典型用例:0.5s 后才激活追踪,前 0.5s 直线飞行的'假动作';或 1s 后才生成分裂弹(配合 OneShot)。")]
-    [Min(0f)] public float Delay = 0f;
-
     [Tooltip("Modifier 启动触发器 —— 决定何时进入时间窗口。\n" +
-             "默认 DelayStartTrigger(Delay=0,与历史 100% 等价)。\n" +
-             "其他触发器(下拉选):\n" +
-             "  - Trigger/Delay          : 等 Delay 秒(等价旧 Delay 字段)\n" +
+             "未配置时出生即生效；需要等待或信号时显式选择触发器。\n" +
+             "可选触发器:\n" +
+             "  - Trigger/Delay          : 显式等待指定秒数\n" +
              "  - Trigger/On Signal      : 订阅 BulletSignalBus 信号,收到即激活(可配 MaxWait / 距离判定)\n" +
              "  - Trigger/Delay Or Signal: Delay 与信号任一先到即激活\n" +
-             "★ null = 用 DelayStartTrigger{Delay=this.Delay} 兜底,旧 .asset 无脑兼容。\n" +
              "详见 Assets/Scripts/Bullet/Triggers/ModifierStartTrigger.cs + ARCHITECTURE.md §2.8。")]
     [SerializeReference, SR]
     public ModifierStartTrigger StartTrigger;
@@ -94,9 +87,7 @@ public abstract class BulletModifier
         float activeTime = deltaTime;
         if (!_windowStarted)
         {
-            bool ready = StartTrigger != null
-                ? StartTrigger.ShouldActivate(bullet, _elapsed)
-                : _elapsed >= Mathf.Max(0f, Delay);
+            bool ready = StartTrigger == null || StartTrigger.ShouldActivate(bullet, _elapsed);
             if (!ready)
             {
                 if (!OneShot && !AutoSkipOutsideWindow) ModifyCore(bullet, deltaTime);
@@ -104,7 +95,7 @@ public abstract class BulletModifier
             }
             activeTime = StartTrigger != null
                 ? StartTrigger.GetActivationDelta(previousElapsed, _elapsed)
-                : Mathf.Clamp(_elapsed - Mathf.Max(0f, Delay), 0f, deltaTime);
+                : deltaTime;
             activeTime = Mathf.Clamp(activeTime, 0f, deltaTime);
             _windowStarted = _isActive = true;
             // 触发资格已锁存，不再需要信号订阅。
@@ -147,6 +138,14 @@ public abstract class BulletModifier
     protected virtual void OnWindowExit(Bullet bullet) => OnWindowExitCleanup(bullet);
     protected virtual void OnWindowExitCleanup(Bullet bullet) { }
     public abstract void ModifyCore(Bullet bullet, float deltaTime);
+
+    // 容器子节点入口：子节点的 Delay/Duration/OneShot 由容器 Entry 管理。
+    internal void BeginAsChild(Bullet bullet) => OnWindowEnter(bullet);
+    internal void EndAsChild(Bullet bullet) => OnWindowExitCleanup(bullet);
+    internal void ModifyAsChild(Bullet bullet, float deltaTime)
+    {
+        if (bullet != null && deltaTime > 0f && !float.IsInfinity(deltaTime)) ModifyCore(bullet, deltaTime);
+    }
 
     /// <summary>
     /// 越界反弹钩子。Bullet.Update 在越界回收判定之前调用每个 modifier 的本方法。

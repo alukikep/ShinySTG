@@ -104,6 +104,7 @@ namespace ShinySTG.UI.Editor
             EditorUtility.SetDirty(view);
             AddTimer(view);
             AddSegments(view);
+            AddEnemyMarker(view);
             Selection.activeGameObject = bossRoot;
         }
 
@@ -217,6 +218,57 @@ namespace ShinySTG.UI.Editor
             rect.anchorMax = Vector2.one;
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             serialized.FindProperty("_segmentRoot").objectReferenceValue = rect;
+            serialized.ApplyModifiedProperties();
+            PrefabUtility.RecordPrefabInstancePropertyModifications(view);
+            EditorUtility.SetDirty(view);
+        }
+
+        [MenuItem("STG/UI/Add Boss HUD Enemy Marker")]
+        static void AddSelectedEnemyMarker()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            var selected = Selection.activeGameObject;
+            var view = selected != null ? selected.GetComponentInChildren<BossHudView>(true) : null;
+            if (view == null && selected != null) view = selected.GetComponentInParent<BossHudView>();
+            if (view == null || !view.gameObject.scene.IsValid()) return;
+            Undo.IncrementCurrentGroup();
+            int group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Add Boss HUD Enemy Marker");
+            try
+            {
+                AddEnemyMarker(view);
+                EditorSceneManager.MarkSceneDirty(view.gameObject.scene);
+            }
+            catch (System.Exception exception)
+            {
+                Undo.RevertAllDownToGroup(group);
+                Debug.LogException(exception);
+            }
+            finally { Undo.CollapseUndoOperations(group); }
+        }
+
+        internal static void AddEnemyMarker(BossHudView view)
+        {
+            var serialized = new SerializedObject(view);
+            if (serialized.FindProperty("_enemyMarker").objectReferenceValue != null) return;
+            var go = new GameObject("Enemy", typeof(RectTransform), typeof(TextMeshProUGUI));
+            Undo.RegisterCreatedObjectUndo(go, "Add Boss HUD Enemy Marker");
+            var canvas = view.GetComponentInParent<Canvas>();
+            go.transform.SetParent(canvas != null ? canvas.transform : view.transform, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = new Vector2(.5f, 0f);
+            rect.anchorMax = new Vector2(.5f, 0f);
+            rect.pivot = new Vector2(.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -8f);
+            rect.sizeDelta = new Vector2(80f, 28f);
+            var text = go.GetComponent<TextMeshProUGUI>();
+            text.text = "Enemy";
+            text.font = TMP_Settings.defaultFontAsset;
+            text.fontSize = 18f;
+            text.alignment = TextAlignmentOptions.Top;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            serialized.FindProperty("_enemyMarker").objectReferenceValue = text;
             serialized.ApplyModifiedProperties();
             PrefabUtility.RecordPrefabInstancePropertyModifications(view);
             EditorUtility.SetDirty(view);
