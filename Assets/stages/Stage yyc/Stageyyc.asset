@@ -506,7 +506,7 @@ MonoBehaviour:
     - rid: 6177227301945081856
       type: {class: BossEncounterEntry, ns: ShinySTG.Level.SpawnEntries, asm: Assembly-CSharp}
       data:
-        TriggerTime: 80
+        TriggerTime: 3
         OneShot: 1
         Duration: 0
         Encounter: {fileID: 11400000, guid: 9678404dc21d5c14f9eb0c956f790fc6, type: 2}

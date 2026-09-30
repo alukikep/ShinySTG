@@ -44,7 +44,7 @@ namespace ShinySTG.Dialogue
             // 复制会话数据，不向共享 SO 写入播放状态。
             _lines = Array.ConvertAll(definition.Lines, line => line == null ? null : new DialogueLine
             {
-                Character = line.Character, Side = line.Side, Text = line.Text, PortraitOverride = line.PortraitOverride
+                Character = line.Character, Side = line.Side, Text = line.Text, ExpressionId = line.ExpressionId
             });
             _lineIndex = -1;
             _fastForwardHeld = false;

@@ -13,5 +13,9 @@ MonoBehaviour:
   m_Name: Marisa
   m_EditorClassIdentifier: 
   DisplayName: "\u9B54\u7406\u6C99"
-  DefaultPortrait: {fileID: 0}
-  NameColor: {r: 1, g: 1, b: 1, a: 1}
+  DefaultPortrait: {fileID: -1749512907, guid: 4cf5f446260378943a89c95cd9a3fa12, type: 3}
+  NameColor: {r: 0, g: 0, b: 0, a: 1}
+  Expressions:
+  - Id: 1
+    DisplayName: happy
+    Portrait: {fileID: 824352207, guid: 4cf5f446260378943a89c95cd9a3fa12, type: 3}

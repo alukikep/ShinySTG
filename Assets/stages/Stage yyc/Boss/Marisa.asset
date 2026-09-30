@@ -209,5 +209,5 @@ MonoBehaviour:
     - rid: 6177227306105569287
       type: {class: PlayDialogueAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
       data:
-        Dialogue: {fileID: 0}
+        Dialogue: {fileID: 11400000, guid: b6858eab0e6dd7b488cd2a5479494c32, type: 2}
         LockPlayerControls: 1
