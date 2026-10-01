@@ -18,7 +18,7 @@ MonoBehaviour:
   FireExtensions: []
   FireSounds:
   - rid: 6177227436564938758
-  Speed: 2
+  Speed: 3
   AngularSpeed: 0
   SpawnFog:
     rid: 6177227436564938752

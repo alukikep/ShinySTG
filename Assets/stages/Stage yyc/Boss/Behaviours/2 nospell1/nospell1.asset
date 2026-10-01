@@ -13,27 +13,24 @@ MonoBehaviour:
   m_Name: nospell1
   m_EditorClassIdentifier: 
   Actions:
-  - rid: 6177227436564938759
-  - rid: -2
+  - rid: 2710246719014043667
   Loop: 0
   StartDelay: 0
   references:
     version: 2
     RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
-    - rid: 6177227436564938759
+    - rid: 2710246719014043667
       type: {class: FireAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
         DurationConfig:
-          rid: 6177227436564938760
+          rid: 2710246719014043668
         _legacyDuration: 1
         Pattern: {fileID: 11400000, guid: b0888a04cfb5706459a56bf8dbde0807, type: 2}
-        FireRate: 1
+        FireRate: 2
         OneShot: 1
         AimOffsetDeg: 0
         ExtraModifierPrefabs: []
-    - rid: 6177227436564938760
+    - rid: 2710246719014043668
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 100
+        Value: 99

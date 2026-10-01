@@ -9,7 +9,7 @@ using UnityEngine;
 [Serializable, SRName("Modifier/Loop")]
 public sealed class LoopBulletModifier : BulletModifier
 {
-    [SerializeReference, SR]
+    [SerializeReference, BulletModifierUI]
     [Tooltip("每轮执行的子 Modifier。通常放 Orbit、Color、Accelerate 等单一行为。")]
     public BulletModifier Child;
 

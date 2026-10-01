@@ -21,7 +21,7 @@ MonoBehaviour:
   DamageInterval: 1
   BombSfx: {fileID: 0}
   ReturnSpawnedBulletsOnEnd: 1
-  DeathbombWindow: 1
+  DeathbombWindow: 0.1
   StartActions:
     WaitForCompletion: 1
     Actions:

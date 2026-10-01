@@ -55,7 +55,7 @@ public abstract class FirePatternBulletModifier : BulletModifier
              "  - 母弹没挂追踪,但希望分裂弹带追踪 → 拖一个 HomingEnemyModifier\n" +
              "  - 母弹挂的是减速分裂,这里再叠加速 → 拖一个 AccelerateModifier\n" +
              "留空 = 只用 Pattern 资产自己的 ModifierPrefabs。")]
-    [SerializeReference, SR]
+    [SerializeReference, BulletModifierUI]
     public BulletModifier[] ExtraModifiers;
 
     [Header("Parent To Child (母弹 → 分裂弹 的信息传递)")]

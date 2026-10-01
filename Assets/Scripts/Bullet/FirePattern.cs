@@ -15,7 +15,7 @@ public abstract class FirePattern : ScriptableObject
              "运行时每颗子弹会 Clone 一份独立实例,modifier 状态不会跨子弹污染。\n" +
              "Modifier 只持有逻辑,不要访问自己的 transform(它不是 GameObject)。\n" +
              "扩展方法:新建 BulletModifier 子类 + 加 [SRName(\"Modifier/<名字>\")] —— 自动出现在下拉菜单。")]
-    [SerializeReference, SR]
+    [SerializeReference, BulletModifierUI]
     public BulletModifier[] ModifierPrefabs;
 
     [Header("Fire Extensions (Pipeline 模块数组,按顺序串成角度管道)")]

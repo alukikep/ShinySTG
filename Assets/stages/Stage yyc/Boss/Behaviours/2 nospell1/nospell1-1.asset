@@ -12,58 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 195aad2d24357ad4eae3908cbbc82049, type: 3}
   m_Name: nospell1-1
   m_EditorClassIdentifier: 
-  BulletPrefab: {fileID: 74477406864887423, guid: 13f23973deec31f45bf860b783a3c236, type: 3}
+  BulletPrefab: {fileID: 0}
   ModifierPrefabs:
-  - rid: 6177227434910810123
-  FireExtensions:
-  - rid: 6177227436564938762
+  - rid: 2710246719014043681
+  - rid: -2
+  FireExtensions: []
   FireSounds: []
-  Speed: 0
+  Speed: 5
   AngularSpeed: 0
   SpawnFog:
     rid: -2
-  Damage: 0
-  Count: 1
-  DeltaSpeed: 0
+  Damage: 1
+  Count: 3
+  DeltaSpeed: 1
   references:
     version: 2
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 6177227434910810123
-      type: {class: ParallelBulletModifier, ns: , asm: Assembly-CSharp}
-      data:
-        StartTrigger:
-          rid: -2
-        Duration: 0
-        AutoSkipOutsideWindow: 1
-        OneShot: 0
-        Entries:
-        - Modifier:
-            rid: 6177227434910810124
-          Duration: 99
-        - Modifier:
-            rid: 6177227434910810125
-          Duration: 99
-        CycleDuration: 1
-        Loop: 0
-    - rid: 6177227434910810124
-      type: {class: FireOnDurationBulletModifier, ns: , asm: Assembly-CSharp}
-      data:
-        StartTrigger:
-          rid: -2
-        Duration: 0
-        AutoSkipOutsideWindow: 1
-        OneShot: 0
-        Pattern: {fileID: 11400000, guid: 604f3cc42d955b8419de45df3bc2ca82, type: 2}
-        InheritOwnerTeam: 1
-        ExtraModifiers:
-        - rid: 6177227436564938754
-        Extra:
-          rid: 6177227436564938755
-        Interval: 0.1
-        MaxShots: -1
-    - rid: 6177227434910810125
+    - rid: 2710246719014043681
       type: {class: SequenceBulletModifier, ns: , asm: Assembly-CSharp}
       data:
         StartTrigger:
@@ -73,119 +40,28 @@ MonoBehaviour:
         OneShot: 0
         Entries:
         - Modifier:
-            rid: 6177227434910810126
-          Duration: 4
+            rid: 2710246719014043682
+          Duration: 1
         - Modifier:
-            rid: 6177227434910810127
-          Duration: 4
-        Loop: 1
-    - rid: 6177227434910810126
-      type: {class: OrbitBulletModifier, ns: , asm: Assembly-CSharp}
+            rid: 2710246719014043683
+          Duration: 1
+        Loop: 0
+    - rid: 2710246719014043682
+      type: {class: WaitBulletModifier, ns: , asm: Assembly-CSharp}
       data:
         StartTrigger:
           rid: -2
-        Duration: 2
+        Duration: 1
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        Mode: 1
-        FixedCenter: {x: 0, y: 0}
-        AngularSpeed: 90
-        RadiusBehavior: 2
-        Radius: 1
-        TargetRadius: 1
-        RadiusDuration: 2
-        RadiusCurve:
-          serializedVersion: 2
-          m_Curve:
-          - serializedVersion: 3
-            time: 0
-            value: 0
-            inSlope: 0
-            outSlope: 1
-            tangentMode: 0
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0
-          - serializedVersion: 3
-            time: 1
-            value: 1
-            inSlope: 1
-            outSlope: 0
-            tangentMode: 0
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0
-          m_PreInfinity: 2
-          m_PostInfinity: 2
-          m_RotationOrder: 4
-    - rid: 6177227434910810127
-      type: {class: OrbitBulletModifier, ns: , asm: Assembly-CSharp}
-      data:
-        StartTrigger:
-          rid: -2
-        Duration: 4
-        AutoSkipOutsideWindow: 1
-        OneShot: 0
-        Mode: 1
-        FixedCenter: {x: 0, y: 0}
-        AngularSpeed: 180
-        RadiusBehavior: 2
-        Radius: 1
-        TargetRadius: 5
-        RadiusDuration: 2
-        RadiusCurve:
-          serializedVersion: 2
-          m_Curve:
-          - serializedVersion: 3
-            time: 0
-            value: 0
-            inSlope: 0
-            outSlope: 1
-            tangentMode: 0
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0
-          - serializedVersion: 3
-            time: 1
-            value: 1
-            inSlope: 1
-            outSlope: 0
-            tangentMode: 0
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0
-          m_PreInfinity: 2
-          m_PostInfinity: 2
-          m_RotationOrder: 4
-    - rid: 6177227436564938754
-      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+    - rid: 2710246719014043683
+      type: {class: ParallelBulletModifier, ns: , asm: Assembly-CSharp}
       data:
         StartTrigger:
           rid: -2
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
-        Mode: 0
-        Color: {r: 1, g: 0, b: 0, a: 1}
-        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
-        FadeStart: 0.5
-        ReferenceLifetime: 1.5
-        FlashFrequency: 5
-        FlashMinAlpha: 0.3
-        AutoSetDrawMode: 1
-    - rid: 6177227436564938755
-      type: {class: AngleOffsetFirePatternBulletExtra, ns: , asm: Assembly-CSharp}
-      data:
-        BaseOffset:
-          rid: 6177227437188841479
-        StepOffset: 0
-        BatchSample: 0
-    - rid: 6177227436564938762
-      type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
-      data:
-        BaseAngle: 0
-        PositionOffset: {x: 0, y: 0}
-    - rid: 6177227437188841479
-      type: {class: FixedBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
-      data:
-        Value: 270
+        Entries: []
+        CycleDuration: 1
+        Loop: 0

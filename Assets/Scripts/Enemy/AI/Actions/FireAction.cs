@@ -41,7 +41,7 @@ namespace ShinySTG.EnemyAI
                  "适用场景:同一 Pattern 在不同 Action/阶段切换成追踪弹/加速弹(不改 SO 资产)。\n" +
                  "留空 = 只用 Pattern 自带的 modifier。\n" +
                  "下拉选 modifier 类型(走 SerializeReference + SRName),直接编辑字段。")]
-        [SerializeReference, SR]
+        [SerializeReference, BulletModifierUI]
         public BulletModifier[] ExtraModifierPrefabs;
 
         float _timer;
