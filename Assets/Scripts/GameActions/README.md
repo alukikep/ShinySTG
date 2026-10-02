@@ -37,12 +37,23 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 
 要在切阶段时消弹，在 ExitActions.Actions 添加 Execute Commands，
 在 Commands 下拉选择 Command/Clear Projectiles。不要在 BossPhase.ExitCommands 再配置同一次消弹。
+该指令的 Clear Level 默认是一级（Normal），只消除普通子弹；二级（Strong）同时消除
+普通弹和防御弹。切阶段、Boss 击破、战前战后演出或玩家死亡需要清空弹幕时，显式选择二级。
+激光仍由 Include Lasers 控制，两级均可清除指定阵营的激光。
+
+在 FirePattern 的默认 Modifier 或 FireAction 的追加 Modifier 中选择 `Modifier/Clear Defense`，
+即可赋予子弹消弹防御。防御从挂载开始常驻，包括首帧和出生雾化期间；不消耗防御，
+不使用自身启动条件、持续时长或 OneShot。移除 Modifier、回池时解除。
+放入 Sequence 或 Parallel 时，防御随子节点挂载和脱离生效、解除；Sequence/Parallel
+由 Entry 的阶段时长控制，Parallel 子项到期即解除。分裂生成的子弹需要在自己的 Modifier 配置中添加防御。
+
 展开该指令的 Presentation 可选择：
 
 - `Silent`：直接回收，适合普通清场和炸弹。
 - `BurstEffect`：指定特效 prefab；按网格合并位置并受最大特效数限制，避免每颗子弹创建特效。
 - `ConvertToItems`：指定 ItemDefinition，按 `ItemsPerBullet` 计算并受最大道具数限制；生成后由 ItemDropService 负责下落、吸附和拾取。
 
+防御筛选先于表现：被一级消弹保留的防御弹不生成特效、不计入道具数量。
 表现配置只作用于 Bullet，`IncludeLasers` 清除的激光仍按标准静默路径回收。特效或道具服务缺失时自动退化为静默回收。
 若要演出与战斗同时运行，关闭对应外层 WaitForCompletion；动作可能在下一次阶段退出或遭遇结束时被取消。
 

@@ -41,6 +41,17 @@ public class Bullet : MonoBehaviour
     bool _usesFallbackMaterial;
     public uint SpawnVersion { get; private set; }
 
+    // 按运行实例登记，多个防御 Modifier 脱离时不会相互解除防御。
+    HashSet<BulletModifier> _clearDefenseSources;
+    public bool HasClearDefense => _clearDefenseSources != null && _clearDefenseSources.Count > 0;
+    internal void AddClearDefense(BulletModifier source)
+    {
+        if (source == null) return;
+        if (_clearDefenseSources == null) _clearDefenseSources = new HashSet<BulletModifier>();
+        _clearDefenseSources.Add(source);
+    }
+    internal void RemoveClearDefense(BulletModifier source) => _clearDefenseSources?.Remove(source);
+
     [Header("Combat")]
     [Tooltip("子弹命中敌人时的伤害值。由 FirePattern.Damage 在 pool.Get 时写入。\n" +
              "敌人弹不读此字段 — 敌人弹命中玩家直接走 player.OnHit(1),无视 Damage。")]
@@ -118,6 +129,7 @@ public class Bullet : MonoBehaviour
     {
         CaptureBaseline();
         ClearModifiers();
+        _clearDefenseSources?.Clear();
         if (_fogActive) ClearFogVisual();
         _fogActive = false;
         transform.localScale = _baseLocalScale;
@@ -216,7 +228,12 @@ public class Bullet : MonoBehaviour
         VisualRotation = Mathf.Repeat(VisualRotation + _visualAngularSpeed * deltaTime, 360f);
     }
 
-    public void AddModifier(BulletModifier m) { if (m != null) _modifiers.Add(m); }
+    public void AddModifier(BulletModifier m)
+    {
+        if (m == null) return;
+        _modifiers.Add(m);
+        m.Attach(this);
+    }
 
     /// <summary>
     /// 清空所有 modifier(纯 C# 列表操作,无需 Destroy)。
@@ -242,6 +259,7 @@ public class Bullet : MonoBehaviour
     {
         for (int i = 0; i < _modifiers.Count; i++)
         {
+            if (!_modifiers[i].UsesTimeWindow) continue;
             var st = _modifiers[i].StartTrigger;
             if (st != null) st.OnAttach(this);
         }

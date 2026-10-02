@@ -13,11 +13,13 @@ public sealed class ParallelBulletModifier : BulletModifier
     bool _attached;
     float _cycleElapsed;
     float[] _entryElapsed;
+    bool[] _entryEnded;
 
     protected override void OnResetWindow()
     {
         _attached = false; _cycleElapsed = 0f;
         _entryElapsed = Entries == null ? null : new float[Entries.Length];
+        _entryEnded = Entries == null ? null : new bool[Entries.Length];
         if (Entries == null) return;
     }
     protected override void OnWindowEnter(Bullet bullet) => AttachAll(bullet);
@@ -27,10 +29,11 @@ public sealed class ParallelBulletModifier : BulletModifier
         for (int i = 0; i < Entries.Length; i++)
         {
             var entry = Entries[i];
-            if (entry == null || entry.Modifier == null) continue;
+            if (entry == null || entry.Modifier == null || _entryEnded[i]) continue;
             float remaining = Mathf.Max(0f, entry.Duration - _entryElapsed[i]);
             float slice = Mathf.Min(dt, remaining);
             if (slice > 0f) { entry.Modifier.ModifyAsChild(bullet, slice); _entryElapsed[i] += slice; }
+            if (_entryElapsed[i] >= Mathf.Max(0f, entry.Duration)) EndEntry(bullet, i);
         }
         _cycleElapsed += dt;
         if (_cycleElapsed < Mathf.Max(0.0001f, CycleDuration) || !Loop) return;
@@ -40,7 +43,14 @@ public sealed class ParallelBulletModifier : BulletModifier
     protected override void OnDetach(Bullet bullet) { DetachAll(bullet); }
     protected override void OnWindowExitCleanup(Bullet bullet) { DetachAll(bullet); }
     void AttachAll(Bullet bullet) { if (_attached || Entries == null) return; for (int i=0;i<Entries.Length;i++) Entries[i]?.Modifier?.BeginAsChild(bullet); _attached=true; }
-    void DetachAll(Bullet bullet) { if (!_attached || Entries == null) return; for (int i=0;i<Entries.Length;i++) { Entries[i]?.Modifier?.EndAsChild(bullet); Entries[i]?.Modifier?.Detach(bullet); } _attached=false; }
-    void ResetChildren(Bullet bullet) { DetachAll(bullet); for (int i=0;i<Entries.Length;i++) { Entries[i]?.Modifier?.ResetWindow(); if (_entryElapsed != null) _entryElapsed[i]=0f; } }
+    void EndEntry(Bullet bullet, int index)
+    {
+        if (_entryEnded[index]) return;
+        _entryEnded[index] = true;
+        Entries[index]?.Modifier?.EndAsChild(bullet);
+        Entries[index]?.Modifier?.Detach(bullet);
+    }
+    void DetachAll(Bullet bullet) { if (!_attached || Entries == null) return; for (int i=0;i<Entries.Length;i++) EndEntry(bullet, i); _attached=false; }
+    void ResetChildren(Bullet bullet) { DetachAll(bullet); for (int i=0;i<Entries.Length;i++) { Entries[i]?.Modifier?.ResetWindow(); if (_entryElapsed != null) _entryElapsed[i]=0f; if (_entryEnded != null) _entryEnded[i]=false; } }
     public override BulletModifier Clone() { var copy=(ParallelBulletModifier)MemberwiseClone(); copy.StartTrigger=StartTrigger?.Clone(); copy.Entries=Entries==null?null:new BulletModifierEntry[Entries.Length]; if(copy.Entries!=null)for(int i=0;i<copy.Entries.Length;i++)copy.Entries[i]=Entries[i]?.Clone(); copy.ResetWindow(); return copy; }
 }

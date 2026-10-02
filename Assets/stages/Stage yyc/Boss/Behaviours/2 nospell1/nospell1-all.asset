@@ -22,8 +22,7 @@ MonoBehaviour:
     rid: -2
   Damage: 0
   Children:
-  - {fileID: 0}
-  - {fileID: 11400000, guid: dfa56d4722214804094026fe336bf60d, type: 2}
+  - {fileID: 11400000, guid: 1ff58bf680466614587c4f6ae469ccc5, type: 2}
   references:
     version: 2
     RefIds:

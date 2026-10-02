@@ -61,6 +61,8 @@ public abstract class BulletModifier
 
     public bool IsActive => _isActive;
     public float ElapsedInWindow => _windowElapsed;
+    /// <summary>常驻属性可禁用时间窗口；挂载/脱离生命周期仍执行。</summary>
+    internal virtual bool UsesTimeWindow => true;
 
     /// <summary>仅在未挂载时重置；运行中的实例应先 Detach。</summary>
     public void ResetWindow()
@@ -75,7 +77,7 @@ public abstract class BulletModifier
 
     public void Modify(Bullet bullet, float deltaTime)
     {
-        if (bullet == null || _detached || !(deltaTime > 0f) || float.IsInfinity(deltaTime)) return;
+        if (bullet == null || _detached || !UsesTimeWindow || !(deltaTime > 0f) || float.IsInfinity(deltaTime)) return;
         if (_windowExhausted)
         {
             if (!OneShot && !AutoSkipOutsideWindow) ModifyCore(bullet, deltaTime);
@@ -132,6 +134,9 @@ public abstract class BulletModifier
         OnDetach(bullet);
     }
 
+    /// <summary>实例实际挂载时调用；先于首帧和雾化结束，不推进时间窗口。</summary>
+    protected virtual void OnAttach(Bullet bullet) { }
+    internal void Attach(Bullet bullet) => OnAttach(bullet);
     protected virtual void OnDetach(Bullet bullet) { }
     protected virtual void OnWindowEnter(Bullet bullet) { }
     // 基类不拥有速度、转向或外观，不应在退出时修改这些属性。
@@ -140,7 +145,11 @@ public abstract class BulletModifier
     public abstract void ModifyCore(Bullet bullet, float deltaTime);
 
     // 容器子节点入口：子节点的 Delay/Duration/OneShot 由容器 Entry 管理。
-    internal void BeginAsChild(Bullet bullet) => OnWindowEnter(bullet);
+    internal void BeginAsChild(Bullet bullet)
+    {
+        Attach(bullet);
+        OnWindowEnter(bullet);
+    }
     internal void EndAsChild(Bullet bullet) => OnWindowExitCleanup(bullet);
     internal void ModifyAsChild(Bullet bullet, float deltaTime)
     {

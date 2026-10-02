@@ -9,7 +9,7 @@ using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-/// <summary>Shared layout for root modifiers, Loop children and container phases.</summary>
+/// <summary>Shared layout for root modifiers and container phases.</summary>
 internal static class BulletModifierGUI
 {
     static readonly SRCashTypeSearchTree _typeTrees = new();
@@ -85,6 +85,12 @@ internal static class BulletModifierGUI
         }
         if (string.IsNullOrEmpty(property.managedReferenceFullTypename)) return 0f;
         var type = SRTypeCache.GetTypeByName(property.managedReferenceFullTypename);
+        if (type == typeof(ClearDefenseBulletModifier))
+        {
+            if (draw) EditorGUI.LabelField(new Rect(rect.x, rect.y + Gap, rect.width, Line),
+                new GUIContent("抵挡一级消弹；二级仍可消除。", "挂载期间常驻，首帧和雾化期生效；不受 Timing 设置影响。容器子节点在阶段开始时生效，结束时解除。"));
+            return Line + Gap;
+        }
         float y = 0f;
         if (!phaseChild)
         {
@@ -352,7 +358,7 @@ internal static class BulletModifierGUI
     static bool IsPhaseChild(SerializedProperty property)
     {
         // Only an immediate BulletModifierEntry parent controls this modifier's time.
-        // ExtraModifiers create new bullets and Loop.Child still uses its own window.
+        // ExtraModifiers create new bullets with their own time windows.
         if (!property.propertyPath.EndsWith(".Modifier", StringComparison.Ordinal)) return false;
         string parentPath = property.propertyPath.Substring(0, property.propertyPath.Length - ".Modifier".Length);
         return property.serializedObject.FindProperty(parentPath)?.type == nameof(BulletModifierEntry);
@@ -380,6 +386,8 @@ internal static class BulletModifierGUI
     static string GetTimingSummary(SerializedProperty property, bool phaseChild)
     {
         if (phaseChild || string.IsNullOrEmpty(property.managedReferenceFullTypename) || HasMixedTypes(property)) return string.Empty;
+        if (SRTypeCache.GetTypeByName(property.managedReferenceFullTypename) == typeof(ClearDefenseBulletModifier))
+            return "挂载期间常驻";
         var trigger = property.FindPropertyRelative(nameof(BulletModifier.StartTrigger));
         string start = string.IsNullOrEmpty(trigger.managedReferenceFullTypename) ? "立即启动" : GetTypeName(trigger);
         var oneShot = property.FindPropertyRelative(nameof(BulletModifier.OneShot));

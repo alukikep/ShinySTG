@@ -200,6 +200,15 @@ public class BulletPool : MonoBehaviour
     }
 
     public int ReturnAll(System.Predicate<ShinySTG.Hitbox.CollisionTeam> filter, BulletClearPresentation presentation)
+        => ClearSelected(filter, presentation, null);
+
+    /// <summary>玩法消弹：先按阵营和防御筛选，再对成功消除的子弹应用表现。</summary>
+    public int ClearAll(System.Predicate<ShinySTG.Hitbox.CollisionTeam> filter,
+                        BulletClearLevel level = BulletClearLevel.Normal, BulletClearPresentation presentation = null)
+        => ClearSelected(filter, presentation, level);
+
+    int ClearSelected(System.Predicate<ShinySTG.Hitbox.CollisionTeam> filter,
+                      BulletClearPresentation presentation, BulletClearLevel? level)
     {
         if (_active.Count == 0) return 0;
         var snapshot = new List<Bullet>(_active);
@@ -209,7 +218,9 @@ public class BulletPool : MonoBehaviour
             var bullet = snapshot[i];
             if (bullet == null) continue;
             var team = bullet.Hitbox != null ? bullet.Hitbox.Team : ShinySTG.Hitbox.CollisionTeam.Neutral;
-            if (filter == null || filter(team)) selected.Add(bullet);
+            if (filter != null && !filter(team)) continue;
+            if (level.HasValue && level.Value != BulletClearLevel.Strong && bullet.HasClearDefense) continue;
+            selected.Add(bullet);
         }
         ApplyPresentation(selected, presentation);
         for (int i = 0; i < selected.Count; i++) Return(selected[i]);

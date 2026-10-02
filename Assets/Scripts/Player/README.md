@@ -28,6 +28,9 @@ PlayerInput 的 Invoke C# Events 需要代码适配回调，不能直接在 Insp
 可以在同一序列中组合 Wait、Play Sfx、Execute Commands 和 Parallel。
 例如 Active Actions 配置 Wait 后接 Fire Pattern，即可延迟发射。
 内置清弹、伤害、音效仍会执行，使用动作配置相同效果时注意避免重复。
+内置清弹通过 Clear Level 选择等级，BombDefinition 与无资产时的兼容配置默认二级（Strong），
+可清除普通弹和防御弹；一级（Normal）保留防御弹。该等级不影响 Include Lasers。
+防御弹配置及消弹表现见[消弹指令](../GameActions/README.md#最小配置)。
 
 当前宿主不会等待 Start Actions 完成再进入 Active，Wait For Completion 尚未接入阶段切换。
 End Actions 启动后立即取消未完成动作，只适合瞬时指令或音效。
@@ -87,6 +90,7 @@ Death Sfx 仍仅在生命归零播放，避免把相同音效同时配置在两�
 循环粒子由特效最长时长兜底回收，参见 [特效说明](../Effects/README.md)。
 
 指令示例：Death Commands 添加 Command/Clear Projectiles，选择清除敌弹并包含激光；
+若希望死亡时也清除防御弹，将该指令的 Clear Level 设为二级（Strong）。
 需要死亡掉落时再添加 Command/Spawn Drops 并指定 DropProfile。
 需要死亡扣火力时添加 Command/Remove Player Power，并在 Power 中填写扣除值（1.0 为一整级，
 0.01 为一个 Power 单位）。这些指令会在实际扣命后的下一帧执行；玩家死亡不受该指令的 Boss 阶段退出开关限制。

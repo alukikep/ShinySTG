@@ -17,6 +17,8 @@ namespace ShinySTG.Player
         [Header("Legacy fallback (used when Definition is empty)")]
         [SerializeField] bool _clearEnemyProjectiles = true;
         [SerializeField] bool _includeLasers = true;
+        [SerializeField, Tooltip("未配置 Definition 时的消弹强度；二级可消除防御弹。")]
+        BulletClearLevel _clearLevel = BulletClearLevel.Strong;
         [SerializeField] bool _damageAllEnemies;
         [Min(0f), SerializeField] float _enemyDamage;
         [Min(0f), SerializeField] float _invincibilityDuration = 2f;
@@ -37,6 +39,7 @@ namespace ShinySTG.Player
         const string InvincibilityKey = "PlayerBomb";
         bool ClearProjectiles => _definition != null ? _definition.ClearEnemyProjectiles : _clearEnemyProjectiles;
         bool IncludeLasers => _definition != null ? _definition.IncludeLasers : _includeLasers;
+        BulletClearLevel ClearLevel => _definition != null ? _definition.ClearLevel : _clearLevel;
         bool DamageAll => _definition != null ? _definition.DamageAllEnemies : _damageAllEnemies;
         float Damage => _definition != null ? _definition.EnemyDamage : _enemyDamage;
         float Duration => Mathf.Max(0f, _definition != null ? _definition.Duration : _duration);
@@ -88,7 +91,7 @@ namespace ShinySTG.Player
             if (deathbomb && !player.Health.TryResolveDeathbomb()) return false;
             if (ClearProjectiles)
             {
-                BulletPool.Instance?.ReturnAll(team => team == CollisionTeam.Enemy);
+                BulletPool.Instance?.ClearAll(team => team == CollisionTeam.Enemy, ClearLevel);
                 if (IncludeLasers) ShinySTG.Laser.LaserPool.Instance?.ReturnAll(team => team == CollisionTeam.Enemy);
             }
             EnterState(BombState.Starting, 0f);

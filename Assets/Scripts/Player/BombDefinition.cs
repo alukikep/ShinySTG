@@ -10,6 +10,8 @@ namespace ShinySTG.Player
         [Min(0f)] public float InvincibilityDuration = 2f;
         public bool ClearEnemyProjectiles = true;
         public bool IncludeLasers = true;
+        [Tooltip("Bomb 内置消弹强度：一级保留防御弹，二级消除普通弹和防御弹。")]
+        public BulletClearLevel ClearLevel = BulletClearLevel.Strong;
         public bool DamageAllEnemies;
         [Min(0f)] public float EnemyDamage;
         [Min(0f)] public float DamageInterval;

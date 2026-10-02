@@ -170,13 +170,7 @@ OnSignal 在收到信号瞬间检查距离，通过后锁存资格，随后移�
 Modify 是非虚方法，不应隐藏它；持续行为实现 ModifyCore，一次性行为实现 OnWindowEnter。
 新增启动条件放在 Triggers，新增分裂信息传递和采样策略放在 Extras。
 
-`LoopBulletModifier` 是可嵌套的单子节点容器，配置入口为 `Modifier/Loop`。它在每个周期结束时
-对 Child 执行 `Detach`、`ResetWindow` 并重新挂载启动触发器，因此 Child 的 Delay、Duration、
-OneShot 及 Orbit 的半径曲线状态都会按轮次重新开始。`MaxCycles=0` 表示无限循环；正数限制轮数。
-容器每帧把时间切片交给 Child，避免一个大帧跨过周期边界时丢失剩余时间。建议一个 Loop 内只放
-一个负责位置的 modifier（例如 Orbit），避免同一帧多个位置写入互相覆盖。
-
-更推荐使用 `Modifier/Sequence` 或 `Modifier/Parallel` 容器，并在容器上勾选 `Loop`。
+循环行为使用 `Modifier/Sequence` 或 `Modifier/Parallel` 容器，并在容器上勾选 `Loop`。
 Sequence 按顺序执行 Children，Parallel 同帧执行所有 Children；循环只重置容器内的子实例，
 不会重置容器自身的 Delay/Duration。它们都对嵌套子 Modifier 做 Clone，避免不同子弹共享运行状态。
 
