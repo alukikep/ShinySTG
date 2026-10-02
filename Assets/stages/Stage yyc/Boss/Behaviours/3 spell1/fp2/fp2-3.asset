@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 195aad2d24357ad4eae3908cbbc82049, type: 3}
+  m_Name: fp2-3
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 8758928986902632630, guid: 4781038e74e37ab44bc0e83710eac28b, type: 3}
+  ModifierPrefabs:
+  - rid: 2710246733452410950
+  FireExtensions:
+  - rid: 2710246733452410951
+  - rid: 2710246733452410965
+  - rid: 2710246733452410970
+  FireSounds: []
+  Speed: 2
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 2710246733452410954
+  Damage: 1
+  Count: 6
+  DeltaSpeed: 0.2
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2710246733452410950
+      type: {class: BulletColorModifier, ns: , asm: Assembly-CSharp}
+      data:
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Mode: 0
+        Color: {r: 1, g: 0.8449572, b: 0, a: 1}
+        FadeOutColor: {r: 1, g: 0, b: 0, a: 0}
+        FadeStart: 0.5
+        ReferenceLifetime: 1.5
+        FlashFrequency: 5
+        FlashMinAlpha: 0.3
+        AutoSetDrawMode: 1
+    - rid: 2710246733452410951
+      type: {class: PlayerAimFireExtension, ns: , asm: Assembly-CSharp}
+      data: 
+    - rid: 2710246733452410954
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 1, g: 0.9344491, b: 0.69803923, a: 1}
+        FogStartScale: 1.2
+        Easing: 0
+    - rid: 2710246733452410965
+      type: {class: OffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        OffsetAngle: 5
+    - rid: 2710246733452410970
+      type: {class: AccumulatingOffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseOffset:
+          rid: 2710246733452410971
+        StepOffset: 0
+        OffsetPerBullet: 0.2
+    - rid: 2710246733452410971
+      type: {class: FixedBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
+      data:
+        Value: 0

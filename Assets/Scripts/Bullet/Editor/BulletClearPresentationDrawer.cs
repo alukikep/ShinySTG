@@ -10,7 +10,7 @@ public sealed class BulletClearPresentationDrawer : PropertyDrawer
         var mode = property.FindPropertyRelative("Mode");
         if (mode == null) return EditorGUIUtility.singleLineHeight;
         if ((BulletClearPresentationMode)mode.enumValueIndex == BulletClearPresentationMode.BurstEffect) lines += 3;
-        else if ((BulletClearPresentationMode)mode.enumValueIndex == BulletClearPresentationMode.ConvertToItems) lines += 5;
+        else if ((BulletClearPresentationMode)mode.enumValueIndex == BulletClearPresentationMode.ConvertToItems) lines += 6;
         return lines * EditorGUIUtility.singleLineHeight + (lines - 1) * EditorGUIUtility.standardVerticalSpacing;
     }
 
@@ -36,6 +36,7 @@ public sealed class BulletClearPresentationDrawer : PropertyDrawer
                 Draw(property, "MaxItemCount", Line());
                 Draw(property, "ItemScatterRadius", Line());
                 Draw(property, "ItemSpeed", Line());
+                Draw(property, nameof(BulletClearPresentation.AutoAttractOnSpawn), Line());
                 break;
         }
         EditorGUI.EndProperty();

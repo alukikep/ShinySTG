@@ -16,7 +16,8 @@ MonoBehaviour:
   ModifierPrefabs:
   - rid: 2710246719014043681
   - rid: 2710246733452410894
-  FireExtensions: []
+  FireExtensions:
+  - rid: 2710246733452410896
   FireSounds: []
   Speed: 3
   AngularSpeed: 0
@@ -68,6 +69,9 @@ MonoBehaviour:
           Duration: 99
         - Modifier:
             rid: 2710246733452410885
+          Duration: 99
+        - Modifier:
+            rid: 2710246733452410903
           Duration: 99
         CycleDuration: 1
         Loop: 0
@@ -216,3 +220,36 @@ MonoBehaviour:
         Duration: 0
         AutoSkipOutsideWindow: 1
         OneShot: 0
+        OnlyStrongClear: 1
+    - rid: 2710246733452410896
+      type: {class: BaseAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseAngle: 0
+        PositionOffset: {x: 0, y: 0}
+    - rid: 2710246733452410903
+      type: {class: FireOnDurationBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        Pattern: {fileID: 11400000, guid: 604f3cc42d955b8419de45df3bc2ca82, type: 2}
+        InheritOwnerTeam: 1
+        ExtraModifiers: []
+        Extra:
+          rid: 2710246733452410904
+        Interval: 0.5
+        MaxShots: -1
+    - rid: 2710246733452410904
+      type: {class: AngleOffsetFirePatternBulletExtra, ns: , asm: Assembly-CSharp}
+      data:
+        BaseOffset:
+          rid: 2710246733452410906
+        StepOffset: 0
+        BatchSample: 0
+    - rid: 2710246733452410906
+      type: {class: RandomRangeBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
+      data:
+        Min: -90
+        Max: 90

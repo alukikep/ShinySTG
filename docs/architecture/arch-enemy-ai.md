@@ -147,8 +147,8 @@ Sequence override 了 `OnExit`(基类原本是空实现):
 |---|---|
 | `SpeedCurve`(类内 enum) | 三档速度曲线:`Constant`(匀速,因子 1) / `FastToSlow`(`cos(t·π/2)`,单调递减,撞墙感) / `SlowToFast`(`sin(t·π/2)`,单调递增,蓄力感) |
 | `Phase`(类内 enum) | 子状态机:`Moving`(在走)/ `Idle`(停顿中) |
-| `MaxDistanceInsideBox(start, dir, boxMin, boxMax)`(static helper) | 算"从 start 沿 dir 走到 box 边界前能走多远",用于把 `MaxStepDistance` 裁剪到区域内。圆形区域 / 多边形区域只要重写这个 helper 即可扩展 |
-| `CurveFactor(mode, t01)`(static helper) | 把 `t01` 映射到 `[0,1]` 速度因子,三条曲线都光滑且始终 ≥ 0,无需 `MinSpeedFactor` 兜底 |
+| `MaxDistanceInsideBox(start, dir, boxMin, boxMax)`(static helper) | 算"从 start 沿 dir 走到 box 边界前能走多远",用于验证整步能否落在区域内。随机移动先抽步长，再反射或重选方向；仅当前区域容纳不下时裁剪距离。扩展区域形状时需同步调整方向选择与边界判断 |
+| `DistanceProgress(mode, t01)`(static helper) | 用速度曲线积分计算已走距离比例，保持不同帧率下的轨迹一致，避免越过终点再拉回 |
 | `AverageCurveFactor(mode)`(static helper) | `t01 ∈ [0,1]` 区间上的速度均值,用于反推 `moveDuration`,让 `t01` 在 `Constant/FastToSlow/SlowToFast` 下都按"真实耗时"归一化 |
 
 ---

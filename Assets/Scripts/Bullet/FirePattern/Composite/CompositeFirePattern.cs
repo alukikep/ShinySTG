@@ -25,11 +25,17 @@ public class CompositeFirePattern : FirePattern
 
     public override int GetFireCount() => CountTree(this, new HashSet<FirePattern>());
 
-    static int CountTree(FirePattern pattern, HashSet<FirePattern> path)
+    internal static int CountTree(FirePattern pattern, HashSet<FirePattern> path)
     {
         if (pattern == null || path.Count >= BulletPool.MaxPatternDepth || !path.Add(pattern)) return 0;
         try
         {
+            if (pattern is RandomAreaFirePattern randomArea)
+            {
+                if (randomArea.SpawnCount <= 0 || randomArea.ChildPattern == null) return 0;
+                long total = (long)randomArea.SpawnCount * CountTree(randomArea.ChildPattern, path);
+                return (int)System.Math.Min(int.MaxValue, total);
+            }
             if (!(pattern is CompositeFirePattern composite)) return Mathf.Max(0, pattern.GetFireCount());
             long sum = 0;
             if (composite.Children != null)

@@ -11,17 +11,20 @@ namespace ShinySTG.Items
         Vector2 _velocity;
         float _age;
         bool _attracting;
+        bool _autoAttractOnSpawn;
         bool _collected;
         float _size;
         public int SpawnFrame { get; private set; }
         public bool IsCollected => _collected;
         public Rect Bounds => new Rect((Vector2)transform.position - Vector2.one * _size * 0.5f, Vector2.one * _size);
 
-        internal void Initialize(ItemDefinition definition, Vector2 position, Vector2 velocity, Sprite fallback)
+        internal void Initialize(ItemDefinition definition, Vector2 position, Vector2 velocity, Sprite fallback,
+            bool autoAttractOnSpawn = false)
         {
             if (_renderer == null) _renderer = gameObject.AddComponent<SpriteRenderer>();
             _definition = definition;
-            _velocity = velocity;
+            _velocity = autoAttractOnSpawn ? Vector2.zero : velocity;
+            _autoAttractOnSpawn = autoAttractOnSpawn;
             _age = 0f;
             _attracting = false;
             _collected = false;
@@ -45,7 +48,7 @@ namespace ShinySTG.Items
             bool canCollect = CanCollect(player);
             if (!canCollect) _attracting = false;
             else if (!_attracting &&
-                     (service.IsAutoCollecting ||
+                     (_autoAttractOnSpawn || service.IsAutoCollecting ||
                       (player.Hitbox.AttractionEnabled &&
                        HitboxMath.AABBOverlap(Bounds, player.Hitbox.AttractionBounds))))
                 _attracting = true;
@@ -75,19 +78,20 @@ namespace ShinySTG.Items
             if (_collected || _definition == null || SpawnFrame >= Time.frameCount || !CanCollect(player)) return false;
             if ((_definition.Kind == ItemKind.Score || _definition.Kind == ItemKind.Bomb) && player.Resources == null) return false;
             _collected = true; // 在奖励事件之前锁定，防止回调重入。
+            var definition = _definition;
             // 奖励回调可能触发场景清理，提前保存声音和位置，不让声音依赖池对象。
-            var pickupSfx = _definition.PickupSfx;
+            var pickupSfx = definition.PickupSfx;
             Vector2 pickupPosition = transform.position;
-            switch (_definition.Kind)
+            switch (definition.Kind)
             {
                 case ItemKind.SmallPower: player.Health.AddPowerUnits(1); break;
                 case ItemKind.LargePower: player.Health.AddPowerUnits(100); break;
-                case ItemKind.Score: player.Resources.AddScore(Mathf.Max(1, _definition.ScoreValue)); break;
+                case ItemKind.Score: break; // 分数统一在下方结算；0 表示不计分。
                 case ItemKind.Bomb: player.Resources.AddBombs(); break;
                 case ItemKind.OneUp: player.Health.AddLife(); break;
             }
-            if (_definition.ScoreValue > 0 && player.Resources != null)
-                player.Resources.AddScore(_definition.ScoreValue);
+            if (definition.ScoreValue > 0 && player != null && player.Resources != null)
+                player.Resources.AddScore(definition.ScoreValue);
             ShinySTG.Audio.AudioMix.PlaySfx(pickupSfx, position: pickupPosition);
             return true;
         }
@@ -99,6 +103,7 @@ namespace ShinySTG.Items
             _age = 0f;
             _size = 0f;
             _attracting = false;
+            _autoAttractOnSpawn = false;
             _collected = false;
             SpawnFrame = -1;
             _renderer.sprite = null;

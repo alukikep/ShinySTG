@@ -38,9 +38,10 @@ public sealed class BulletClearDefenseTests
         SetInstance(typeof(BulletPool), _previousPool);
     }
 
-    Bullet Spawn(CollisionTeam team = CollisionTeam.Enemy, bool defended = false, SpawnFogConfig fog = null)
+    Bullet Spawn(CollisionTeam team = CollisionTeam.Enemy, bool defended = false, SpawnFogConfig fog = null,
+                 bool onlyStrongClear = false)
         => _pool.Get(_prefab, Vector2.zero, 0f, 1f, 0f, 1f, team,
-            defended ? new BulletModifier[] { new ClearDefenseBulletModifier() } : null, fog);
+            defended || onlyStrongClear ? new BulletModifier[] { new ClearDefenseBulletModifier { OnlyStrongClear = onlyStrongClear } } : null, fog);
 
     static void SetInstance(System.Type type, object value) => type.GetProperty("Instance").SetValue(null, value);
 
@@ -121,7 +122,7 @@ public sealed class BulletClearDefenseTests
     [TestCase(true)]
     public void ForceReturnAllIgnoresDefense(bool presentationOverload)
     {
-        Spawn(defended: true);
+        Spawn(onlyStrongClear: true);
         Assert.That(presentationOverload ? _pool.ReturnAll(null, new BulletClearPresentation()) : _pool.ReturnAll(),
             Is.EqualTo(1));
         Assert.That(_pool.ActiveBullets, Is.Empty);
@@ -191,8 +192,9 @@ public sealed class BulletClearDefenseTests
         }
     }
 
-    [Test]
-    public void ConvertToItemsCountsOnlySuccessfullyClearedBullets()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ConvertToItemsCountsOnlySuccessfullyClearedBullets(bool autoAttractOnSpawn)
     {
         var previousItems = ItemDropService.Instance;
         var serviceObject = new GameObject("Clear defense item service");
@@ -209,13 +211,17 @@ public sealed class BulletClearDefenseTests
             Spawn(defended: true);
             var presentation = new BulletClearPresentation {
                 Mode = BulletClearPresentationMode.ConvertToItems, Item = definition,
-                ItemsPerBullet = 1f, ItemScatterRadius = 0f, ItemSpeed = 0f };
+                ItemsPerBullet = 1f, ItemScatterRadius = 0f, ItemSpeed = 0f,
+                AutoAttractOnSpawn = autoAttractOnSpawn };
             Assert.That(_pool.ClearAll(null, BulletClearLevel.Normal, presentation), Is.EqualTo(1));
             Assert.That(service.ActiveItems.Count, Is.EqualTo(1));
             Assert.That(_pool.ClearAll(null, BulletClearLevel.Normal, presentation), Is.Zero);
             Assert.That(service.ActiveItems.Count, Is.EqualTo(1));
             Assert.That(_pool.ClearAll(null, BulletClearLevel.Strong, presentation), Is.EqualTo(1));
             Assert.That(service.ActiveItems.Count, Is.EqualTo(2));
+            foreach (var item in service.ActiveItems)
+                Assert.That(typeof(ItemPickup).GetField("_autoAttractOnSpawn", PrivateInstance).GetValue(item),
+                    Is.EqualTo(autoAttractOnSpawn), "消弹表现必须把吸附选项传到每个生成的道具。");
         }
         finally
         {
@@ -311,9 +317,120 @@ public sealed class BulletClearDefenseTests
     [Test]
     public void BattleCleanupClearsDefendedBullets()
     {
-        Spawn(defended: true);
+        Spawn(onlyStrongClear: true);
         BattleCleanup.Clear(default, null, _pool);
         Assert.That(_pool.ActiveBullets, Is.Empty);
         Assert.That(BattleRestriction.IsActive, Is.False);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void OutOfBoundsRespectsOnlyStrongClearWithAndWithoutBoundsService(bool configuredBounds)
+    {
+        var previousBounds = ShinySTG.Stage.BoundsService.Instance;
+        var boundsObject = new GameObject("Persistent bullet test bounds");
+        try
+        {
+            if (configuredBounds)
+            {
+                var bounds = boundsObject.AddComponent<ShinySTG.Stage.BoundsService>();
+                bounds.CullingArea = new Rect(-1f, -1f, 2f, 2f);
+                SetInstance(typeof(ShinySTG.Stage.BoundsService), bounds);
+            }
+            else SetInstance(typeof(ShinySTG.Stage.BoundsService), null);
+            var ordinary = Spawn();
+            var defended = Spawn(defended: true);
+            var persistent = Spawn(onlyStrongClear: true);
+            var position = new Vector3(100f, 100f, 0f);
+            var checkBounds = typeof(Bullet).GetMethod("HandleOutOfBounds", PrivateInstance);
+            foreach (var bullet in new[] { ordinary, defended, persistent })
+            {
+                bullet.transform.position = position;
+                checkBounds.Invoke(bullet, null);
+            }
+            Assert.That(ordinary.gameObject.activeSelf, Is.False);
+            Assert.That(defended.gameObject.activeSelf, Is.False);
+            Assert.That(persistent.gameObject.activeSelf, Is.True);
+            Assert.That(persistent.Position, Is.EqualTo((Vector2)position));
+            new ClearProjectilesCommand { ClearLevel = BulletClearLevel.Normal, IncludeLasers = false }
+                .Execute(new GlobalCommandContext(null));
+            Assert.That(persistent.gameObject.activeSelf, Is.True);
+            new ClearProjectilesCommand { ClearLevel = BulletClearLevel.Strong, IncludeLasers = false }
+                .Execute(new GlobalCommandContext(null));
+            Assert.That(_pool.ActiveBullets, Is.Empty);
+        }
+        finally
+        {
+            Object.DestroyImmediate(boundsObject);
+            SetInstance(typeof(ShinySTG.Stage.BoundsService), previousBounds);
+        }
+    }
+
+    [Test]
+    public void PersistentBulletBlocksCollisionAndModifierReturnRequests()
+    {
+        var bullet = Spawn(onlyStrongClear: true, fog: new DefaultSpawnFog { Duration = 1f });
+        Assert.That(bullet.RequiresStrongClear, Is.True);
+        _pool.Return(bullet);
+        _pool.Return(bullet, new BulletClearPresentation());
+        Assert.That(bullet.gameObject.activeSelf, Is.True);
+        var collision = _root.AddComponent<CollisionService>();
+        typeof(CollisionService).GetMethod("QueueReturn", PrivateInstance).Invoke(collision, new object[] { bullet });
+        typeof(CollisionService).GetMethod("FlushReturns", PrivateInstance).Invoke(collision, null);
+        Assert.That(bullet.gameObject.activeSelf, Is.True);
+        bullet.RequestReturn();
+        var returned = typeof(Bullet).GetMethod("HandleReturnRequest", PrivateInstance).Invoke(bullet, null);
+        Assert.That(returned, Is.EqualTo(false), "受保护的回收请求不得中止后续运动。");
+        Assert.That(bullet.ReturnRequested, Is.False);
+        Assert.That(bullet.gameObject.activeSelf, Is.True);
+        var ordinary = Spawn();
+        ordinary.RequestReturn();
+        returned = typeof(Bullet).GetMethod("HandleReturnRequest", PrivateInstance).Invoke(ordinary, null);
+        Assert.That(returned, Is.EqualTo(true));
+        Assert.That(ordinary.gameObject.activeSelf, Is.False);
+    }
+
+    [Test]
+    public void StrongClearOnlySourcesDetachIndependentlyAndPoolReuseResets()
+    {
+        var bullet = Spawn();
+        var first = new ClearDefenseBulletModifier { OnlyStrongClear = true };
+        var second = (ClearDefenseBulletModifier)first.Clone();
+        bullet.AddModifier(first);
+        bullet.AddModifier(second);
+        bullet.AddModifier(new ClearDefenseBulletModifier());
+        first.Detach(bullet);
+        first.Detach(bullet);
+        Assert.That(bullet.RequiresStrongClear, Is.True);
+        second.Detach(bullet);
+        Assert.That(bullet.RequiresStrongClear, Is.False);
+        Assert.That(bullet.HasClearDefense, Is.True);
+        _pool.Return(bullet);
+        var reused = Spawn();
+        Assert.That(reused, Is.SameAs(bullet));
+        Assert.That(reused.RequiresStrongClear, Is.False);
+        Assert.That(reused.HasClearDefense, Is.False);
+        reused.AddModifier(new ClearDefenseBulletModifier { OnlyStrongClear = true });
+        Assert.That(_pool.ClearAll(null, BulletClearLevel.Strong), Is.EqualTo(1));
+        Assert.That(reused.RequiresStrongClear, Is.False);
+        Assert.That(Spawn().RequiresStrongClear, Is.False);
+    }
+
+    [Test]
+    public void ContainerStageEndReleasesStrongClearOnlyRestriction()
+    {
+        var bullet = Spawn();
+        var sequence = new SequenceBulletModifier { Entries = new[] {
+            new BulletModifierEntry { Modifier = new ClearDefenseBulletModifier { OnlyStrongClear = true }, Duration = .5f },
+            new BulletModifierEntry { Modifier = new WaitBulletModifier(), Duration = 1f } } };
+        bullet.AddModifier(sequence);
+        sequence.Modify(bullet, .25f);
+        Assert.That(bullet.RequiresStrongClear, Is.True);
+        _pool.Return(bullet);
+        Assert.That(bullet.gameObject.activeSelf, Is.True);
+        sequence.Modify(bullet, .25f);
+        Assert.That(bullet.RequiresStrongClear, Is.False);
+        _pool.Return(bullet);
+        Assert.That(bullet.gameObject.activeSelf, Is.False);
     }
 }

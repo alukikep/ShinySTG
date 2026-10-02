@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea1136b335f1e429973dab1d865f75, type: 3}
+  m_Name: fp1
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 6726390635298076064, guid: c6c53039906417e41824639acda96011, type: 3}
+  ModifierPrefabs:
+  - rid: 2710246733452410949
+  FireExtensions:
+  - rid: 2710246733452410919
+  FireSounds:
+  - rid: 2710246733452410952
+  Speed: 4
+  AngularSpeed: 0
+  SpawnFog:
+    rid: 2710246733452410953
+  Damage: 1
+  Count: 9
+  Radius: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 2710246733452410919
+      type: {class: AccumulatingOffsetAngleFireExtension, ns: , asm: Assembly-CSharp}
+      data:
+        BaseOffset:
+          rid: 2710246733452410920
+        StepOffset: 10
+        OffsetPerBullet: 0
+    - rid: 2710246733452410920
+      type: {class: FixedBaseOffsetStrategy, ns: , asm: Assembly-CSharp}
+      data:
+        Value: 0
+    - rid: 2710246733452410949
+      type: {class: VisualSpinBulletModifier, ns: , asm: Assembly-CSharp}
+      data:
+        StartTrigger:
+          rid: -2
+        Duration: 0
+        AutoSkipOutsideWindow: 1
+        OneShot: 0
+        AngularSpeed: 90
+    - rid: 2710246733452410952
+      type: {class: SfxCueFireSound, ns: , asm: Assembly-CSharp}
+      data:
+        Cue: {fileID: 11400000, guid: 40ab286400c83864c846f4c79be3e456, type: 2}
+        VolumeMul: 0.5
+        Pitch: 1
+    - rid: 2710246733452410953
+      type: {class: DefaultSpawnFog, ns: , asm: Assembly-CSharp}
+      data:
+        Duration: 0.1
+        FogColor: {r: 0.7, g: 0.85, b: 1, a: 1}
+        FogStartScale: 1.4
+        Easing: 0

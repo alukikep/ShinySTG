@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Actions:
   - rid: 2710246719014043667
+  - rid: 2710246733452410897
   Loop: 0
   StartDelay: 0
   references:
@@ -33,4 +34,30 @@ MonoBehaviour:
     - rid: 2710246719014043668
       type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
       data:
-        Value: 99
+        Value: 3
+    - rid: 2710246733452410897
+      type: {class: MoveAction, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        DurationConfig:
+          rid: 2710246733452410898
+        _legacyDuration: 1
+        Move:
+          rid: 2710246733452410900
+    - rid: 2710246733452410898
+      type: {class: FixedActionDuration, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        Value: 60
+    - rid: 2710246733452410900
+      type: {class: RandomWalkInRegionMove, ns: ShinySTG.EnemyAI, asm: Assembly-CSharp}
+      data:
+        RegionCenter: {x: -1, y: 7}
+        RegionSize: {x: 10, y: 2}
+        MaxStepDistance: 10
+        DirectionCenterDeg: 0
+        DirectionSpreadDeg: 360
+        IntervalMin: 5
+        IntervalMax: 8
+        Mode: 1
+        PeakSpeed: 3
+        ArrivedThreshold: 0.05
+        RandomSeedOffset: 0

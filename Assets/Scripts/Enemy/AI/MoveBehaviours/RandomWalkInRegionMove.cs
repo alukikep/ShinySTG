@@ -23,13 +23,11 @@ namespace ShinySTG.EnemyAI
     ///   FastToSlow -> cos(t · π/2)  单调递减,t=0 -> 1, t=1 -> 0
     ///   SlowToFast -> sin(t · π/2)  单调递增,t=0 -> 0, t=1 -> 1
     ///
-    /// 方向裁剪(关键:敌人永远不会跑出矩形):
-    ///   1. 在 [DirectionCenterDeg ± DirectionSpreadDeg/2] 区间内均匀随机 angle
-    ///   2. 算"从这个起点朝这个方向最多能走多远才不越出矩形":
-    ///   maxDist = min(到左/右边界的距离, 到上/下边界的距离)
-    ///   3. effectiveMax = min(MaxStepDistance, maxDist)   裁剪!
-    ///   4. 实际单次距离 ∈ [ArrivalThreshold, effectiveMax] 随机
-    ///   5. 极端兜底:若 effectiveMax < ArrivalThreshold(已在边界上),把方向镜像反转
+    /// 边界处理:
+    ///   先抽取步长,再抽方向;终点越界时分别反射 X/Y 分量,保持步长。
+    ///   重试后仍无法容纳时改选全方向,最终朝最远角落走;
+    ///   只有区域从当前位置确实容纳不下该步长时才缩短。
+    ///   区域外起点先沿直线回到最近边界,不在 OnEnter 瞬移。
     ///
     /// SnapOnEnter 选择 false(增量型):
     ///   第一帧 dt=0 -> step=0,enemy.position 不变 -> 零瞬移自动满足。
@@ -73,8 +71,8 @@ namespace ShinySTG.EnemyAI
         public Vector2 RegionSize = new Vector2(6f, 4f);
 
         [Header("Step(单次直线移动)")]
-        [Tooltip("单次直线移动的距离上限(单位)。实际距离 ∈ [ArrivalThreshold, min(MaxStepDistance, 到边界最大距离)] 随机。\n" +
-                 "若选定的方向 + MaxStepDistance 会越界,自动按到边界的最大距离裁剪。\n" +
+        [Tooltip("单次直线移动的距离上限(单位)。先在 [ArrivedThreshold, MaxStepDistance] 抽取步长。\n" +
+                 "靠边时反射或重选方向以保持步长;只有区域容纳不下时才缩短。\n" +
                  "经典配法:Boss 走大步 1.5~2;小怪碎步 0.5~1。")]
         public float MaxStepDistance = 1.5f;
 
@@ -83,7 +81,8 @@ namespace ShinySTG.EnemyAI
                  "Center=0   + Spread=360 -> 全方向随机(默认)。")]
         public float DirectionCenterDeg = 0f;
 
-        [Tooltip("方向区间角度宽度(度)。0 = 固定走 DirectionCenterDeg 一个方向;360 = 全方向均匀。\n" +
+        [Tooltip("方向区间角度宽度(度)。0 = 优先走 DirectionCenterDeg;360 = 全方向均匀。\n" +
+                 "靠边时允许反射或改选区间外方向,优先保持步长且不越界。\n" +
                  "<0 或 >360 会被 Clamp 到 [0, 360]。")]
         public float DirectionSpreadDeg = 360f;
 
@@ -101,7 +100,7 @@ namespace ShinySTG.EnemyAI
                  "三条曲线都光滑、始终 >= 0,无需 MinSpeedFactor 兜底。")]
         public SpeedCurve Mode = SpeedCurve.Constant;
 
-        [Tooltip("峰值速度(单位/秒)。实际瞬时速度 = PeakSpeed · CurveFactor(Mode, t01),t01 = 已用/总时长。\n" +
+        [Tooltip("峰值速度(单位/秒)。按所选速度曲线积分计算位移,不受帧率影响。\n" +
                  "经典配法:Boss 3;小怪 2;蓄力冲刺 5。")]
         public float PeakSpeed = 3f;
 
@@ -151,27 +150,28 @@ namespace ShinySTG.EnemyAI
 
         public override void OnTick(Transform enemy, float dt)
         {
-            if (enemy == null || dt <= 0f) return;
+            if (enemy == null || dt <= 0f || _rng == null) return;
 
             if (_phase == Phase.Moving)
             {
-                _moveT += dt;
-                float t01 = _moveDuration > 0.0001f ? Mathf.Clamp01(_moveT / _moveDuration) : 1f;
-                float speedNow = Mathf.Max(0f, PeakSpeed) * CurveFactor(Mode, t01);
-
-                Vector2 pos = (Vector2)enemy.position + _moveDir * speedNow * dt;
-                enemy.position = pos;
+                if (PeakSpeed <= 0f && _moveDist > 0f) return;
+                _moveT = Mathf.Min(_moveT + dt, _moveDuration);
+                float t01 = Mathf.Clamp01(_moveT / _moveDuration);
+                // 曲线积分直接给出已走比例,任意 dt 下都在线段内,不会先越过终点再拉回。
+                float progress = DistanceProgress(Mode, t01);
+                Vector2 pos = _moveStart + _moveDir * (_moveDist * progress);
+                SetPositionXY(enemy, pos);
 
                 // 到达判定
                 Vector2 remaining = (_moveStart + _moveDir * _moveDist) - pos;
                 float remainDist = remaining.magnitude;
                 float thr = ArrivedThreshold < 0f ? 0.05f : ArrivedThreshold;
 
-                // 两种触发条件:① 距离终点够近;② 已走到 100% 但曲线仍在驱动(理论兜底)
+                // 距离终点够近或本段时长耗尽时到达。
                 if (remainDist <= thr || t01 >= 1f)
                 {
                     // 强制对齐到终点(避免最后几帧在曲线减速尾巴上没到位)
-                    enemy.position = _moveStart + _moveDir * _moveDist;
+                    SetPositionXY(enemy, _moveStart + _moveDir * _moveDist);
 
                     // 进入 Idle,Pick 间隔时长
                     _phase = Phase.Idle;
@@ -208,7 +208,7 @@ namespace ShinySTG.EnemyAI
         // ───────────── 私有 helper ─────────────
 
         /// <summary>
-        /// 选下一次移动:随机方向 → 算最大不越界距离 → 裁剪 → 在 [阈值, effectiveMax] 随机距离 → 估算时长。
+        /// 先抽步长,再调整方向以使整段直线落在矩形内。
         /// </summary>
         void PickNextMove(Transform enemy)
         {
@@ -224,52 +224,64 @@ namespace ShinySTG.EnemyAI
             Vector2 regionMin = RegionCenter - half;
             Vector2 regionMax = RegionCenter + half;
 
-            // 1. 随机方向(区间 [Center - Spread/2, Center + Spread/2])
-            float spread = Mathf.Clamp(DirectionSpreadDeg, 0f, 360f);
-            float center = DirectionCenterDeg;
-            float minA = center - spread * 0.5f;
-            float maxA = center + spread * 0.5f;
-            // 边界:spread=0 时直接用 center(避免 NextDouble 在等值时浪费)
-            float angleDeg = spread <= 0.0001f ? center : Mathf.Lerp(minA, maxA, (float)_rng.NextDouble());
-            float angleRad = angleDeg * Mathf.Deg2Rad;
-            Vector2 dir = new Vector2(Mathf.Cos(angleRad), Mathf.Sin(angleRad));
-
-            // 2. 算最大不越界距离(到任一边界前能走的最大距离)
-            float maxDist = MaxDistanceInsideBox(start, dir, regionMin, regionMax);
-
-            // 3. 裁剪
-            float effMax = Mathf.Min(Mathf.Max(0f, MaxStepDistance), maxDist);
-
-            // 4. 兜底:effMax < 阈值(已在边界 / 边界上) -> 反转方向
             float thr = ArrivedThreshold < 0f ? 0.05f : ArrivedThreshold;
-            if (effMax < thr)
+            float maxStep = Mathf.Max(0f, MaxStepDistance);
+            float dist = Mathf.Lerp(Mathf.Min(thr, maxStep), maxStep, (float)_rng.NextDouble());
+            Vector2 dir = Vector2.zero;
+            Vector2 inside = new Vector2(Mathf.Clamp(start.x, regionMin.x, regionMax.x),
+                                         Mathf.Clamp(start.y, regionMin.y, regionMax.y));
+            if (start.x < regionMin.x || start.x > regionMax.x ||
+                start.y < regionMin.y || start.y > regionMax.y)
             {
-                dir = -dir;
-                maxDist = MaxDistanceInsideBox(start, dir, regionMin, regionMax);
-                effMax = Mathf.Min(Mathf.Max(0f, MaxStepDistance), maxDist);
+                // 区域外进入时先平滑归位;不把非法起点送入区域内射线算法。
+                Vector2 recovery = inside - start;
+                dist = recovery.magnitude;
+                dir = recovery / dist;
+            }
+            else if (dist > 0f)
+            {
+                dir = PickDirection(start, dist, regionMin, regionMax);
+                dist = Mathf.Min(dist, MaxDistanceInsideBox(start, dir, regionMin, regionMax));
             }
 
-            // 5. 实际距离 ∈ [thr, effMax] 随机
-            float dist;
-            if (effMax <= thr)
-            {
-                // 终极兜底:区域退化为一个点(Size 极小),就走 0 距离,下一帧由到达判定立刻进 Idle
-                dist = 0f;
-            }
-            else
-            {
-                dist = Mathf.Lerp(thr, effMax, (float)_rng.NextDouble());
-            }
-
-            _moveDir = dist > 0.0001f ? dir : Vector2.zero;
+            _moveDir = dir;
             _moveDist = dist;
 
-            // 6. 估算总时长:用 PeakSpeed 与"曲线平均速度因子"做反推,得到 t01 的归一化分母
-            //    Constant: avgFactor = 1;FastToSlow: avgFactor = 2/π ≈ 0.6366;SlowToFast: avgFactor = 2/π
-            float avgFactor = AverageCurveFactor(Mode);
-            float avgSpeed = Mathf.Max(0.0001f, PeakSpeed) * avgFactor;
-            _moveDuration = dist / avgSpeed;
-            if (_moveDuration < 0.0001f) _moveDuration = 0.0001f;
+            float avgSpeed = Mathf.Max(0.0001f, PeakSpeed) * AverageCurveFactor(Mode);
+            _moveDuration = Mathf.Max(0.0001f, dist / avgSpeed);
+        }
+
+        Vector2 PickDirection(Vector2 start, float distance, Vector2 regionMin, Vector2 regionMax)
+        {
+            float spread = Mathf.Clamp(DirectionSpreadDeg, 0f, 360f);
+            int preferredAttempts = spread <= 0.0001f ? 1 : 12;
+            for (int attempt = 0; attempt < preferredAttempts + 12; attempt++)
+            {
+                float angleDeg = attempt < preferredAttempts
+                    ? DirectionCenterDeg + (spread <= 0.0001f ? 0f : ((float)_rng.NextDouble() - 0.5f) * spread)
+                    : (float)_rng.NextDouble() * 360f;
+                float angleRad = angleDeg * Mathf.Deg2Rad;
+                Vector2 dir = new Vector2(Mathf.Cos(angleRad), Mathf.Sin(angleRad));
+                Vector2 end = start + dir * distance;
+                // 分别反射撞到的轴,角落不再因整体反向撞到另一条边而停住。
+                if (end.x < regionMin.x || end.x > regionMax.x) dir.x = -dir.x;
+                if (end.y < regionMin.y || end.y > regionMax.y) dir.y = -dir.y;
+                if (MaxDistanceInsideBox(start, dir, regionMin, regionMax) >= distance) return dir;
+            }
+
+            // 最远点必为角落:此方向保证只在区域确实容纳不下时才裁剪距离。
+            Vector2 farthest = new Vector2(
+                start.x - regionMin.x > regionMax.x - start.x ? regionMin.x : regionMax.x,
+                start.y - regionMin.y > regionMax.y - start.y ? regionMin.y : regionMax.y);
+            return (farthest - start).normalized;
+        }
+
+        static void SetPositionXY(Transform enemy, Vector2 xy)
+        {
+            Vector3 position = enemy.position;
+            position.x = xy.x;
+            position.y = xy.y;
+            enemy.position = position;
         }
 
         /// <summary>
@@ -285,12 +297,12 @@ namespace ShinySTG.EnemyAI
             float tX, tY;
             const float INF = float.PositiveInfinity;
 
-            if (dir.x >  0.00001f) tX = (boxMax.x - start.x) / dir.x;
-            else if (dir.x < -0.00001f) tX = (boxMin.x - start.x) / dir.x;
+            if (dir.x > 0f) tX = (boxMax.x - start.x) / dir.x;
+            else if (dir.x < 0f) tX = (boxMin.x - start.x) / dir.x;
             else tX = INF;
 
-            if (dir.y >  0.00001f) tY = (boxMax.y - start.y) / dir.y;
-            else if (dir.y < -0.00001f) tY = (boxMin.y - start.y) / dir.y;
+            if (dir.y > 0f) tY = (boxMax.y - start.y) / dir.y;
+            else if (dir.y < 0f) tY = (boxMin.y - start.y) / dir.y;
             else tY = INF;
 
             float t = Mathf.Min(tX, tY);
@@ -299,20 +311,16 @@ namespace ShinySTG.EnemyAI
         }
 
         /// <summary>
-        /// 速度曲线因子:输入 t01 ∈ [0,1](本次移动已用 / 总时长),返回 [0,1] 的速度比例。
-        ///   Constant   -> 1
-        ///   FastToSlow -> cos(t01 · π/2)   单调递减,t=0 -> 1, t=1 -> 0
-        ///   SlowToFast -> sin(t01 · π/2)   单调递增,t=0 -> 0, t=1 -> 1
+        /// 归一化速度曲线的积分,返回已走距离占总距离的比例。
         /// </summary>
-        static float CurveFactor(SpeedCurve mode, float t01)
+        static float DistanceProgress(SpeedCurve mode, float t01)
         {
             t01 = Mathf.Clamp01(t01);
             switch (mode)
             {
-                case SpeedCurve.Constant:   return 1f;
-                case SpeedCurve.FastToSlow: return Mathf.Cos(t01 * Mathf.PI * 0.5f);
-                case SpeedCurve.SlowToFast: return Mathf.Sin(t01 * Mathf.PI * 0.5f);
-                default: return 1f;
+                case SpeedCurve.FastToSlow: return Mathf.Sin(t01 * Mathf.PI * 0.5f);
+                case SpeedCurve.SlowToFast: return 1f - Mathf.Cos(t01 * Mathf.PI * 0.5f);
+                default: return t01;
             }
         }
 

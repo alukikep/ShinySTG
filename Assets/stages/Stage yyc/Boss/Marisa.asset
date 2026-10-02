@@ -67,6 +67,34 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: 2710246733452410907
+      type: {class: ExecuteCommandsAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Commands:
+        - rid: 2710246733452410908
+    - rid: 2710246733452410908
+      type: {class: ClearProjectilesCommand, ns: ShinySTG.GameplayCommands, asm: Assembly-CSharp}
+      data:
+        ClearEnemyProjectiles: 1
+        ClearPlayerProjectiles: 0
+        ClearNeutralProjectiles: 0
+        IncludeLasers: 1
+        ClearLevel: 1
+        Presentation:
+          Mode: 2
+          MaxEffectCount: 24
+          EffectGridSize: 1
+          EffectPrefab: {fileID: 0}
+          MaxItemCount: 32
+          ItemsPerBullet: 0.05
+          Item: {fileID: 11400000, guid: 810d6af8eab084b4eb82486a35f40608, type: 2}
+          ItemScatterRadius: 0.15
+          ItemSpeed: 2
+          AutoAttractOnSpawn: 1
+    - rid: 2710246733452410909
+      type: {class: PlaySpellDeclarationAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}
+      data:
+        Declaration: {fileID: 11400000, guid: 3b14640fffb5bf34fbf8d1518575f6ed, type: 2}
     - rid: 6177227299071197185
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
       data:
@@ -156,7 +184,8 @@ MonoBehaviour:
           Actions: []
         ExitActions:
           WaitForCompletion: 1
-          Actions: []
+          Actions:
+          - rid: 2710246733452410907
         EnterCommands: []
         ExitCommands: []
         ExitTriggers: []
@@ -165,7 +194,7 @@ MonoBehaviour:
         ExitConditions: []
         ProtectBarTransition: 0
         ProtectedBarId: 
-        Flow: {fileID: 11400000, guid: 9981afeb303eeee449f5ce9de1c5f48f, type: 2}
+        Flow: {fileID: 11400000, guid: fd669120393eff74d86bb5624a70fbc3, type: 2}
         ResetOnEnter: 1
     - rid: 6177227301945081863
       type: {class: ShooterPhase, ns: ShinySTG.EnemyAI.Boss, asm: Assembly-CSharp}
@@ -178,7 +207,8 @@ MonoBehaviour:
         ExitSfx: {fileID: 0}
         EnterActions:
           WaitForCompletion: 1
-          Actions: []
+          Actions:
+          - rid: 2710246733452410909
         ExitActions:
           WaitForCompletion: 1
           Actions: []
@@ -190,7 +220,7 @@ MonoBehaviour:
         ExitConditions: []
         ProtectBarTransition: 0
         ProtectedBarId: 
-        Flow: {fileID: 11400000, guid: aa382875d19fdbf43ab98b60c8e3f4b4, type: 2}
+        Flow: {fileID: 11400000, guid: fd669120393eff74d86bb5624a70fbc3, type: 2}
         ResetOnEnter: 1
     - rid: 6177227306105569280
       type: {class: InvincibilityScopeAction, ns: ShinySTG.GameActions, asm: Assembly-CSharp}

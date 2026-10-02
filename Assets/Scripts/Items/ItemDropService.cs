@@ -51,14 +51,15 @@ namespace ShinySTG.Items
             Instance.SpawnInternal(profile, position);
         }
 
-        public static bool SpawnSingle(ItemDefinition definition, Vector2 position, Vector2 velocity)
+        public static bool SpawnSingle(ItemDefinition definition, Vector2 position, Vector2 velocity,
+            bool autoAttractOnSpawn = false)
         {
             if (definition == null || Instance == null || !Instance.isActiveAndEnabled) return false;
-            Instance.SpawnSingleInternal(definition, position, velocity);
+            Instance.SpawnSingleInternal(definition, position, velocity, autoAttractOnSpawn);
             return true;
         }
 
-        void SpawnSingleInternal(ItemDefinition definition, Vector2 position, Vector2 velocity)
+        void SpawnSingleInternal(ItemDefinition definition, Vector2 position, Vector2 velocity, bool autoAttractOnSpawn)
         {
             ItemPickup item = null;
             while (_pool.Count > 0 && item == null) item = _pool.Pop();
@@ -66,10 +67,11 @@ namespace ShinySTG.Items
             {
                 var go = new GameObject("Item Pickup");
                 go.SetActive(false);
+                // 服务挂点可移动/缩放；道具用独立根对象避免被其 Transform 带动。
                 UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, gameObject.scene);
                 item = go.AddComponent<ItemPickup>();
             }
-            item.Initialize(definition, position, velocity, _fallback);
+            item.Initialize(definition, position, velocity, _fallback, autoAttractOnSpawn);
             _active.Add(item);
         }
 
@@ -84,20 +86,10 @@ namespace ShinySTG.Items
                 if (chance <= 0f || (chance < 1f && Random.value > chance)) continue;
                 for (int i = 0; i < entry.Count; i++)
                 {
-                    ItemPickup item = null;
-                    while (_pool.Count > 0 && item == null) item = _pool.Pop();
-                    if (item == null)
-                    {
-                        var go = new GameObject("Item Pickup");
-                        go.SetActive(false);
-                        // 服务挂点可移动/缩放；道具用独立根对象避免被其 Transform 带动。
-                        UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, gameObject.scene);
-                        item = go.AddComponent<ItemPickup>();
-                    }
                     float angle = (profile.DirectionDegrees + Random.Range(-0.5f, 0.5f) * Mathf.Clamp(profile.SpreadDegrees, 0f, 360f)) * Mathf.Deg2Rad;
                     Vector2 velocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * Random.Range(min, max);
-                    item.Initialize(entry.Item, position + Random.insideUnitCircle * Mathf.Max(0f, profile.SpawnRadius), velocity, _fallback);
-                    _active.Add(item);
+                    SpawnSingleInternal(entry.Item, position + Random.insideUnitCircle * Mathf.Max(0f, profile.SpawnRadius),
+                        velocity, profile.AutoAttractOnSpawn);
                 }
             }
         }

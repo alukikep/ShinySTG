@@ -23,6 +23,10 @@ MonoBehaviour:
   Damage: 0
   Children:
   - {fileID: 11400000, guid: 1ff58bf680466614587c4f6ae469ccc5, type: 2}
+  - {fileID: 11400000, guid: d531baf24f3fc6a4882b623e020c3d52, type: 2}
+  - {fileID: 11400000, guid: 641a176a96b080b4f855b1e2dd4ec5e9, type: 2}
+  - {fileID: 11400000, guid: fb63eee4458a58848961bf0fefeeba43, type: 2}
+  - {fileID: 11400000, guid: f39a9f30ea56410409eb746fd87debcf, type: 2}
   references:
     version: 2
     RefIds:

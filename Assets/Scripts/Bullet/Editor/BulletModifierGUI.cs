@@ -87,9 +87,12 @@ internal static class BulletModifierGUI
         var type = SRTypeCache.GetTypeByName(property.managedReferenceFullTypename);
         if (type == typeof(ClearDefenseBulletModifier))
         {
+            float defenseY = Line + Gap;
             if (draw) EditorGUI.LabelField(new Rect(rect.x, rect.y + Gap, rect.width, Line),
                 new GUIContent("抵挡一级消弹；二级仍可消除。", "挂载期间常驻，首帧和雾化期生效；不受 Timing 设置影响。容器子节点在阶段开始时生效，结束时解除。"));
-            return Line + Gap;
+            Field(rect, ref defenseY, property.FindPropertyRelative(nameof(ClearDefenseBulletModifier.OnlyStrongClear)),
+                new GUIContent("仅强消弹回收", "越界、命中和 Modifier 请求不回收；二级消弹或关卡强制清场仍可回收。"), type, draw);
+            return defenseY;
         }
         float y = 0f;
         if (!phaseChild)

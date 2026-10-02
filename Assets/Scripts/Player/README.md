@@ -31,6 +31,7 @@ PlayerInput 的 Invoke C# Events 需要代码适配回调，不能直接在 Insp
 内置清弹通过 Clear Level 选择等级，BombDefinition 与无资产时的兼容配置默认二级（Strong），
 可清除普通弹和防御弹；一级（Normal）保留防御弹。该等级不影响 Include Lasers。
 防御弹配置及消弹表现见[消弹指令](../GameActions/README.md#最小配置)。
+动作序列内的 Clear Projectiles 使用指令自身的等级，不继承 Bomb 的 Clear Level。
 
 当前宿主不会等待 Start Actions 完成再进入 Active，Wait For Completion 尚未接入阶段切换。
 End Actions 启动后立即取消未完成动作，只适合瞬时指令或音效。

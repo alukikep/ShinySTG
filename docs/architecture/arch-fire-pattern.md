@@ -31,9 +31,9 @@ Ring/Arc 的几何等分偏移最后叠加，避免覆盖型 Base/PlayerAim 将�
 新增扩展必须让批次抽样发生在准备钩子中，逐弹函数只读取批次状态；否则随机调用次数会随弹数变化。
 空扩展数组回退至向下加整体旋转。数组顺序有意义，覆盖型和累加型模块不能随意交换。
 
-## Composite 语义
+## Composite 与随机区域语义
 
-子项同步执行，共享当前上下文；同一子 Pattern 在多个槽位出现时按每次执行推进同一序列，并非每槽独立。
+Composite 子项同步执行，共享当前上下文；同一子 Pattern 在多个槽位出现时按每次执行推进同一序列，并非每槽独立。
 Composite 使用 Children 和根层 FireSounds，不继承父级子弹、速度、角度、Modifier、伤害或雾化配置。
 调用方 ExtraModifiers 透传至叶子，由叶子与自身 Modifier 组合。
 当前没有父级继承开关；父级扩展可能被调度计数，但不用于子项角度计算。
@@ -41,6 +41,11 @@ Composite 使用 Children 和根层 FireSounds，不继承父级子弹、速度�
 运行时仅检测当前递归路径，允许兄弟重复引用；循环及超过深度上限的分支跳过。
 GetFireCount 使用同类保护返回配置预计数量；空 prefab、池获取失败等情况下预计值不等于实际生成数。
 Count 非正的叶子不发射；单颗弹走中线，Ring/Arc 保留半径偏移。
+
+RandomAreaFirePattern 是另一种组合节点：每次执行在 MinOffset/MaxOffset 矩形内抽样一个相对调用位置，
+再通过 BulletPool.FireChild 执行 ChildPattern。区域节点自身不提供子弹配置，子 Pattern 负责 prefab、速度、角度、
+Modifier 和 SpawnFog；SpawnCount 次采样会将 ChildPattern 的预计数量乘以 SpawnCount。其 FireSounds 仍遵循
+根调用只触发一次的规则，ChildPattern 的声音不会因每次采样重复播放。区域边界会按每个轴归一化，允许用户填反最小/最大值。
 
 ## 音效与统计
 

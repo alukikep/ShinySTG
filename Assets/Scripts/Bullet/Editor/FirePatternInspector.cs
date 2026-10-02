@@ -17,8 +17,18 @@ public class FirePatternInspector : Editor
             if (composite.Children == null || System.Array.Exists(composite.Children, child => child == null))
                 EditorGUILayout.HelpBox("空子项会被跳过。", MessageType.Warning);
         }
+        if (pattern is RandomAreaFirePattern randomArea)
+        {
+            EditorGUILayout.HelpBox("每次随机采样后执行一次 Child Pattern；区域是相对于调用方位置的世界坐标偏移。", MessageType.Info);
+            if (randomArea.ChildPattern == null)
+                EditorGUILayout.HelpBox("Child Pattern 为空，不会发射。", MessageType.Warning);
+            if (randomArea.SpawnCount <= 0)
+                EditorGUILayout.HelpBox("SpawnCount <= 0 时不发射。", MessageType.Warning);
+            if (InvalidTree(randomArea, new HashSet<FirePattern>()))
+                EditorGUILayout.HelpBox("随机区域组合存在循环引用或超过 64 层；运行时将跳过该分支。", MessageType.Error);
+        }
         int count = pattern is RingFirePattern ring ? ring.Count : pattern is ArcFirePattern arc ? arc.Count : pattern is LineFirePattern line ? line.Count : -1;
-        if (!(pattern is CompositeFirePattern) && count <= 0)
+        if (!(pattern is CompositeFirePattern) && !(pattern is RandomAreaFirePattern) && count <= 0)
             EditorGUILayout.HelpBox("Count <= 0 时不发射。", MessageType.Warning);
         else if (count == 1)
             EditorGUILayout.HelpBox("只发射中线方向的一颗子弹，保留 Radius 出生偏移。", MessageType.Info);
@@ -41,6 +51,7 @@ public class FirePatternInspector : Editor
             if (pattern is CompositeFirePattern composite && composite.Children != null)
                 foreach (var child in composite.Children)
                     if (InvalidTree(child, path)) return true;
+            if (pattern is RandomAreaFirePattern randomArea && InvalidTree(randomArea.ChildPattern, path)) return true;
             return false;
         }
         finally { path.Remove(pattern); }

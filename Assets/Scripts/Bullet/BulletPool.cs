@@ -147,8 +147,14 @@ public class BulletPool : MonoBehaviour
         bullet.AttachSignalTriggers();
     }
 
-    /// 回收一颗。
+    /// <summary>普通回收；开启仅强消弹回收的子弹会保留。关卡清场使用 ReturnAll。</summary>
     public void Return(Bullet bullet)
+    {
+        if (bullet == null || bullet.RequiresStrongClear) return;
+        ForceReturn(bullet);
+    }
+
+    void ForceReturn(Bullet bullet)
     {
         if (bullet == null || !_active.Remove(bullet)) return;
         // ★ 先摘 BulletSignalBus 订阅(必须在 ClearModifiers 之前,因为 DetachSignalTriggers
@@ -171,14 +177,14 @@ public class BulletPool : MonoBehaviour
 
     public void Return(Bullet bullet, BulletClearPresentation presentation)
     {
-        if (bullet == null || !_active.Contains(bullet)) return;
+        if (bullet == null || bullet.RequiresStrongClear || !_active.Contains(bullet)) return;
         ApplyPresentation(new List<Bullet> { bullet }, presentation);
         Return(bullet);
     }
 
     /// <summary>
     /// 批量回收符合阵营条件的活跃子弹。先复制集合再回收，避免遍历 HashSet 时修改集合。
-    /// filter 为空时回收全部活跃子弹。
+    /// filter 为空时回收全部活跃子弹；强制清场不受消弹防御和仅强消弹回收限制。
     /// </summary>
     public int ReturnAll(System.Predicate<ShinySTG.Hitbox.CollisionTeam> filter = null)
     {
@@ -193,7 +199,7 @@ public class BulletPool : MonoBehaviour
                 ? bullet.Hitbox.Team
                 : ShinySTG.Hitbox.CollisionTeam.Neutral;
             if (filter != null && !filter(team)) continue;
-            Return(bullet);
+            ForceReturn(bullet);
             returned++;
         }
         return returned;
@@ -223,7 +229,7 @@ public class BulletPool : MonoBehaviour
             selected.Add(bullet);
         }
         ApplyPresentation(selected, presentation);
-        for (int i = 0; i < selected.Count; i++) Return(selected[i]);
+        for (int i = 0; i < selected.Count; i++) ForceReturn(selected[i]);
         return selected.Count;
     }
 
@@ -237,7 +243,7 @@ public class BulletPool : MonoBehaviour
             int stride = Mathf.Max(1, bullets.Count / count);
             for (int i = 0, made = 0; i < bullets.Count && made < count; i += stride, made++)
                 ShinySTG.Items.ItemDropService.SpawnSingle(p.Item, (Vector2)bullets[i].Position + UnityEngine.Random.insideUnitCircle * p.ItemScatterRadius,
-                    UnityEngine.Random.insideUnitCircle.normalized * p.ItemSpeed);
+                    UnityEngine.Random.insideUnitCircle.normalized * p.ItemSpeed, p.AutoAttractOnSpawn);
             return;
         }
         if (p.EffectPrefab == null) return;

@@ -43,14 +43,25 @@ public class Bullet : MonoBehaviour
 
     // 按运行实例登记，多个防御 Modifier 脱离时不会相互解除防御。
     HashSet<BulletModifier> _clearDefenseSources;
+    HashSet<BulletModifier> _strongClearOnlySources;
     public bool HasClearDefense => _clearDefenseSources != null && _clearDefenseSources.Count > 0;
-    internal void AddClearDefense(BulletModifier source)
+    public bool RequiresStrongClear => _strongClearOnlySources != null && _strongClearOnlySources.Count > 0;
+    internal void AddClearDefense(BulletModifier source, bool onlyStrongClear = false)
     {
         if (source == null) return;
         if (_clearDefenseSources == null) _clearDefenseSources = new HashSet<BulletModifier>();
         _clearDefenseSources.Add(source);
+        if (onlyStrongClear)
+        {
+            if (_strongClearOnlySources == null) _strongClearOnlySources = new HashSet<BulletModifier>();
+            _strongClearOnlySources.Add(source);
+        }
     }
-    internal void RemoveClearDefense(BulletModifier source) => _clearDefenseSources?.Remove(source);
+    internal void RemoveClearDefense(BulletModifier source)
+    {
+        _clearDefenseSources?.Remove(source);
+        _strongClearOnlySources?.Remove(source);
+    }
 
     [Header("Combat")]
     [Tooltip("子弹命中敌人时的伤害值。由 FirePattern.Damage 在 pool.Get 时写入。\n" +
@@ -130,6 +141,7 @@ public class Bullet : MonoBehaviour
         CaptureBaseline();
         ClearModifiers();
         _clearDefenseSources?.Clear();
+        _strongClearOnlySources?.Clear();
         if (_fogActive) ClearFogVisual();
         _fogActive = false;
         transform.localScale = _baseLocalScale;
@@ -421,11 +433,7 @@ public class Bullet : MonoBehaviour
         for (int i = 0; i < _modifiers.Count; i++)
         {
             _modifiers[i].Modify(this, dt);
-            if (ReturnRequested)
-            {
-                BulletPool.Instance?.Return(this);
-                return;
-            }
+            if (HandleReturnRequest()) return;
             if (!gameObject.activeInHierarchy || SpawnVersion != version) return;
         }
 
@@ -451,7 +459,24 @@ public class Bullet : MonoBehaviour
         transform.rotation = Quaternion.Euler(0, 0,
             SteerAngle * Mathf.Rad2Deg - 90f + VisualRotation);
 
-        // 5. 越界反弹 / 越界回收 —— 优先读 BoundsService.Instance.CullingArea;无则兜底硬编码 ±10/±20(历史行为)。
+        HandleOutOfBounds();
+    }
+
+    bool HandleReturnRequest()
+    {
+        if (!ReturnRequested) return false;
+        if (RequiresStrongClear)
+        {
+            ReturnRequested = false;
+            return false;
+        }
+        BulletPool.Instance?.Return(this);
+        return true;
+    }
+
+    void HandleOutOfBounds()
+    {
+        // 越界反弹 / 越界回收 —— 优先读 BoundsService.Instance.CullingArea;无则兜底硬编码 ±10/±20。
         //    反弹 modifier(如 BounceBulletModifier)若挂在 _modifiers 上,会在此机会把子弹方向翻转 + 位置 Clamp 回区内;
         //    反弹成功 → 本帧不回收,继续下一帧。反弹失败(无 modifier / modifier 不处理)→ 走原越界回收。
         var bs = ShinySTG.Stage.BoundsService.Instance;

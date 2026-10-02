@@ -552,6 +552,46 @@ public class BulletFoundationTests
     }
 
     [Test]
+    public void RandomAreaPatternSamplesWithinBoundsAndMultipliesChildCount()
+    {
+        var root = new GameObject("Random area pattern test pool");
+        var source = new GameObject("Random area pattern test prefab");
+        source.SetActive(false);
+        var prefab = source.AddComponent<Bullet>();
+        var child = ScriptableObject.CreateInstance<LineFirePattern>();
+        var randomArea = ScriptableObject.CreateInstance<RandomAreaFirePattern>();
+        var previousRandomState = Random.state;
+        try
+        {
+            child.BulletPrefab = prefab;
+            child.Count = 2;
+            randomArea.ChildPattern = child;
+            randomArea.SpawnCount = 5;
+            randomArea.MinOffset = new Vector2(0f, -1f);
+            randomArea.MaxOffset = new Vector2(10f, 1f);
+            Random.InitState(1234);
+
+            randomArea.Fire(Vector2.zero, 0f, root.GetComponent<BulletPool>());
+
+            Assert.That(randomArea.GetFireCount(), Is.EqualTo(10));
+            Assert.That(root.GetComponent<BulletPool>().ActiveBullets.Count, Is.EqualTo(10));
+            foreach (var bullet in root.GetComponent<BulletPool>().ActiveBullets)
+            {
+                Assert.That(bullet.Position.x, Is.InRange(0f, 10f));
+                Assert.That(bullet.Position.y, Is.InRange(-1f, 1f));
+            }
+        }
+        finally
+        {
+            Random.state = previousRandomState;
+            Object.DestroyImmediate(randomArea);
+            Object.DestroyImmediate(child);
+            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(source);
+        }
+    }
+
+    [Test]
     public void DeferredReturnDoesNotConsumeReusedBullet()
     {
         var root = new GameObject("Deferred return test");

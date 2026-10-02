@@ -75,7 +75,9 @@ AddLife 只修改生命；等待期间加命影响结束时的重生决定，终
 
 PlayerResources 负责库存设置、增减与通知，PlayerBomb 负责释放条件、效果和动作宿主；
 BombDefinition 提供共享配置，未指定资产时保留组件字段回退。伤害通过 EnemyHealth 与
-BossHealth 的既有入口结算，清弹通过池的阵营过滤回收，不直接销毁对象。
+BossHealth 的既有入口结算，内置清弹通过 BulletPool.ClearAll 按敌方阵营和配置等级筛选，再回池。
+BombDefinition 与组件回退配置共用消弹规则；防御判定见[子弹架构](./arch-bullet.md#玩法消弹与防御)。
+Bomb 动作序列内的 ClearProjectilesCommand 使用自己的等级配置，不继承内置清弹等级。
 
 Bomb 复用 GameActionRunner，不另建动作执行体系；序列内部串行，Parallel 提供并行。
 当前宿主的 Starting 不等待开始序列，Active 由持续时间推进，Ending 仅支持瞬时结束动作；

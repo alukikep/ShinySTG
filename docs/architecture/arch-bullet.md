@@ -23,8 +23,9 @@
 
 代码中角度零指向世界坐标 +X，飞行角以弧度存储。贴图默认朝 +Y，显示旋转统一补偿 -90°。
 
-雾化期间子弹不移动、不参与碰撞，也不运行 modifier。雾化结束帧只把剩余时间交给飞行逻辑。
-因此 modifier 的时间从雾化结束后累计，与 Bullet 的累计存活时间不同；雾化中收到的信号可先锁存。
+雾化期间子弹不移动、不参与碰撞，也不推进 modifier 时间窗口。雾化结束帧只把剩余时间交给飞行逻辑。
+因此时间型 modifier 从雾化结束后累计，与 Bullet 的累计存活时间不同；雾化中收到的信号可先锁存。
+挂载钩子不受雾化等待影响，消弹防御等常驻属性在首帧更新前已经生效。
 
 正常飞行帧先依次运行 modifier，再应用转角、移动并处理越界。
 modifier 执行期间若子弹被回收或同一实例已重新生成，旧一轮 Update 停止继续处理。
@@ -55,7 +56,9 @@ Clone 仍会产生对象分配，子弹 GameObject 复用并不表示 modifier �
 重置钩子不得修改浅拷过来的共享对象，否则可能污染原实例。
 
 ResetWindow 用于未挂载实例。运行中的实例应先 Detach；它不会替调用方重新订阅 trigger。
-标准池挂载路径在克隆后完成窗口重置，再调用 trigger 的 OnAttach。
+Modifier 的 OnAttach 负责挂载即生效的属性，与时间窗口进入及 trigger 的 OnAttach 分开。
+Clone 重置运行状态，AddModifier 执行挂载钩子；标准池路径随后统一重置窗口、挂载启动触发器。
+重置窗口不得解除已登记的常驻属性；常驻 Modifier 不推进自身时间窗口，也不订阅启动触发器。
 
 ClearModifiers 会先对各 modifier 调用幂等的 Detach，再清空列表。
 Detach 解除 trigger 订阅；若窗口仍激活则先退出窗口，随后调用子类 OnDetach。
@@ -68,18 +71,40 @@ Detach 解除 trigger 订阅；若窗口仍激活则先退出窗口，随后调�
 - OnDetach 用于最终释放引用或资源，即使 modifier 从未激活也会调用。
 
 回池通过 ResetForPool 执行上述清理，并恢复缩放、材质属性块、雾化、擦弹及运动状态。
-销毁路径也通过 ClearModifiers 兜底。全屏消弹使用 ReturnAll；不要直接禁用子弹对象代替回收。
-`BulletPool.ReturnAll(filter, BulletClearPresentation)` 可在批量回收时附加表现：
-`Silent` 直接回池，`BurstEffect` 按世界网格聚合特效，`ConvertToItems` 按子弹数量比例生成有限道具。
-表现配置有最大特效数（运行时硬上限 128）和最大道具数（运行时硬上限 256），超出部分只回收不追加表现；
-缺少特效、道具或场景服务时自动退化为静默回收。旧的 `Return` / `ReturnAll(filter)` 入口始终为静默模式。
+销毁路径也通过 ClearModifiers 兜底。`Return` 不检查普通消弹防御，但遵守“仅强消弹回收”限制；
+`ReturnAll` 是关卡生命周期的强制清场入口，不受这两种保护限制。不要直接禁用子弹对象代替回收。
 重复 Return 不会重复入池。
+
+## 玩法消弹与防御
+
+玩法消弹使用 BulletPool.ClearAll，先按阵营筛选，再按消弹等级检查防御。
+一级（Normal）仅消除无防御子弹；二级（Strong）同时消除普通弹和防御弹。
+被一级消弹保留的防御弹不消耗防御、不改变运动、碰撞或伤害状态。
+
+[ClearDefenseBulletModifier](../../Assets/Scripts/Bullet/Modifiers/ClearDefenseBulletModifier.cs)
+通过挂载钩子登记防御，因此根 Modifier 从生成首帧起生效，包括雾化期间。
+它不使用自身 Timing，脱离时解除防御；Bullet 按运行实例登记来源，多个防御来源不会相互覆盖。
+回池完整清空防御来源，克隆与配置模板不共享防御运行状态。
+容器内的防御从子节点阶段开始生效，阶段结束或容器脱离时解除；分裂弹按自身配置获得防御。
+OnlyStrongClear 是防御 Modifier 的可选回收限制，默认关闭。开启后，越界、命中回收及
+Modifier 的 RequestReturn 均不能回收子弹；被阻止的请求会清除，不打断后续运动。
+越界时仍先尝试 Bounce，未反弹时保留当前位置继续飞行，不自动夹回场内。
+二级 ClearAll（含强消弹指令和二级 Bomb）绕过该限制；关卡 ReturnAll 和场景销毁仍完整清理。
+限制与防御来源绑定，来源脱离或容器阶段结束时解除，回池后不残留。保留的子弹仍参与常规碰撞伤害，
+只是命中后不回收；单颗带表现的普通 Return 被阻止时也不生成消弹表现。
+
+ClearAll 与带表现的 ReturnAll 共用批量表现路径，但只有通过玩法筛选的子弹参与消弹表现。
+`Silent` 直接回池，`BurstEffect` 按世界网格聚合特效，`ConvertToItems` 按成功消除数量比例生成有限道具。
+表现配置有最大特效数（运行时硬上限 128）和最大道具数（运行时硬上限 256），超出部分只回收不追加表现；
+缺少特效、道具或场景服务时自动退化为静默回收。`Return` / `ReturnAll(filter)` 保持静默模式。
+等级只作用于 Bullet，激光仍由调用方的阵营筛选与 IncludeLasers 控制。
+指令、Bomb 和演出配置见[通用游戏动作操作说明](../../Assets/Scripts/GameActions/README.md#最小配置)。
 
 ## 时间窗口
 
 启动时刻与持续时间是两个独立概念。StartTrigger 决定何时首次启动，Duration 从激活后计算，
-重复信号不会重启或延长窗口。StartTrigger 为空时直接使用基类 Delay，
-不创建兜底 trigger，也不向已配置 trigger 同步 Delay。
+重复信号不会重启或延长窗口。StartTrigger 为空时，在第一次有效更新立即进入窗口；
+需要延迟时显式配置 DelayStartTrigger，不创建兜底 trigger。
 
 跨过延迟阈值的首帧只计入阈值后的时间；Duration 末帧只计入剩余时长。
 ModifyCore 接收裁剪后的有效 dt，结束钩子在最后一次有效执行之后调用。
@@ -171,11 +196,12 @@ Modify 是非虚方法，不应隐藏它；持续行为实现 ModifyCore，一�
 新增启动条件放在 Triggers，新增分裂信息传递和采样策略放在 Extras。
 
 循环行为使用 `Modifier/Sequence` 或 `Modifier/Parallel` 容器，并在容器上勾选 `Loop`。
-Sequence 按顺序执行 Children，Parallel 同帧执行所有 Children；循环只重置容器内的子实例，
-不会重置容器自身的 Delay/Duration。它们都对嵌套子 Modifier 做 Clone，避免不同子弹共享运行状态。
+Sequence 按顺序执行 Entries，Parallel 同帧执行所有 Entries；循环只重置容器内的子实例，
+不会重置容器自身的启动条件或持续时长。它们都对嵌套子 Modifier 做 Clone，避免不同子弹共享运行状态。
+Parallel 子项达到自己的阶段时长后立即退出并脱离，不等待其他子项或整个容器结束。
 
 容器内的 Entry 采用 `BulletModifierEntry { Modifier, Duration }`。Entry.Duration 是唯一的阶段时长；
-子 Modifier 的 Delay、Duration、OneShot 不参与 Sequence/Parallel 调度。需要停顿时使用
+子 Modifier 的 StartTrigger、Duration、OneShot 不参与 Sequence/Parallel 调度。需要停顿时使用
 `Modifier/Wait`，其停顿时长直接填写在 Entry.Duration 中。这样默认时间模型接近 BehaviorFlow：
 容器负责时间轴，Modifier 只负责行为，Wait 明确表达中途暂停。
 
@@ -183,7 +209,10 @@ Sequence 按顺序执行 Children，Parallel 同帧执行所有 Children；循�
 新增视觉属性必须能随子弹回池恢复；需要订阅或持有资源的行为必须覆盖从未激活就被回收的路径。
 
 回归用例见 [BulletFoundationTests](../../Assets/Scripts/Bullet/Editor/BulletFoundationTests.cs)，
-覆盖窗口裁剪、转向、信号、反弹、颜色及回收等边界。代码编译成功不代表测试已经执行，
+覆盖窗口裁剪、转向、信号、反弹、颜色及回收等边界。
+[BulletClearDefenseTests](../../Assets/Scripts/Bullet/Editor/BulletClearDefenseTests.cs) 覆盖两级消弹、
+首帧与雾化防御、重叠来源、容器循环、对象池复用、指令与 Bomb、道具转换及关卡强制清场。
+代码编译成功不代表测试已经执行，
 资产重导入、雾化与淡出组合和实际弹幕仍需在 Unity 中确认。
 
 ## 与其他板块的关系

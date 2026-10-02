@@ -44,14 +44,22 @@ Run Behavior Flow 在完成或取消时释放运行时克隆；循环 Flow 需�
 在 FirePattern 的默认 Modifier 或 FireAction 的追加 Modifier 中选择 `Modifier/Clear Defense`，
 即可赋予子弹消弹防御。防御从挂载开始常驻，包括首帧和出生雾化期间；不消耗防御，
 不使用自身启动条件、持续时长或 OneShot。移除 Modifier、回池时解除。
+勾选“仅强消弹回收”（Only Strong Clear）后，子弹越界、命中或收到 Modifier 回收请求时仍保留，
+正常玩法中需二级消弹清除（含二级 Bomb）；关卡结束、场景切换仍可强制清理。
+该选项默认关闭，旧防御弹继续按原规则越界或命中回收；容器阶段结束时此限制随防御一起解除。
 放入 Sequence 或 Parallel 时，防御随子节点挂载和脱离生效、解除；Sequence/Parallel
 由 Entry 的阶段时长控制，Parallel 子项到期即解除。分裂生成的子弹需要在自己的 Modifier 配置中添加防御。
+需要循环时，在 Sequence 或 Parallel 容器上勾选 Loop；Sequence 在所有阶段完成后重启，
+Parallel 按 Cycle Duration 重启子项。容器的启动条件和自身生效时长仍独立控制整组行为。
 
 展开该指令的 Presentation 可选择：
 
 - `Silent`：直接回收，适合普通清场和炸弹。
 - `BurstEffect`：指定特效 prefab；按网格合并位置并受最大特效数限制，避免每颗子弹创建特效。
 - `ConvertToItems`：指定 ItemDefinition，按 `ItemsPerBullet` 计算并受最大道具数限制；生成后由 ItemDropService 负责下落、吸附和拾取。
+
+`ConvertToItems` 可勾选 **Auto Attract On Spawn**，让生成的道具直接飞向可拾取的玩家，
+适合 Boss 击破消弹转得分道具；默认关闭。配置与收点时序见[生成时自动吸附](../Items/README.md#生成时自动吸附)。
 
 防御筛选先于表现：被一级消弹保留的防御弹不生成特效、不计入道具数量。
 表现配置只作用于 Bullet，`IncludeLasers` 清除的激光仍按标准静默路径回收。特效或道具服务缺失时自动退化为静默回收。

@@ -16,4 +16,6 @@ public sealed class BulletClearPresentation
     public ItemDefinition Item;
     [Min(0f)] public float ItemScatterRadius = 0.15f;
     [Min(0f)] public float ItemSpeed = 2f;
+    [Tooltip("转成的道具直接吸附到可拾取的玩家，不要求进入吸附范围或越过收点线。")]
+    public bool AutoAttractOnSpawn;
 }

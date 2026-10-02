@@ -77,10 +77,10 @@ Boss 接入使用 `Game Action/Play Dialogue`，等待此句柄，并在动作 D
 在 BossEncounterEntry 开启 BlockTimeline；以下动作序列均保持 WaitForCompletion 开启。
 
 1. 战前：StartActions 添加 Invincibility Scope，勾选 ProtectPlayer 与 ProtectOwner。
-   在其 Sequence.Actions 依次添加 Execute Commands（Command/Clear Projectiles）和
+   在其 Sequence.Actions 依次添加 Execute Commands（Command/Clear Projectiles，Clear Level 设为二级 Strong）和
    Game Action/Play Dialogue，指定战前台词并保持 LockPlayerControls 开启。
 2. 战后：DefeatActions 添加 Invincibility Scope，勾选 ProtectPlayer。
-   在内部先消弹，再 Play Dialogue 指定战后台词。等待结束之前 Boss 对象会保留。
+   在内部先用二级 Strong 消弹，再 Play Dialogue 指定战后台词。等待结束之前 Boss 对象会保留。
 3. 若 Boss 应先消失，将战后对话和玩家保护放在 CompleteActions；对话显示不依赖 Boss 对象。
 
 不配置新动作的旧 Encounter 行为不变。输入锁不提供无敌，一次消弹不阻止道中敌人继续发射。

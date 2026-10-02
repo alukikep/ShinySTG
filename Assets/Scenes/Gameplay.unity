@@ -2628,9 +2628,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PlayableArea:
     serializedVersion: 2
-    x: -8
+    x: -7.8
     y: -8
-    width: 15
+    width: 14.6
     height: 18
   PlayableColor: {r: 0.2, g: 1, b: 0.4, a: 0.9}
   CullingArea:
@@ -4862,6 +4862,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2401090333856193633, guid: 68373c69b5f94a2abbf1f8f4710b1e3a, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: cc54cee2382c94d46b058ba55973944f, type: 2}
+    - target: {fileID: 2401090333856193633, guid: 68373c69b5f94a2abbf1f8f4710b1e3a, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: -2414034599606272097, guid: cc54cee2382c94d46b058ba55973944f, type: 2}
+    - target: {fileID: 2401090333856193633, guid: 68373c69b5f94a2abbf1f8f4710b1e3a, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 2401090333856193633, guid: 68373c69b5f94a2abbf1f8f4710b1e3a, type: 3}
+      propertyPath: m_hasFontAssetChanged
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4817391864225849122, guid: 68373c69b5f94a2abbf1f8f4710b1e3a, type: 3}
       propertyPath: m_Pivot.x
       value: 0

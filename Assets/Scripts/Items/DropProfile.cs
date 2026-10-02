@@ -19,6 +19,8 @@ namespace ShinySTG.Items
 
         [Tooltip("可同时生成多种道具；每个条目独立按概率抽样，空项和非正数量被忽略。")]
         public Entry[] Entries;
+        [Tooltip("生成后直接吸附到可拾取的玩家，不要求进入吸附范围或越过收点线。")]
+        public bool AutoAttractOnSpawn;
         [Tooltip("撒出中心方向，90 度为向上。")]
         public float DirectionDegrees = 90f;
         [Range(0f, 360f), Tooltip("撒出扇形角度。")]
